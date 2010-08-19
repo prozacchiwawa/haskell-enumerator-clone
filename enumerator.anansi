@@ -591,7 +591,6 @@ import Data.Enumerator
 import Control.Monad.IO.Class (liftIO)
 import qualified Control.Exception as E
 import qualified Data.ByteString as B
-import qualified Foreign as F
 import qualified System.IO as IO
 :
 
@@ -600,19 +599,18 @@ import qualified System.IO as IO
 enumHandle :: Integer -- ^ Buffer size
            -> IO.Handle
            -> Enumerator E.SomeException B.ByteString IO b
-enumHandle bufferSize h = Iteratee . F.allocaBytes size' . loop where
+enumHandle bufferSize h = Iteratee . loop where
 	size' = fromInteger bufferSize
 	loop (Continue k) = read' k
-	loop step = const $ return step
-	read' k p = do
-		eitherN <- E.try $ IO.hGetBuf h p size'
-		case eitherN of
+	loop step = return step
+	read' k = do
+		eitherB <- E.try $ B.hGet h size'
+		case eitherB of
 			Left err -> return $ Error err
-			Right 0 -> return $ Continue k
-			Right n -> do
-				bytes <- B.packCStringLen (p, n)
+			Right bytes | B.null bytes -> return $ Continue k
+			Right bytes -> do
 				step <- runIteratee (k (Chunks [bytes]))
-				loop step p
+				loop step
 :
 
 :f Data/Enumerator/IO.hs
