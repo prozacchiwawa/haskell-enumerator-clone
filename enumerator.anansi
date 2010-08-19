@@ -317,11 +317,11 @@ i >>== f = Iteratee $ runIteratee i >>= runIteratee . f
 :f Data/Enumerator.hs
 |apidoc consume|
 consume :: Monad m => Iteratee e a m [a]
-consume = liftI $ step [] where
+consume = liftI $ step id where
 	step acc chunk = case chunk of
 		Chunks [] -> Continue $ returnI . step acc
-		Chunks xs -> Continue $ returnI . (step $ acc ++ xs)
-		EOF -> Yield acc EOF
+		Chunks xs -> Continue $ returnI . (step $ acc . (xs ++))
+		EOF -> Yield (acc []) EOF
 :
 
 :f Data/Enumerator.hs
