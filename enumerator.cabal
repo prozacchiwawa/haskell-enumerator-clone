@@ -17,6 +17,9 @@ tested-with: GHC==6.12.1
 description:
   Based on Oleg Kiselyov's IterateeM: <http://okmij.org/ftp/Haskell/Iteratee/IterateeM.hs>
 
+extra-source-files:
+  Examples/*.hs
+
 source-repository head
   type: darcs
   location: http://ianen.org/haskell/enumerator/
