@@ -823,6 +823,8 @@ import qualified Control.Exception as E
 :
 
 :d apidoc liftTrans
+-- | Lift an 'Iteratee' onto a monad transformer, re-wrapping the
+-- 'Iteratee'&#x2019;s inner monadic values.
 :
 
 :d apidoc (>>==)
