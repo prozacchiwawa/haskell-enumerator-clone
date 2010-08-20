@@ -34,7 +34,7 @@ import System.Exit
 iterBytes :: Monad m => Iteratee e B.ByteString m Integer
 iterBytes = continue (step 0) where
 	step acc EOF = yield acc EOF
-	step acc (Chunks xs) = continue $ step (foldl' foldStep acc xs)
+	step acc (Chunks xs) = continue $ step $! foldl' foldStep acc xs
 	foldStep acc bytes = acc + toInteger (B.length bytes)
 
 -- iterLines is similar, except it only counts newlines ('\n')
@@ -42,7 +42,7 @@ iterBytes = continue (step 0) where
 iterLines :: Monad m => Iteratee e B.ByteString m Integer
 iterLines = continue (step 0) where
 	step acc EOF = yield acc EOF
-	step acc (Chunks xs) = continue $ step (foldl' foldStep acc xs)
+	step acc (Chunks xs) = continue $ step $! foldl' foldStep acc xs
 	foldStep acc bytes = acc + countChar '\n' bytes
 	countChar c = B8.foldl (\acc c' -> if c' == c then acc + 1 else acc) 0
 
@@ -58,7 +58,7 @@ iterChars = continue (step (B.empty, 0)) where
 	step accT chunk = case chunk of
 		EOF -> let (extra, acc) = accT in yield acc (Chunks [extra])
 		(Chunks xs) -> case foldl' foldStep (Just accT) xs of
-			Just accT' -> continue $ step accT'
+			Just accT' -> continue $ step $! accT'
 			Nothing -> throwError (E.SomeException (E.ErrorCall "Invalid UTF-8"))
 	
 	-- The 'decodeUtf8' function is complicated, and defined later, but
