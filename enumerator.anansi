@@ -710,7 +710,6 @@ module Data.Enumerator.IO
 	, iterHandle
 	) where
 import Data.Enumerator
-import Control.Monad.IO.Class (liftIO)
 import qualified Control.Exception as E
 import qualified Data.ByteString as B
 import qualified System.IO as IO
@@ -722,29 +721,24 @@ enumHandle :: Integer -- ^ Buffer size
            -> IO.Handle
            -> Enumerator E.SomeException B.ByteString IO b
 enumHandle bufferSize h = Iteratee . loop where
-	size' = fromInteger bufferSize
-	loop (Continue k) = read' k
+	loop (Continue k) = withBytes $ \bytes -> if B.null bytes
+		then return $ Continue k
+		else runIteratee (k (Chunks [bytes])) >>= loop
+	
 	loop step = return step
-	read' k = do
-		eitherB <- E.try $ B.hGet h size'
-		case eitherB of
-			Left err -> return $ Error err
-			Right bytes | B.null bytes -> return $ Continue k
-			Right bytes -> do
-				step <- runIteratee (k (Chunks [bytes]))
-				loop step
+	
+	intSize = fromInteger bufferSize
+	withBytes = tryStep (B.hGet h intSize)
 :
 
 :f Data/Enumerator/IO.hs
 |apidoc enumFile|
 enumFile :: FilePath -> Enumerator E.SomeException B.ByteString IO b
-enumFile path s = Iteratee $ do
-	eitherH <- E.try $ IO.openBinaryFile path IO.ReadMode
-	case eitherH of
-		Left err -> return $ Error err
-		Right h -> E.finally
-			(runIteratee (enumHandle 4096 h s))
-			(IO.hClose h)
+enumFile path s = Iteratee io where
+	withHandle = tryStep (IO.openBinaryFile path IO.ReadMode)
+	io = withHandle $ \h -> E.finally
+		(runIteratee (enumHandle 4096 h s))
+		(IO.hClose h)
 :
 
 :f Data/Enumerator/IO.hs
@@ -752,23 +746,32 @@ enumFile path s = Iteratee $ do
 iterHandle :: IO.Handle -> Iteratee E.SomeException B.ByteString IO ()
 iterHandle h = continue step where
 	step EOF = yield () EOF
-	step (Chunks bytes) = do
-		eitherErr <- liftIO . E.try $ mapM_ (B.hPut h) bytes
-		case eitherErr of
-			Left err -> throwError err
-			_ -> continue step
+	step (Chunks []) = continue step
+	step (Chunks bytes) = Iteratee io where
+		put = mapM_ (B.hPut h) bytes
+		io = tryStep put (\_ -> return $ Continue step)
 :
 
 :f Data/Enumerator/IO.hs
 |apidoc iterFile|
 iterFile :: FilePath -> Iteratee E.SomeException B.ByteString IO ()
-iterFile path = Iteratee $ do
-	eitherH <- E.try $ IO.openBinaryFile path IO.WriteMode
-	case eitherH of
+iterFile path = Iteratee io where
+	withHandle = tryStep (IO.openBinaryFile path IO.WriteMode)
+	io = withHandle $ \h -> E.finally
+		(runIteratee (iterHandle h))
+		(IO.hClose h)
+:
+
+:f Data/Enumerator/IO.hs
+tryStep :: IO t
+       -> (t -> IO (Step E.SomeException a IO b))
+       -> IO (Step E.SomeException a IO b)
+tryStep get io = do
+	tried <- E.try get
+	case tried of
+		Right t -> io t
 		Left err -> return $ Error err
-		Right h -> E.finally
-			(runIteratee (iterHandle h))
-			(IO.hClose h)
+{-# INLINE tryStep #-}
 :
 
 \section{Haddock API documentation}
