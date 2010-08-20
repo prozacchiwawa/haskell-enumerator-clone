@@ -19,6 +19,7 @@ description:
 
 extra-source-files:
   Examples/*.hs
+  readme.txt
 
 source-repository head
   type: darcs
