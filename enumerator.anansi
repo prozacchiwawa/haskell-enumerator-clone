@@ -310,6 +310,8 @@ but allow iteratees with different input types to be composed. {\tt (==<<)}
 is also aliased to {\tt (\$\$)}, to match Oleg's original code.
 
 :f Data/Enumerator.hs
+infixl 1 >>==
+
 |apidoc (>>==)|
 (>>==) :: Monad m =>
 	Iteratee e a m b ->
@@ -317,6 +319,10 @@ is also aliased to {\tt (\$\$)}, to match Oleg's original code.
 	Iteratee e a' m b'
 i >>== f = Iteratee $ runIteratee i >>= runIteratee . f
 {-# INLINE (>>==) #-}
+:
+
+:f Data/Enumerator.hs
+infixl 1 ==<<
 
 |apidoc (==<<)|
 (==<<):: Monad m =>
@@ -325,6 +331,10 @@ i >>== f = Iteratee $ runIteratee i >>= runIteratee . f
 	Iteratee e a' m b'
 (==<<) = flip (>>==)
 {-# INLINE (==<<) #-}
+:
+
+:f Data/Enumerator.hs
+infixr 0 $$
 
 |apidoc ($$)|
 ($$):: Monad m =>
@@ -339,6 +349,8 @@ To make composing enumerators easier, equivalents to {\tt (>=>)} and
 {\tt (<=<)} are defined.
 
 :f Data/Enumerator.hs
+infixr 1 >==>
+
 |apidoc (>==>)|
 (>==>) :: Monad m =>
 	Enumerator e a m b ->
@@ -347,6 +359,10 @@ To make composing enumerators easier, equivalents to {\tt (>=>)} and
 	Iteratee e a' m b'
 (>==>) e1 e2 s = e1 s >>== e2
 {-# INLINE (>==>) #-}
+:
+
+:f Data/Enumerator.hs
+infixr 1 <==<
 
 |apidoc (<==<)|
 (<==<) :: Monad m =>
