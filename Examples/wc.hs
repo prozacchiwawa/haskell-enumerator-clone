@@ -38,12 +38,13 @@ iterBytes = continue (step 0) where
 	foldStep acc bytes = acc + toInteger (B.length bytes)
 
 -- iterLines is similar, except it only counts newlines ('\n')
+--
+-- Because it's basically the same as 'iterBytes', we use it to demonstrate
+-- the 'liftFoldL\'' helper function.
 
 iterLines :: Monad m => Iteratee e B.ByteString m Integer
-iterLines = continue (step 0) where
-	step acc EOF = yield acc EOF
-	step acc (Chunks xs) = continue $ step $! foldl' foldStep acc xs
-	foldStep acc bytes = acc + countChar '\n' bytes
+iterLines = liftFoldL' step 0 where
+	step acc bytes = acc + countChar '\n' bytes
 	countChar c = B8.foldl (\acc c' -> if c' == c then acc + 1 else acc) 0
 
 -- iterChars is a bit more complicated. It has to decode the input (for now,
