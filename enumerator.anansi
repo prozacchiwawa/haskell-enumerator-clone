@@ -307,7 +307,7 @@ catchError iter h = Iteratee $ do
 
 These next two are equivalent to {\tt (>>=)} and {\tt (=<<)} respectively,
 but allow iteratees with different input types to be composed. {\tt (==<<)}
-is also aliased to {\tt ($$)}, to match Oleg's original code.
+is also aliased to {\tt (\$\$)}, to match Oleg's original code.
 
 :f Data/Enumerator.hs
 |apidoc (>>==)|
