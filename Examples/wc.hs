@@ -87,7 +87,7 @@ main = do
 		putStr $ filename ++ ": "
 		
 		-- see cat.hs for commented implementation of 'Data.Enumerator.IO.enumFile'
-		eitherStat <- run (iter >>== enumFile filename)
+		eitherStat <- run (enumFile filename $$ iter)
 		putStrLn $ case eitherStat of
 			Left err -> "ERROR: " ++ show err
 			Right stat -> show stat

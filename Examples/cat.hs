@@ -105,11 +105,9 @@ main = do
 		then enumHandle 1 stdin
 		else concatEnums (Prelude.map enumFile args)
 	
-	-- This line looks a bit weird, because the (>>==) causes a visual
-	-- "flow" from the iteratee to the enumerator. However, data is
-	-- actually being sent from the enumerator to the iteratee. It's
-	-- better to think of it in terms of continuation passing.
-	res <- run (iterHandle stdout >>== enum)
+	-- 'run' sends an EOF to an iteratee and returns its output, which
+	-- is either a 'Yield' or an 'Error'.
+	res <- run (enum $$ iterHandle stdout)
 	
 	-- Finally, 'run' has returned either an error or the iteratee's
 	-- result. 'iterHandle' doesn't return a useful result, so as long

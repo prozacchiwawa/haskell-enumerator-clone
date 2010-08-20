@@ -279,7 +279,8 @@ liftI k = continue $ returnI . k
 :
 
 These next two are equivalent to {\tt (>>=)} and {\tt (=<<)} respectively,
-but allow iteratees with different input types to be composed.
+but allow iteratees with different input types to be composed. {\tt (==<<)}
+is also aliased to {\tt ($$)}, to match Oleg's original code.
 
 :f Data/Enumerator.hs
 |apidoc (>>==)|
@@ -297,6 +298,37 @@ i >>== f = Iteratee $ runIteratee i >>= runIteratee . f
 	Iteratee e a' m b'
 (==<<) = flip (>>==)
 {-# INLINE (==<<) #-}
+
+|apidoc ($$)|
+($$):: Monad m =>
+	(Step e a m b -> Iteratee e a' m b') ->
+	Iteratee e a m b ->
+	Iteratee e a' m b'
+($$) = (==<<)
+{-# INLINE ($$) #-}
+:
+
+To make composing enumerators easier, equivalents to {\tt (>=>)} and
+{\tt (<=<)} are defined.
+
+:f Data/Enumerator.hs
+|apidoc (>==>)|
+(>==>) :: Monad m =>
+	Enumerator e a m b ->
+	(Step e a m b -> Iteratee e a' m b') ->
+	Step e a m b ->
+	Iteratee e a' m b'
+(>==>) e1 e2 s = e1 s >>== e2
+{-# INLINE (>==>) #-}
+
+|apidoc (<==<)|
+(<==<) :: Monad m =>
+	(Step e a m b -> Iteratee e a' m b') ->
+	Enumerator e a m b ->
+	Step e a m b ->
+	Iteratee e a' m b'
+(<==<) = flip (>==>)
+{-# INLINE (<==<) #-}
 :
 
 :d Data.Enumerator exports
@@ -310,6 +342,9 @@ i >>== f = Iteratee $ runIteratee i >>= runIteratee . f
 , liftI
 , (>>==)
 , (==<<)
+, ($$)
+, (>==>)
+, (<==<)
 :
 
 \subsection{Iteratees}
@@ -374,8 +409,8 @@ cases, it's useful to have a small utility wrapper.
 :f Data/Enumerator.hs
 |apidoc concatEnums|
 concatEnums :: Monad m => [Enumerator e a m b] -> Enumerator e a m b
-concatEnums [] s = returnI s
-concatEnums (e:es) s = e s >>== concatEnums es
+concatEnums = foldl (>==>) returnI
+{-# INLINE concatEnums #-}
 :
 
 :d Data.Enumerator exports
@@ -738,6 +773,21 @@ import qualified Control.Exception as E
 
 :d apidoc (==<<)
 -- | @(==\<\<) = flip (\>\>==)@
+:
+
+:d apidoc ($$)
+-- | @($$) = (==\<\<)@
+--
+-- This might be easier to read when passing a chain of iteratees to an
+-- enumerator.
+:
+
+:d apidoc (>==>)
+-- | @(>==>) e1 e2 s = e1 s >>== e2@
+:
+
+:d apidoc (<==<)
+-- | @(\<==\<) = flip (>==>)@
 :
 
 :d apidoc consume
