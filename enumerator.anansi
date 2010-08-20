@@ -395,11 +395,38 @@ isEOF = liftI $ \c -> case c of
 	_   -> Yield False c
 :
 
+:f Data/Enumerator.hs
+|apidoc liftFoldL|
+liftFoldL :: Monad m => (b -> a -> b) -> b -> Iteratee e a m b
+liftFoldL f = liftI . step where
+	step acc chunk = case chunk of
+		Chunks [] -> Continue $ returnI . step acc
+		Chunks xs -> Continue $ returnI . step (Prelude.foldl f acc xs)
+		EOF -> Yield acc EOF
+:
+
+:d Data.Enumerator imports
+import qualified Data.List as DataList
+:
+
+:f Data/Enumerator.hs
+|apidoc liftFoldL'|
+liftFoldL' :: Monad m => (b -> a -> b) -> b -> Iteratee e a m b
+liftFoldL' f = liftI . step where
+	fold = DataList.foldl' f
+	step acc chunk = case chunk of
+		Chunks [] -> Continue $ returnI . step acc
+		Chunks xs -> Continue $ returnI . (step $! fold acc xs)
+		EOF -> Yield acc EOF
+:
+
 :d Data.Enumerator exports
   -- ** Iteratees
 , consume
 , isEOF
 , liftTrans
+, liftFoldL
+, liftFoldL'
 :
 
 \subsection{Enumerators}
@@ -828,6 +855,14 @@ import qualified Control.Exception as E
 
 :d apidoc isEOF
 -- | Return 'True' if the next 'Stream' is 'EOF'.
+:
+
+:d apidoc liftFoldL
+-- | Lifts a pure left fold into an iteratee.
+:
+
+:d apidoc liftFoldL'
+-- | As 'liftFoldL', but strict in its accumulator.
 :
 
 :d apidoc enumEOF
