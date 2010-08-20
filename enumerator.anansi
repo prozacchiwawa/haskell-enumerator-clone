@@ -239,6 +239,21 @@ instance MIO.MonadIO m => MIO.MonadIO (Iteratee e a m) where
 	{-# INLINE liftIO #-}
 :
 
+To simplify dealing with monad transformers, liftTrans allows lifting an
+iteratee's internal monad.
+
+:f Data/Enumerator.hs
+|apidoc liftTrans|
+liftTrans :: (Monad m, MT.MonadTrans t, Monad (t m)) =>
+             Iteratee e a m b -> Iteratee e a (t m) b
+liftTrans iter = Iteratee $ do
+	step <- MT.lift $ runIteratee iter
+	return $ case step of
+		Yield x cs -> Yield x cs
+		Error err -> Error err
+		Continue k -> Continue (liftTrans . k)
+:
+
 \section{Primitives}
 
 :d Data.Enumerator exports
@@ -276,6 +291,18 @@ throwError = returnI . Error
 liftI :: Monad m => (Stream a -> Step e a m b) -> Iteratee e a m b
 liftI k = continue $ returnI . k
 {-# INLINE liftI #-}
+:
+
+Catching errors is more difficult than throwing them, but defining this allows
+{\tt Iteratee} to be an instance of various {\tt MonadError} classes.
+
+:f Data/Enumerator.hs
+catchError :: Monad m => Iteratee e a m b -> (e -> Iteratee e a m b) -> Iteratee e a m b
+catchError iter h = Iteratee $ do
+	step <- runIteratee iter
+	case step of
+		Error err -> runIteratee (h err)
+		_ -> return step
 :
 
 These next two are equivalent to {\tt (>>=)} and {\tt (=<<)} respectively,
@@ -339,6 +366,7 @@ To make composing enumerators easier, equivalents to {\tt (>=>)} and
 , yield
 , continue
 , throwError
+, catchError
 , liftI
 , (>>==)
 , (==<<)
@@ -371,6 +399,7 @@ isEOF = liftI $ \c -> case c of
   -- ** Iteratees
 , consume
 , isEOF
+, liftTrans
 :
 
 \subsection{Enumerators}
@@ -764,6 +793,9 @@ import qualified Control.Exception as E
 -- | In cases where an enumerator acts as both a source and sink, the resulting
 -- type is named an 'Enumeratee'. Enumeratees have two input types,
 -- &#x201c;outer a&#x201d; (@aOut@) and &#x201c;inner a&#x201d; (@aIn@).
+:
+
+:d apidoc liftTrans
 :
 
 :d apidoc (>>==)
