@@ -420,6 +420,20 @@ liftFoldL' f = liftI . step where
 		EOF -> Yield acc EOF
 :
 
+:d Data.Enumerator imports
+import Control.Monad (foldM)
+:
+
+:f Data/Enumerator.hs
+|apidoc liftFoldM|
+liftFoldM :: Monad m => (b -> a -> m b) -> b -> Iteratee e a m b
+liftFoldM f = continue . step where
+	step acc chunk = case chunk of
+		Chunks [] -> continue $ step acc
+		Chunks xs -> Iteratee $ liftM (Continue . step) (foldM f acc xs)
+		EOF -> yield acc EOF
+:
+
 :d Data.Enumerator exports
   -- ** Iteratees
 , consume
@@ -427,6 +441,7 @@ liftFoldL' f = liftI . step where
 , liftTrans
 , liftFoldL
 , liftFoldL'
+, liftFoldM
 :
 
 \subsection{Enumerators}
@@ -865,6 +880,10 @@ import qualified Control.Exception as E
 
 :d apidoc liftFoldL'
 -- | As 'liftFoldL', but strict in its accumulator.
+:
+
+:d apidoc liftFoldM
+-- | Lifts a monadic left fold into an iteratee.
 :
 
 :d apidoc enumEOF
