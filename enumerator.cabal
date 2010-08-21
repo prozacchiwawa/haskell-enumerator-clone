@@ -44,3 +44,6 @@ library
   exposed-modules:
     Data.Enumerator
     Data.Enumerator.IO
+
+  other-modules:
+    Data.Enumerator.Util

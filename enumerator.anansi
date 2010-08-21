@@ -710,6 +710,7 @@ module Data.Enumerator.IO
 	, iterHandle
 	) where
 import Data.Enumerator
+import Data.Enumerator.Util
 import qualified Control.Exception as E
 import qualified Data.ByteString as B
 import qualified System.IO as IO
@@ -766,7 +767,13 @@ iterFile path = Iteratee io where
 		(IO.hClose h)
 :
 
-:f Data/Enumerator/IO.hs
+\section{Misc. utilities}
+
+:f Data/Enumerator/Util.hs
+module Data.Enumerator.Util where
+import Data.Enumerator
+import qualified Control.Exception as E
+
 tryStep :: IO t
        -> (t -> IO (Step E.SomeException a IO b))
        -> IO (Step E.SomeException a IO b)
