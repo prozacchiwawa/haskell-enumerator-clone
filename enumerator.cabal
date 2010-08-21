@@ -32,6 +32,7 @@ library
   build-depends:
       transformers >= 0.2 && < 0.3
     , bytestring >= 0.9 && < 0.10
+    , text >= 0.7 && < 0.8
 
   if impl(ghc >= 6.10)
     build-depends:
@@ -44,6 +45,7 @@ library
   exposed-modules:
     Data.Enumerator
     Data.Enumerator.IO
+    Data.Enumerator.Text
 
   other-modules:
     Data.Enumerator.Util

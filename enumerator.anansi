@@ -767,6 +767,70 @@ iterFile path = Iteratee io where
 		(IO.hClose h)
 :
 
+\section{Text handling}
+
+:f Data/Enumerator/Text.hs
+|Data.Enumerator.Text module header|
+module Data.Enumerator.Text
+	( -- * Enumerators and iteratees
+	  enumHandle
+	, enumFile
+	, iterHandle
+	, iterFile
+	) where
+import Data.Enumerator
+import Data.Enumerator.Util
+import qualified Control.Exception as E
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
+import qualified System.IO as IO
+:
+
+\subsection{Text IO}
+
+:f Data/Enumerator/Text.hs
+|apidoc enumHandle (text)|
+enumHandle :: IO.Handle -> Enumerator E.SomeException T.Text IO b
+enumHandle h = Iteratee . loop where
+	loop (Continue k) = withText $ \text -> if T.null text
+		then return $ Continue k
+		else runIteratee (k (Chunks [text])) >>= loop
+	
+	loop step = return step
+	withText = tryStep (T.hGetLine h)
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc enumFile (text)|
+enumFile :: FilePath -> Enumerator E.SomeException T.Text IO b
+enumFile path s = Iteratee io where
+	withHandle = tryStep (IO.openFile path IO.ReadMode)
+	io = withHandle $ \h -> E.finally
+		(runIteratee (enumHandle h s))
+		(IO.hClose h)
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc iterHandle (text)|
+iterHandle :: IO.Handle -> Iteratee E.SomeException T.Text IO ()
+iterHandle h = continue step where
+	step EOF = yield () EOF
+	step (Chunks []) = continue step
+	step (Chunks chunks) = Iteratee io where
+		put = mapM_ (T.hPutStr h) chunks
+		io = tryStep put (\_ -> return $ Continue step)
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc iterFile (text)|
+iterFile :: FilePath -> Iteratee E.SomeException T.Text IO ()
+iterFile path = Iteratee io where
+	withHandle = tryStep (IO.openFile path IO.WriteMode)
+	io = withHandle $ \h -> E.finally
+		(runIteratee (iterHandle h))
+		(IO.hClose h)
+:
+
 \section{Misc. utilities}
 
 :f Data/Enumerator/Util.hs
@@ -1033,6 +1097,43 @@ API docs for these are still TODO
 
 :d apidoc iterFile
 -- | Opens a file path in binary mode, and passes the handle to 'iterHandle'.
+-- The file will be closed when the 'Iteratee' finishes.
+:
+
+:d Data.Enumerator.Text module header
+-----------------------------------------------------------------------------
+-- |
+-- Module: Data.Enumerator.Text
+-- Copyright: 2010 John Millikin
+-- License: MIT
+--
+-- Maintainer: jmillikin@gmail.com
+-- Portability: portable
+--
+-- Enumerator-based text IO
+--
+-----------------------------------------------------------------------------
+:
+
+:d apidoc enumHandle (text)
+-- | Read lines of text from the handle, and stream them to an 'Iteratee'.
+-- If an exception occurs during file IO, enumeration will stop and 'Error'
+-- will be returned. Exceptions from the iteratee are not caught.
+:
+
+:d apidoc iterHandle (text)
+-- | Read text from a stream and write it to a handle. If an exception
+-- occurs during file IO, enumeration will stop and 'Error' will be
+-- returned.
+:
+
+:d apidoc enumFile (text)
+-- | Opens a file path in text mode, and passes the handle to 'enumHandle'.
+-- The file will be closed when the 'Iteratee' finishes.
+:
+
+:d apidoc iterFile (text)
+-- | Opens a file path in text mode, and passes the handle to 'iterHandle'.
 -- The file will be closed when the 'Iteratee' finishes.
 :
 
