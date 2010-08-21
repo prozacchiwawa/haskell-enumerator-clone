@@ -843,20 +843,20 @@ iterFile path = Iteratee io where
 , Codec
 , encode
 , decode
-, ascii
-, iso8859_1
+|text codec exports|
 :
 
 :d Data.Enumerator.Text imports
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
+import qualified Data.Text.Encoding as TE
 :
 
 :f Data/Enumerator/Text.hs
 |apidoc Codec|
 data Codec = Codec
 	{ codecName :: T.Text
-	, codecEncode :: T.Text -> Either E.SomeException B.ByteString
+	, codecEncode :: [T.Text] -> Either E.SomeException [B.ByteString]
 	, codecDecode :: B.ByteString -> Either E.SomeException (T.Text, B.ByteString)
 	}
 
@@ -869,12 +869,10 @@ instance Show Codec where
 |apidoc encode|
 encode :: Monad m => Codec -> Enumeratee E.SomeException T.Text B.ByteString m b
 encode codec = loop where
-	enc = mapEither (codecEncode codec)
-	
 	loop = checkDone $ continue . step
 	step k EOF = yield (Continue k) EOF
 	step k (Chunks []) = continue $ step k
-	step k (Chunks xs) = case enc xs of
+	step k (Chunks xs) = case codecEncode codec xs of
 		Left err -> throwError err
 		Right byteChunks -> k (Chunks byteChunks) >>== loop
 :
@@ -895,11 +893,71 @@ decode codec = loop B.empty where
 		Right (text, extra) -> k (Chunks [text]) >>== loop extra
 :
 
+\subsubsection{UTF-8}
+
+:d text codec exports
+, utf8
+:
+
+:f Data/Enumerator/Text.hs
+utf8 :: Codec
+utf8 = Codec name enc dec where
+	name = T.pack "UTF-8"
+	enc = Right . Prelude.map TE.encodeUtf8
+	dec = undefined
+:
+
+\subsubsection{UTF-16}
+
+:d text codec exports
+, utf16_le
+, utf16_be
+:
+
+:f Data/Enumerator/Text.hs
+utf16_le :: Codec
+utf16_le = Codec name enc dec where
+	name = T.pack "UTF-16-LE"
+	enc = Right . Prelude.map TE.encodeUtf16LE
+	dec = undefined
+
+utf16_be :: Codec
+utf16_be = Codec name enc dec where
+	name = T.pack "UTF-16-BE"
+	enc = Right . Prelude.map TE.encodeUtf16BE
+	dec = undefined
+:
+
+\subsubsection{UTF-32}
+
+:d text codec exports
+, utf32_le
+, utf32_be
+:
+
+:f Data/Enumerator/Text.hs
+utf32_le :: Codec
+utf32_le = Codec name enc dec where
+	name = T.pack "UTF-32-LE"
+	enc = Right . Prelude.map TE.encodeUtf32LE
+	dec = undefined
+
+utf32_be :: Codec
+utf32_be = Codec name enc dec where
+	name = T.pack "UTF-32-BE"
+	enc = Right . Prelude.map TE.encodeUtf32BE
+	dec = undefined
+:
+
 \subsubsection{ASCII}
+
+:d text codec exports
+, ascii
+:
 
 :f Data/Enumerator/Text.hs
 ascii :: Codec
-ascii = Codec name enc dec where
+ascii = Codec name (mapEither enc) dec where
 	name = T.pack "ASCII"
 	enc t = case T.findBy (\c -> ord c > 0x7F) t of
 		Nothing -> Right . B8.pack . T.unpack $ t
@@ -911,9 +969,13 @@ ascii = Codec name enc dec where
 
 \subsubsection{ISO 8859-1}
 
+:d text codec exports
+, iso8859_1
+:
+
 :f Data/Enumerator/Text.hs
 iso8859_1 :: Codec
-iso8859_1 = Codec name enc dec where
+iso8859_1 = Codec name (mapEither enc) dec where
 	name = T.pack "ISO-8859-1"
 	enc t = case T.findBy (\c -> ord c > 0xFF) t of
 		Nothing -> Right . B8.pack . T.unpack $ t
