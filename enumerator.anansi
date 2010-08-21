@@ -322,7 +322,7 @@ i >>== f = Iteratee $ runIteratee i >>= runIteratee . f
 :
 
 :f Data/Enumerator.hs
-infixl 1 ==<<
+infixr 1 ==<<
 
 |apidoc (==<<)|
 (==<<):: Monad m =>
