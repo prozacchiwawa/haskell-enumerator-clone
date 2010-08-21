@@ -847,6 +847,8 @@ iterFile path = Iteratee io where
 :
 
 :d Data.Enumerator.Text imports
+import Control.Arrow (first)
+import Data.Bits ((.&.))
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text.Encoding as TE
@@ -904,7 +906,32 @@ utf8 :: Codec
 utf8 = Codec name enc dec where
 	name = T.pack "UTF-8"
 	enc = Right . Prelude.map TE.encodeUtf8
-	dec = undefined
+	dec = unsafeTryDec . splitBytes
+	|utf8 split bytes|
+:
+
+:d utf8 split bytes
+splitBytes bytes = loop 0 where
+	|utf8 required bytes count|
+	maxN = B.length bytes
+	
+	loop n | n == maxN = (TE.decodeUtf8 bytes, B.empty)
+	loop n = let
+		req = required $ B.index bytes 0
+		tooLong = first TE.decodeUtf8 $ B.splitAt n bytes
+		decodeMore = loop $! n + req
+		in if req > maxN then tooLong else decodeMore
+:
+
+:d utf8 required bytes count
+required x0
+	| x0 .&. 0x80 == 0x00 = 1
+	| x0 .&. 0xE0 == 0xC0 = 2
+	| x0 .&. 0xF0 == 0xE0 = 3
+	| x0 .&. 0xF8 == 0xF0 = 4
+	
+	-- Invalid input; let Text figure it out
+	| otherwise           = 1
 :
 
 \subsubsection{UTF-16}
@@ -990,6 +1017,7 @@ import Prelude as Prelude
 import Numeric (showIntAtBase)
 import Data.Char (toUpper, intToDigit, ord)
 import Data.Word (Word8)
+import System.IO.Unsafe (unsafePerformIO)
 :
 
 :f Data/Enumerator/Text.hs
@@ -1012,6 +1040,15 @@ illegalDec name w = Left . E.SomeException . E.ErrorCall $ msg "" where
 	hex = "0x" ++ pad (showIntAtBase 16 (toUpper . intToDigit) w "")
 	msg = (s "Codec " . shows name . s " can't decode byte " . s hex)
 	s = showString
+:
+
+:f Data/Enumerator/Text.hs
+unsafeTryDec :: (a, b) -> Either E.SomeException (a, b)
+unsafeTryDec (a, b) = unsafePerformIO $ do
+	tried <- E.try $ E.evaluate a
+	return $ case tried of
+		Left err -> Left err
+		Right _ -> Right (a, b)
 :
 
 \section{Misc. utilities}
