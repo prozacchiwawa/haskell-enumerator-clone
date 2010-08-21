@@ -892,7 +892,9 @@ decode codec = loop B.empty where
 	step acc k (Chunks []) = continue $ step acc k
 	step acc k (Chunks xs) = case dec (B.concat (acc:xs)) of
 		Left err -> throwError err
-		Right (text, extra) -> k (Chunks [text]) >>== loop extra
+		Right (text, extra) -> if T.null text
+			then continue $ step extra k
+			else k (Chunks [text]) >>== loop extra
 :
 
 \subsubsection{UTF-8}
@@ -941,18 +943,65 @@ required x0
 , utf16_be
 :
 
+:d Data.Enumerator.Text imports
+import Data.Bits ((.|.), shiftL)
+import Data.Word (Word16)
+:
+
 :f Data/Enumerator/Text.hs
 utf16_le :: Codec
 utf16_le = Codec name enc dec where
 	name = T.pack "UTF-16-LE"
 	enc = Right . Prelude.map TE.encodeUtf16LE
-	dec = undefined
+	dec = unsafeTryDec . splitBytes
+	|utf16-le split bytes|
+:
 
+:f Data/Enumerator/Text.hs
 utf16_be :: Codec
 utf16_be = Codec name enc dec where
 	name = T.pack "UTF-16-BE"
 	enc = Right . Prelude.map TE.encodeUtf16BE
-	dec = undefined
+	dec = unsafeTryDec . splitBytes
+	|utf16-be split bytes|
+:
+
+:d utf16-le split bytes
+splitBytes bytes = loop 0 where
+	maxN = B.length bytes
+	
+	loop n |  n      == maxN = (TE.decodeUtf16LE bytes, B.empty)
+	       | (n + 1) == maxN = decodeTo n
+	loop n = let
+		req = utf16Required (B.index bytes 0) (B.index bytes 1)
+		decodeMore = loop $! n + req
+		in if req > maxN then decodeTo n else decodeMore
+	
+	decodeTo n = first TE.decodeUtf16LE $ B.splitAt n bytes
+:
+
+:d utf16-be split bytes
+splitBytes bytes = loop 0 where
+	maxN = B.length bytes
+	
+	loop n |  n      == maxN = (TE.decodeUtf16BE bytes, B.empty)
+	       | (n + 1) == maxN = decodeTo n
+	loop n = let
+		req = utf16Required (B.index bytes 1) (B.index bytes 0)
+		decodeMore = loop $! n + req
+		in if req > maxN then decodeTo n else decodeMore
+	
+	decodeTo n = first TE.decodeUtf16BE $ B.splitAt n bytes
+:
+
+:f Data/Enumerator/Text.hs
+utf16Required :: Word8 -> Word8 -> Int
+utf16Required x0 x1 = required where
+	required = if x >= 0xD800 && x <= 0xDBFF
+		then 4
+		else 2
+	x :: Word16
+	x = (fromIntegral x1 `shiftL` 8) .|. fromIntegral x0
 :
 
 \subsubsection{UTF-32}
