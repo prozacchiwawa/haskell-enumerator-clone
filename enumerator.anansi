@@ -450,14 +450,43 @@ liftFoldM f = continue . step where
 		EOF -> yield acc EOF
 :
 
+To simplify running iteratees, {\tt run} sends {\tt EOF} and then examines
+the result. It is not possible for the result to be {\tt Continue}, because
+{\tt enumEOF} calls {\tt error} for divergent iteratees.
+
+:f Data/Enumerator.hs
+|apidoc run|
+run :: Monad m => Iteratee e a m b -> m (Either e b)
+run i = do
+	mStep <- runIteratee $ enumEOF ==<< i
+	case mStep of
+		Error err -> return $ Left err
+		Yield x _ -> return $ Right x
+		Continue _ -> error "run: divergent iteratee"
+:
+
+{\tt printChunks} is useful for debugging; it prints out exactly what input
+it received, and optionally, any empty input chunks.
+
+:f Data/Enumerator.hs
+|apidoc printChunks|
+printChunks :: (MIO.MonadIO m, Show a) => Bool -> Iteratee e a m ()
+printChunks printEmpty = continue step where
+	step (Chunks []) | not printEmpty = continue step
+	step (Chunks xs) = MIO.liftIO (print xs) >> continue step
+	step EOF = MIO.liftIO (putStrLn "EOF") >> yield () EOF
+:
+
 :d Data.Enumerator exports
   -- ** Iteratees
+, run
 , consume
 , isEOF
 , liftTrans
 , liftFoldL
 , liftFoldL'
 , liftFoldM
+, printChunks
 :
 
 \subsection{Enumerators}
@@ -667,38 +696,6 @@ break p = span $ not . p
 , Data.Enumerator.break
 :
 
-\section{Utility}
-
-To simplify running iteratees, {\tt run} sends {\tt EOF} and then examines
-the result. It is not possible for the result to be {\tt Continue}, because
-{\tt enumEOF} calls {\tt error} for divergent iteratees.
-
-:f Data/Enumerator.hs
-|apidoc run|
-run :: Monad m => Iteratee e a m b -> m (Either e b)
-run i = do
-	mStep <- runIteratee $ enumEOF ==<< i
-	case mStep of
-		Error err -> return $ Left err
-		Yield x _ -> return $ Right x
-		Continue _ -> error "run: divergent iteratee"
-:
-
-:f Data/Enumerator.hs
-|apidoc printChunks|
-printChunks :: (MIO.MonadIO m, Show a) => Bool -> Iteratee e a m ()
-printChunks printEmpty = continue step where
-	step (Chunks []) | not printEmpty = continue step
-	step (Chunks xs) = MIO.liftIO (print xs) >> continue step
-	step EOF = MIO.liftIO (putStrLn "EOF") >> yield () EOF
-:
-
-:d Data.Enumerator exports
-  -- * Utility functions
-, run
-, printChunks
-:
-
 \section{IO}
 
 :f Data/Enumerator/IO.hs
@@ -771,35 +768,30 @@ iterFile path = Iteratee io where
 
 :f Data/Enumerator/Text.hs
 |Data.Enumerator.Text module header|
-module Data.Enumerator.Text
-	( -- * Enumerators and iteratees
-	  enumHandle
-	, enumFile
-	, iterHandle
-	, iterFile
-	
-	  -- * Codecs
-	, Codec
-	, encode
-	, decode
-	, ascii
-	, iso8859_1
+module Data.Enumerator.Text (
+	|Data.Enumerator.Text exports|
 	) where
-import Prelude as Prelude
-import Data.Char (toUpper, intToDigit, ord)
-import Numeric (showIntAtBase)
+|Data.Enumerator.Text imports|
 import Data.Enumerator
 import Data.Enumerator.Util
-import Data.Word (Word8)
+:
+
+\subsection{Text IO}
+
+:d Data.Enumerator.Text exports
+  -- * Enumerators and iteratees
+  enumHandle
+, enumFile
+, iterHandle
+, iterFile
+:
+
+:d Data.Enumerator.Text imports
 import qualified Control.Exception as E
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified System.IO as IO
 :
-
-\subsection{Text IO}
 
 :f Data/Enumerator/Text.hs
 |apidoc enumHandle (text)|
@@ -846,6 +838,20 @@ iterFile path = Iteratee io where
 
 \subsection{Text codecs}
 
+:d Data.Enumerator.Text exports
+  -- * Codecs
+, Codec
+, encode
+, decode
+, ascii
+, iso8859_1
+:
+
+:d Data.Enumerator.Text imports
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
+:
+
 :f Data/Enumerator/Text.hs
 |apidoc Codec|
 data Codec = Codec
@@ -889,6 +895,8 @@ decode codec = loop B.empty where
 		Right (text, extra) -> k (Chunks [text]) >>== loop extra
 :
 
+\subsubsection{ASCII}
+
 :f Data/Enumerator/Text.hs
 ascii :: Codec
 ascii = Codec name enc dec where
@@ -899,7 +907,11 @@ ascii = Codec name enc dec where
 	dec bytes = case B.find (\w -> w > 0x7F) bytes of
 		Nothing -> Right (T.pack (B8.unpack bytes), B.empty)
 		Just w -> illegalDec name w
+:
 
+\subsubsection{ISO 8859-1}
+
+:f Data/Enumerator/Text.hs
 iso8859_1 :: Codec
 iso8859_1 = Codec name enc dec where
 	name = T.pack "ISO-8859-1"
@@ -907,7 +919,18 @@ iso8859_1 = Codec name enc dec where
 		Nothing -> Right . B8.pack . T.unpack $ t
 		Just c -> illegalEnc name c
 	dec bytes = Right (T.pack (B8.unpack bytes), B.empty)
+:
 
+\subsection{Text utility functions}
+
+:d Data.Enumerator.Text imports
+import Prelude as Prelude
+import Numeric (showIntAtBase)
+import Data.Char (toUpper, intToDigit, ord)
+import Data.Word (Word8)
+:
+
+:f Data/Enumerator/Text.hs
 illegalEnc :: T.Text -> Char -> Either E.SomeException a
 illegalEnc name c = Left . E.SomeException . E.ErrorCall $ msg "" where
 	len = Prelude.length
@@ -916,7 +939,9 @@ illegalEnc name c = Left . E.SomeException . E.ErrorCall $ msg "" where
 	hex = "U+" ++ pad (showIntAtBase 16 (toUpper . intToDigit) (ord c) "")
 	msg = (s "Codec " . shows name . s " can't encode character " . s hex)
 	s = showString
+:
 
+:f Data/Enumerator/Text.hs
 illegalDec :: T.Text -> Word8 -> Either E.SomeException a
 illegalDec name w = Left . E.SomeException . E.ErrorCall $ msg "" where
 	len = Prelude.length
