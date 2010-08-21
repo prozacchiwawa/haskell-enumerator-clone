@@ -727,7 +727,9 @@ enumHandle bufferSize h = Iteratee . loop where
 	
 	intSize = fromInteger bufferSize
 	withBytes = tryStep $ do
-		hasInput <- IO.hWaitForInput h (-1)
+		hasInput <- E.catch
+			(IO.hWaitForInput h (-1))
+			(\(E.SomeException _) -> return False) 
 		if hasInput
 			then B.hGetNonBlocking h intSize
 			else return B.empty
