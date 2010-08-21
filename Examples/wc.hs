@@ -19,7 +19,6 @@ import qualified Data.Text.Encoding as T
 import Control.Exception as E
 import Data.List
 import Data.Bits ((.&.))
-import Data.Word (Word8)
 import Control.Monad (unless, forM_)
 import System.IO
 import System.Console.GetOpt
@@ -129,7 +128,7 @@ decodeUtf8 allBytes = loop B.empty allBytes where
 	
 	loop acc bytes | B.null bytes = Just (T.decodeUtf8 acc, bytes)
 	loop acc bytes = do
-		let (x0, x1, x2, x3) = indexes bytes
+		let x0 = B.index bytes 0
 		req <- required x0
 		if req > B.length bytes
 			then Just (T.decodeUtf8 acc, bytes)
@@ -141,66 +140,3 @@ decodeUtf8 allBytes = loop B.empty allBytes where
 		| x0 .&. 0xF0 == 0xE0 = Just 3
 		| x0 .&. 0xF8 == 0xF0 = Just 4
 		| otherwise           = Nothing
-	
-	indexes bytes = (x0, x1, x2, x3) where
-		x0 = B.index bytes 0
-		x1 = B.index bytes 1
-		x2 = B.index bytes 2
-		x3 = B.index bytes 3
-
--- UTF8 decoding gunk; mostly copied from Data.Text
-
-between :: Word8                -- ^ byte to check
-        -> Word8                -- ^ lower bound
-        -> Word8                -- ^ upper bound
-        -> Bool
-between x y z = x >= y && x <= z
-{-# INLINE between #-}
-
-validate1    :: Word8 -> Bool
-validate1 x1 = between x1 0x00 0x7F
-{-# INLINE validate1 #-}
-
-validate2       :: Word8 -> Word8 -> Bool
-validate2 x1 x2 = between x1 0xC2 0xDF && between x2 0x80 0xBF
-{-# INLINE validate2 #-}
-
-validate3          :: Word8 -> Word8 -> Word8 -> Bool
-{-# INLINE validate3 #-}
-validate3 x1 x2 x3 = validate3_1 ||
-                     validate3_2 ||
-                     validate3_3 ||
-                     validate3_4
-  where
-    validate3_1 = (x1 == 0xE0) &&
-                  between x2 0xA0 0xBF &&
-                  between x3 0x80 0xBF
-    validate3_2 = between x1 0xE1 0xEC &&
-                  between x2 0x80 0xBF &&
-                  between x3 0x80 0xBF
-    validate3_3 = x1 == 0xED &&
-                  between x2 0x80 0x9F &&
-                  between x3 0x80 0xBF
-    validate3_4 = between x1 0xEE 0xEF &&
-                  between x2 0x80 0xBF &&
-                  between x3 0x80 0xBF
-
-validate4             :: Word8 -> Word8 -> Word8 -> Word8 -> Bool
-{-# INLINE validate4 #-}
-validate4 x1 x2 x3 x4 = validate4_1 ||
-                        validate4_2 ||
-                        validate4_3
-  where 
-    validate4_1 = x1 == 0xF0 &&
-                  between x2 0x90 0xBF &&
-                  between x3 0x80 0xBF &&
-                  between x4 0x80 0xBF
-    validate4_2 = between x1 0xF1 0xF3 &&
-                  between x2 0x80 0xBF &&
-                  between x3 0x80 0xBF &&
-                  between x4 0x80 0xBF
-    validate4_3 = x1 == 0xF4 &&
-                  between x2 0x80 0x8F &&
-                  between x3 0x80 0xBF &&
-                  between x4 0x80 0xBF
-
