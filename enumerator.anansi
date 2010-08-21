@@ -728,7 +728,11 @@ enumHandle bufferSize h = Iteratee . loop where
 	loop step = return step
 	
 	intSize = fromInteger bufferSize
-	withBytes = tryStep (B.hGet h intSize)
+	withBytes = tryStep $ do
+		hasInput <- IO.hWaitForInput h (-1)
+		if hasInput
+			then B.hGetNonBlocking h intSize
+			else return B.empty
 :
 
 :f Data/Enumerator/IO.hs
@@ -1003,6 +1007,10 @@ API docs for these are still TODO
 -- stream them to an 'Iteratee'. If an exception occurs during file IO,
 -- enumeration will stop and 'Error' will be returned. Exceptions from the
 -- iteratee are not caught.
+--
+-- This enumerator blocks until at least one byte is available from the
+-- handle, and might read less than the maximum buffer size in some
+-- cases.
 :
 
 :d apidoc iterHandle
