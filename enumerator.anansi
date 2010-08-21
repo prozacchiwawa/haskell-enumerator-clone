@@ -921,7 +921,7 @@ splitBytes bytes = loop 0 where
 	
 	loop n | n == maxN = (TE.decodeUtf8 bytes, B.empty)
 	loop n = let
-		req = required $ B.index bytes 0
+		req = required $ B.index bytes n
 		tooLong = first TE.decodeUtf8 $ B.splitAt n bytes
 		decodeMore = loop $! n + req
 		in if req > maxN then tooLong else decodeMore
