@@ -777,10 +777,23 @@ module Data.Enumerator.Text
 	, enumFile
 	, iterHandle
 	, iterFile
+	
+	  -- * Codecs
+	, Codec
+	, encode
+	, decode
+	, ascii
+	, iso8859_1
 	) where
+import Prelude as Prelude
+import Data.Char (toUpper, intToDigit, ord)
+import Numeric (showIntAtBase)
 import Data.Enumerator
 import Data.Enumerator.Util
+import Data.Word (Word8)
 import qualified Control.Exception as E
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified System.IO as IO
@@ -831,6 +844,89 @@ iterFile path = Iteratee io where
 		(IO.hClose h)
 :
 
+\subsection{Text codecs}
+
+:f Data/Enumerator/Text.hs
+|apidoc Codec|
+data Codec = Codec
+	{ codecName :: T.Text
+	, codecEncode :: T.Text -> Either E.SomeException B.ByteString
+	, codecDecode :: B.ByteString -> Either E.SomeException (T.Text, B.ByteString)
+	}
+
+instance Show Codec where
+	showsPrec d c = showParen (d > 10) $
+		showString "Codec " . shows (codecName c)
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc encode|
+encode :: Monad m => Codec -> Enumeratee E.SomeException T.Text B.ByteString m b
+encode codec = loop where
+	enc = mapEither (codecEncode codec)
+	
+	loop = checkDone $ continue . step
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks []) = continue $ step k
+	step k (Chunks xs) = case enc xs of
+		Left err -> throwError err
+		Right byteChunks -> k (Chunks byteChunks) >>== loop
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc decode|
+decode :: Monad m => Codec -> Enumeratee E.SomeException B.ByteString T.Text m b
+decode codec = loop B.empty where
+	dec = codecDecode codec
+	
+	loop acc = checkDone $ continue . step acc
+	step acc k EOF = yield (Continue k) $ if B.null acc
+		then EOF
+		else Chunks [acc]
+	step acc k (Chunks []) = continue $ step acc k
+	step acc k (Chunks xs) = case dec (B.concat (acc:xs)) of
+		Left err -> throwError err
+		Right (text, extra) -> k (Chunks [text]) >>== loop extra
+:
+
+:f Data/Enumerator/Text.hs
+ascii :: Codec
+ascii = Codec name enc dec where
+	name = T.pack "ASCII"
+	enc t = case T.findBy (\c -> ord c > 0x7F) t of
+		Nothing -> Right . B8.pack . T.unpack $ t
+		Just c -> illegalEnc name c
+	dec bytes = case B.find (\w -> w > 0x7F) bytes of
+		Nothing -> Right (T.pack (B8.unpack bytes), B.empty)
+		Just w -> illegalDec name w
+
+iso8859_1 :: Codec
+iso8859_1 = Codec name enc dec where
+	name = T.pack "ISO-8859-1"
+	enc t = case T.findBy (\c -> ord c > 0xFF) t of
+		Nothing -> Right . B8.pack . T.unpack $ t
+		Just c -> illegalEnc name c
+	dec bytes = Right (T.pack (B8.unpack bytes), B.empty)
+
+illegalEnc :: T.Text -> Char -> Either E.SomeException a
+illegalEnc name c = Left . E.SomeException . E.ErrorCall $ msg "" where
+	len = Prelude.length
+	pad str | len str < 4 = replicate (4 - len str) '0' ++ str
+	        | otherwise      = str
+	hex = "U+" ++ pad (showIntAtBase 16 (toUpper . intToDigit) (ord c) "")
+	msg = (s "Codec " . shows name . s " can't encode character " . s hex)
+	s = showString
+
+illegalDec :: T.Text -> Word8 -> Either E.SomeException a
+illegalDec name w = Left . E.SomeException . E.ErrorCall $ msg "" where
+	len = Prelude.length
+	pad str | len str < 2 = replicate (2 - len str) '0' ++ str
+	        | otherwise      = str
+	hex = "0x" ++ pad (showIntAtBase 16 (toUpper . intToDigit) w "")
+	msg = (s "Codec " . shows name . s " can't decode byte " . s hex)
+	s = showString
+:
+
 \section{Misc. utilities}
 
 :f Data/Enumerator/Util.hs
@@ -847,6 +943,14 @@ tryStep get io = do
 		Right t -> io t
 		Left err -> return $ Error err
 {-# INLINE tryStep #-}
+
+mapEither :: (a -> Either e b) -> [a] -> Either e [b]
+mapEither f = loop [] where
+	loop acc [] = Right (reverse acc)
+	loop acc (a:as) = case f a of
+		Left err -> Left err
+		Right b -> loop (b:acc) as
+{-# INLINE mapEither #-}
 :
 
 \section{Haddock API documentation}
@@ -1135,6 +1239,15 @@ API docs for these are still TODO
 :d apidoc iterFile (text)
 -- | Opens a file path in text mode, and passes the handle to 'iterHandle'.
 -- The file will be closed when the 'Iteratee' finishes.
+:
+
+:d apidoc Codec
+:
+
+:d apidoc encode
+:
+
+:d apidoc decode
 :
 
 \end{document}
