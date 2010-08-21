@@ -967,13 +967,25 @@ utf32_le :: Codec
 utf32_le = Codec name enc dec where
 	name = T.pack "UTF-32-LE"
 	enc = Right . Prelude.map TE.encodeUtf32LE
-	dec = undefined
+	dec = unsafeTryDec . utf32SplitBytes TE.decodeUtf32LE
+	
 
 utf32_be :: Codec
 utf32_be = Codec name enc dec where
 	name = T.pack "UTF-32-BE"
 	enc = Right . Prelude.map TE.encodeUtf32BE
-	dec = undefined
+	dec = unsafeTryDec . utf32SplitBytes TE.decodeUtf32BE
+:
+
+:f Data/Enumerator/Text.hs
+utf32SplitBytes :: (B.ByteString -> a) -> B.ByteString -> (a, B.ByteString)
+utf32SplitBytes dec bytes = (dec toDecode, extra) where
+	len = B.length bytes
+	lenExtra = mod len 4
+	lenToDecode = len - lenExtra
+	(toDecode, extra) = if lenExtra == 0
+		then (bytes, B.empty)
+		else B.splitAt lenToDecode bytes
 :
 
 \subsubsection{ASCII}
