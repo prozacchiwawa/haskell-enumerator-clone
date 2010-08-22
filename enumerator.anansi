@@ -315,8 +315,8 @@ infixl 1 >>==
 |apidoc (>>==)|
 (>>==) :: Monad m =>
 	Iteratee e a m b ->
-	(Step e a m b -> Iteratee e a' m b') ->
-	Iteratee e a' m b'
+	(Step e a m b -> Iteratee e' a' m b') ->
+	Iteratee e' a' m b'
 i >>== f = Iteratee $ runIteratee i >>= runIteratee . f
 {-# INLINE (>>==) #-}
 :
@@ -326,9 +326,9 @@ infixr 1 ==<<
 
 |apidoc (==<<)|
 (==<<):: Monad m =>
-	(Step e a m b -> Iteratee e a' m b') ->
+	(Step e a m b -> Iteratee e' a' m b') ->
 	Iteratee e a m b ->
-	Iteratee e a' m b'
+	Iteratee e' a' m b'
 (==<<) = flip (>>==)
 {-# INLINE (==<<) #-}
 :
@@ -338,9 +338,9 @@ infixr 0 $$
 
 |apidoc ($$)|
 ($$):: Monad m =>
-	(Step e a m b -> Iteratee e a' m b') ->
+	(Step e a m b -> Iteratee e' a' m b') ->
 	Iteratee e a m b ->
-	Iteratee e a' m b'
+	Iteratee e' a' m b'
 ($$) = (==<<)
 {-# INLINE ($$) #-}
 :
@@ -354,9 +354,9 @@ infixr 1 >==>
 |apidoc (>==>)|
 (>==>) :: Monad m =>
 	Enumerator e a m b ->
-	(Step e a m b -> Iteratee e a' m b') ->
+	(Step e a m b -> Iteratee e' a' m b') ->
 	Step e a m b ->
-	Iteratee e a' m b'
+	Iteratee e' a' m b'
 (>==>) e1 e2 s = e1 s >>== e2
 {-# INLINE (>==>) #-}
 :
@@ -366,10 +366,10 @@ infixr 1 <==<
 
 |apidoc (<==<)|
 (<==<) :: Monad m =>
-	(Step e a m b -> Iteratee e a' m b') ->
+	(Step e a m b -> Iteratee e' a' m b') ->
 	Enumerator e a m b ->
 	Step e a m b ->
-	Iteratee e a' m b'
+	Iteratee e' a' m b'
 (<==<) = flip (>==>)
 {-# INLINE (<==<) #-}
 :
