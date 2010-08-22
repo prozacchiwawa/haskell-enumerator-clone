@@ -305,6 +305,23 @@ catchError iter h = Iteratee $ do
 		_ -> return step
 :
 
+Users will often want to compose two iteratees with different error types ---
+for example, a network socket and a parser. {\tt mapError} allows them to
+transform error values into another type (such as SomeException).
+
+:d Data.Enumerator imports
+import Control.Monad.Fix (fix)
+:
+
+:f Data/Enumerator.hs
+|apidoc mapError|
+mapError :: Monad m => (e1 -> e2) -> Step e1 a m b -> Iteratee e2 a m b
+mapError conv = fix $ \loop s -> case s of
+	Yield x chunks -> yield x chunks
+	Continue k ->  continue ((loop $$) . k)
+	Error err -> throwError (conv err)
+:
+
 These next two are equivalent to {\tt (>>=)} and {\tt (=<<)} respectively,
 but allow iteratees with different input types to be composed. {\tt (==<<)}
 is also aliased to {\tt (\$\$)}, to match Oleg's original code.
@@ -383,6 +400,7 @@ infixr 1 <==<
 , continue
 , throwError
 , catchError
+, mapError
 , liftI
 , (>>==)
 , (==<<)
@@ -1225,6 +1243,12 @@ import qualified Control.Exception as E
 :d apidoc liftTrans
 -- | Lift an 'Iteratee' onto a monad transformer, re-wrapping the
 -- 'Iteratee'&#x2019;s inner monadic values.
+:
+
+:d apidoc mapError
+-- | A pseudo-'Enumerator' which alters the error representation of its
+-- iteratee. Use this to compose enumerators and iteratees with differing
+-- or sub-optimal error types.
 :
 
 :d apidoc (>>==)
