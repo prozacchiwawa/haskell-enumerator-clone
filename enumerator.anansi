@@ -1375,12 +1375,18 @@ API docs for these are still TODO
 -- This enumerator blocks until at least one byte is available from the
 -- handle, and might read less than the maximum buffer size in some
 -- cases.
+--
+-- The handle should be opened with no encoding, and in 'IO.ReadMode' or
+-- 'IO.ReadWriteMode'.
 :
 
 :d apidoc iterHandle
 -- | Read bytes from a stream and write them to a handle. If an exception
 -- occurs during file IO, enumeration will stop and 'Error' will be
 -- returned.
+--
+-- The handle should be opened with no encoding, and in 'IO.WriteMode' or
+-- 'IO.ReadWriteMode'.
 :
 
 :d apidoc enumFile
@@ -1407,12 +1413,18 @@ API docs for these are still TODO
 -- | Read lines of text from the handle, and stream them to an 'Iteratee'.
 -- If an exception occurs during file IO, enumeration will stop and 'Error'
 -- will be returned. Exceptions from the iteratee are not caught.
+--
+-- The handle should be opened with an appropriate text encoding, and
+-- in 'IO.ReadMode' or 'IO.ReadWriteMode'.
 :
 
 :d apidoc iterHandle (text)
 -- | Read text from a stream and write it to a handle. If an exception
 -- occurs during file IO, enumeration will stop and 'Error' will be
 -- returned.
+--
+-- The handle should be opened with an appropriate text encoding, and
+-- in 'IO.WriteMode' or 'IO.ReadWriteMode'.
 :
 
 :d apidoc enumFile (text)
