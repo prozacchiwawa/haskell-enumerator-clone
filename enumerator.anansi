@@ -721,7 +721,6 @@ break p = span $ not . p
 module Data.Enumerator.IO
 	( enumHandle
 	, enumFile
-	, iterFile
 	, iterHandle
 	) where
 import Data.Enumerator
@@ -774,16 +773,6 @@ iterHandle h = continue step where
 		io = tryStep put (\_ -> return $ Continue step)
 :
 
-:f Data/Enumerator/IO.hs
-|apidoc iterFile|
-iterFile :: FilePath -> Iteratee E.SomeException B.ByteString IO ()
-iterFile path = Iteratee io where
-	withHandle = tryStep (IO.openBinaryFile path IO.WriteMode)
-	io = withHandle $ \h -> E.finally
-		(runIteratee (iterHandle h))
-		(IO.hClose h)
-:
-
 \section{Text handling}
 
 :f Data/Enumerator/Text.hs
@@ -803,7 +792,6 @@ import Data.Enumerator.Util
   enumHandle
 , enumFile
 , iterHandle
-, iterFile
 :
 
 :d Data.Enumerator.Text imports
@@ -844,16 +832,6 @@ iterHandle h = continue step where
 	step (Chunks chunks) = Iteratee io where
 		put = mapM_ (T.hPutStr h) chunks
 		io = tryStep put (\_ -> return $ Continue step)
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc iterFile (text)|
-iterFile :: FilePath -> Iteratee E.SomeException T.Text IO ()
-iterFile path = Iteratee io where
-	withHandle = tryStep (IO.openFile path IO.WriteMode)
-	io = withHandle $ \h -> E.finally
-		(runIteratee (iterHandle h))
-		(IO.hClose h)
 :
 
 \subsection{Text codecs}
@@ -1410,11 +1388,6 @@ API docs for these are still TODO
 -- The file will be closed when the 'Iteratee' finishes.
 :
 
-:d apidoc iterFile
--- | Opens a file path in binary mode, and passes the handle to 'iterHandle'.
--- The file will be closed when the 'Iteratee' finishes.
-:
-
 :d Data.Enumerator.Text module header
 -----------------------------------------------------------------------------
 -- |
@@ -1444,11 +1417,6 @@ API docs for these are still TODO
 
 :d apidoc enumFile (text)
 -- | Opens a file path in text mode, and passes the handle to 'enumHandle'.
--- The file will be closed when the 'Iteratee' finishes.
-:
-
-:d apidoc iterFile (text)
--- | Opens a file path in text mode, and passes the handle to 'iterHandle'.
 -- The file will be closed when the 'Iteratee' finishes.
 :
 
