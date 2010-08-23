@@ -728,6 +728,7 @@ import Data.Enumerator.Util
 import qualified Control.Exception as E
 import qualified Data.ByteString as B
 import qualified System.IO as IO
+import System.IO.Error (isEOFError)
 :
 
 :f Data/Enumerator/IO.hs
@@ -746,7 +747,9 @@ enumHandle bufferSize h = Iteratee . loop where
 	withBytes = tryStep $ do
 		hasInput <- E.catch
 			(IO.hWaitForInput h (-1))
-			(\(E.SomeException _) -> return False) 
+			(\err -> if isEOFError err
+				then return False
+				else E.throwIO err)
 		if hasInput
 			then B.hGetNonBlocking h intSize
 			else return B.empty
@@ -799,18 +802,23 @@ import qualified Control.Exception as E
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
 import qualified System.IO as IO
+import System.IO.Error (isEOFError)
 :
 
 :f Data/Enumerator/Text.hs
 |apidoc enumHandle (text)|
 enumHandle :: IO.Handle -> Enumerator E.SomeException T.Text IO b
 enumHandle h = Iteratee . loop where
-	loop (Continue k) = withText $ \text -> if T.null text
-		then return $ Continue k
-		else runIteratee (k (Chunks [text])) >>= loop
+	loop (Continue k) = withText $ \maybeText -> case maybeText of
+		Nothing -> return $ Continue k
+		Just text -> runIteratee (k (Chunks [text])) >>= loop
 	
 	loop step = return step
-	withText = tryStep (T.hGetLine h)
+	withText = tryStep $ E.catch
+		(Just `fmap` T.hGetLine h)
+		(\err -> if isEOFError err
+			then return Nothing
+			else E.throwIO err)
 :
 
 :f Data/Enumerator/Text.hs
