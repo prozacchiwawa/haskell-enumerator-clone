@@ -107,34 +107,37 @@ result. Included in this value is left-over input, which can be passed to
 composed iteratees.
 
 \item {\tt Error}: The iteratee encountered an error which prevents it from
-proceeding further. The type of error will depend on the enumerator and/or
-iteratee -- common choices are {\tt String} and {\tt SomeException}.
+proceeding further.
 \end{itemize}
 
 \filbreak
 
+:d Data.Enumerator imports
+import qualified Control.Exception as E
+:
+
 :f Data/Enumerator.hs
-data Step e a m b
+data Step a m b
 	|apidoc Step.Continue|
-	= Continue (Stream a -> Iteratee e a m b)
+	= Continue (Stream a -> Iteratee a m b)
 	
 	|apidoc Step.Yield|
 	| Yield b (Stream a)
 	
 	|apidoc Step.Error|
-	| Error e
+	| Error E.SomeException
 
 |apidoc Iteratee|
-newtype Iteratee e a m b = Iteratee
-	{ runIteratee :: m (Step e a m b)
+newtype Iteratee a m b = Iteratee
+	{ runIteratee :: m (Step a m b)
 	}
 :
 
 \subsection{Enumerators}
 
 While iteratees consume data, enumerators generate it. Since {\tt Iteratee} is
-an alias for {\tt m (Step e a m b)}, enumerators can also be considered step
-transformers of type {\tt Step e a m b -> m (Step e a m b)}.
+an alias for {\tt m (Step a m b)}, enumerators can also be considered step
+transformers of type {\tt Step a m b -> m (Step a m b)}.
 
 Enumerators typically read from an external source (parser, handle, random
 generator, etc). They feed chunks into an iteratee until the source runs out
@@ -147,10 +150,10 @@ type is named an {\tt Enumeratee}. Enumeratees have two input types,
 
 :f Data/Enumerator.hs
 |apidoc Enumerator|
-type Enumerator e a m b = Step e a m b -> Iteratee e a m b
+type Enumerator a m b = Step a m b -> Iteratee a m b
 
 |apidoc Enumeratee|
-type Enumeratee e aOut aIn m b = Step e aIn m b -> Iteratee e aOut m (Step e aIn m b)
+type Enumeratee aOut aIn m b = Step aIn m b -> Iteratee aOut m (Step aIn m b)
 :
 
 \subsection{Typeclass instances}
@@ -184,7 +187,7 @@ its surplus input, this is safe -- {\tt runIteratee (f x)} has not consumed
 any input, so if it yields immediately there should not be surplus.
 
 :f Data/Enumerator.hs
-instance Monad m => Monad (Iteratee e a m) where
+instance Monad m => Monad (Iteratee a m) where
 	return x = Iteratee . return $ Yield x $ Chunks []
 	{-# INLINE return #-}
 	
@@ -209,11 +212,11 @@ import Control.Monad (liftM, ap)
 :
 
 :f Data/Enumerator.hs
-instance Monad m => Functor (Iteratee e a m) where
+instance Monad m => Functor (Iteratee a m) where
 	fmap = liftM
 	{-# INLINE fmap #-}
 
-instance Monad m => A.Applicative (Iteratee e a m) where
+instance Monad m => A.Applicative (Iteratee a m) where
 	pure = return
 	{-# INLINE pure #-}
 	
@@ -230,11 +233,11 @@ import qualified Control.Monad.Trans.Class as MT
 :
 
 :f Data/Enumerator.hs
-instance MT.MonadTrans (Iteratee e a) where
+instance MT.MonadTrans (Iteratee a) where
 	lift m = Iteratee $ m >>= runIteratee . return
 	{-# INLINE lift #-}
 
-instance MIO.MonadIO m => MIO.MonadIO (Iteratee e a m) where
+instance MIO.MonadIO m => MIO.MonadIO (Iteratee a m) where
 	liftIO = MT.lift . MIO.liftIO
 	{-# INLINE liftIO #-}
 :
@@ -245,7 +248,7 @@ iteratee's internal monad.
 :f Data/Enumerator.hs
 |apidoc liftTrans|
 liftTrans :: (Monad m, MT.MonadTrans t, Monad (t m)) =>
-             Iteratee e a m b -> Iteratee e a (t m) b
+             Iteratee a m b -> Iteratee a (t m) b
 liftTrans iter = Iteratee $ do
 	step <- MT.lift $ runIteratee iter
 	return $ case step of
@@ -268,58 +271,38 @@ These are common patterns which occur whenever iteratees are being defined.
 
 :f Data/Enumerator.hs
 -- | @returnI x = Iteratee (return x)@
-returnI :: Monad m => Step e a m b -> Iteratee e a m b
+returnI :: Monad m => Step a m b -> Iteratee a m b
 returnI = Iteratee . return
 {-# INLINE returnI #-}
 
 -- | @yield x chunk = returnI (Yield x chunk)@
-yield :: Monad m => b -> Stream a -> Iteratee e a m b
+yield :: Monad m => b -> Stream a -> Iteratee a m b
 yield x chunk = returnI (Yield x chunk)
 {-# INLINE yield #-}
 
 -- | @continue k = returnI (Continue k)@
-continue :: Monad m => (Stream a -> Iteratee e a m b) -> Iteratee e a m b
+continue :: Monad m => (Stream a -> Iteratee a m b) -> Iteratee a m b
 continue = returnI . Continue
 {-# INLINE continue #-}
 
 -- | @throwError err = returnI (Error err)@
-throwError :: Monad m => e -> Iteratee e a m b
-throwError = returnI . Error
+throwError :: (Monad m, E.Exception e) => e -> Iteratee a m b
+throwError = returnI . Error . E.SomeException
 {-# INLINE throwError #-}
 
 -- | @liftI f = continue (returnI . f)@
-liftI :: Monad m => (Stream a -> Step e a m b) -> Iteratee e a m b
+liftI :: Monad m => (Stream a -> Step a m b) -> Iteratee a m b
 liftI k = continue $ returnI . k
 {-# INLINE liftI #-}
 :
 
-Catching errors is more difficult than throwing them, but defining this allows
-{\tt Iteratee} to be an instance of various {\tt MonadError} classes.
-
 :f Data/Enumerator.hs
-catchError :: Monad m => Iteratee e a m b -> (e -> Iteratee e a m b) -> Iteratee e a m b
+catchError :: Monad m => Iteratee a m b -> (E.SomeException -> Iteratee a m b) -> Iteratee a m b
 catchError iter h = Iteratee $ do
 	step <- runIteratee iter
 	case step of
 		Error err -> runIteratee (h err)
 		_ -> return step
-:
-
-Users will often want to compose two iteratees with different error types ---
-for example, a network socket and a parser. {\tt mapError} allows them to
-transform error values into another type (such as SomeException).
-
-:d Data.Enumerator imports
-import Control.Monad.Fix (fix)
-:
-
-:f Data/Enumerator.hs
-|apidoc mapError|
-mapError :: Monad m => (e1 -> e2) -> Step e1 a m b -> Iteratee e2 a m b
-mapError conv = fix $ \loop s -> case s of
-	Yield x chunks -> yield x chunks
-	Continue k ->  continue ((loop $$) . k)
-	Error err -> throwError (conv err)
 :
 
 These next two are equivalent to {\tt (>>=)} and {\tt (=<<)} respectively,
@@ -331,9 +314,9 @@ infixl 1 >>==
 
 |apidoc (>>==)|
 (>>==) :: Monad m =>
-	Iteratee e a m b ->
-	(Step e a m b -> Iteratee e' a' m b') ->
-	Iteratee e' a' m b'
+	Iteratee a m b ->
+	(Step a m b -> Iteratee a' m b') ->
+	Iteratee a' m b'
 i >>== f = Iteratee $ runIteratee i >>= runIteratee . f
 {-# INLINE (>>==) #-}
 :
@@ -343,9 +326,9 @@ infixr 1 ==<<
 
 |apidoc (==<<)|
 (==<<):: Monad m =>
-	(Step e a m b -> Iteratee e' a' m b') ->
-	Iteratee e a m b ->
-	Iteratee e' a' m b'
+	(Step a m b -> Iteratee a' m b') ->
+	Iteratee a m b ->
+	Iteratee a' m b'
 (==<<) = flip (>>==)
 {-# INLINE (==<<) #-}
 :
@@ -355,9 +338,9 @@ infixr 0 $$
 
 |apidoc ($$)|
 ($$):: Monad m =>
-	(Step e a m b -> Iteratee e' a' m b') ->
-	Iteratee e a m b ->
-	Iteratee e' a' m b'
+	(Step a m b -> Iteratee a' m b') ->
+	Iteratee a m b ->
+	Iteratee a' m b'
 ($$) = (==<<)
 {-# INLINE ($$) #-}
 :
@@ -370,10 +353,10 @@ infixr 1 >==>
 
 |apidoc (>==>)|
 (>==>) :: Monad m =>
-	Enumerator e a m b ->
-	(Step e a m b -> Iteratee e' a' m b') ->
-	Step e a m b ->
-	Iteratee e' a' m b'
+	Enumerator a m b ->
+	(Step a m b -> Iteratee a' m b') ->
+	Step a m b ->
+	Iteratee a' m b'
 (>==>) e1 e2 s = e1 s >>== e2
 {-# INLINE (>==>) #-}
 :
@@ -383,10 +366,10 @@ infixr 1 <==<
 
 |apidoc (<==<)|
 (<==<) :: Monad m =>
-	(Step e a m b -> Iteratee e' a' m b') ->
-	Enumerator e a m b ->
-	Step e a m b ->
-	Iteratee e' a' m b'
+	(Step a m b -> Iteratee a' m b') ->
+	Enumerator a m b ->
+	Step a m b ->
+	Iteratee a' m b'
 (<==<) = flip (>==>)
 {-# INLINE (<==<) #-}
 :
@@ -400,7 +383,6 @@ infixr 1 <==<
 , continue
 , throwError
 , catchError
-, mapError
 , liftI
 , (>>==)
 , (==<<)
@@ -413,7 +395,7 @@ infixr 1 <==<
 
 :f Data/Enumerator.hs
 |apidoc consume|
-consume :: Monad m => Iteratee e a m [a]
+consume :: Monad m => Iteratee a m [a]
 consume = liftI $ step id where
 	step acc chunk = case chunk of
 		Chunks [] -> Continue $ returnI . step acc
@@ -423,7 +405,7 @@ consume = liftI $ step id where
 
 :f Data/Enumerator.hs
 |apidoc isEOF|
-isEOF :: Monad m => Iteratee e a m Bool
+isEOF :: Monad m => Iteratee a m Bool
 isEOF = liftI $ \c -> case c of
 	EOF -> Yield True c
 	_   -> Yield False c
@@ -431,7 +413,7 @@ isEOF = liftI $ \c -> case c of
 
 :f Data/Enumerator.hs
 |apidoc liftFoldL|
-liftFoldL :: Monad m => (b -> a -> b) -> b -> Iteratee e a m b
+liftFoldL :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
 liftFoldL f = liftI . step where
 	step acc chunk = case chunk of
 		Chunks [] -> Continue $ returnI . step acc
@@ -445,7 +427,7 @@ import qualified Data.List as DataList
 
 :f Data/Enumerator.hs
 |apidoc liftFoldL'|
-liftFoldL' :: Monad m => (b -> a -> b) -> b -> Iteratee e a m b
+liftFoldL' :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
 liftFoldL' f = liftI . step where
 	fold = DataList.foldl' f
 	step acc chunk = case chunk of
@@ -460,7 +442,7 @@ import Control.Monad (foldM)
 
 :f Data/Enumerator.hs
 |apidoc liftFoldM|
-liftFoldM :: Monad m => (b -> a -> m b) -> b -> Iteratee e a m b
+liftFoldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
 liftFoldM f = continue . step where
 	step acc chunk = case chunk of
 		Chunks [] -> continue $ step acc
@@ -474,7 +456,7 @@ the result. It is not possible for the result to be {\tt Continue}, because
 
 :f Data/Enumerator.hs
 |apidoc run|
-run :: Monad m => Iteratee e a m b -> m (Either e b)
+run :: Monad m => Iteratee a m b -> m (Either E.SomeException b)
 run i = do
 	mStep <- runIteratee $ enumEOF ==<< i
 	case mStep of
@@ -488,7 +470,7 @@ it received, and optionally, any empty input chunks.
 
 :f Data/Enumerator.hs
 |apidoc printChunks|
-printChunks :: (MIO.MonadIO m, Show a) => Bool -> Iteratee e a m ()
+printChunks :: (MIO.MonadIO m, Show a) => Bool -> Iteratee a m ()
 printChunks printEmpty = continue step where
 	step (Chunks []) | not printEmpty = continue step
 	step (Chunks xs) = MIO.liftIO (print xs) >> continue step
@@ -515,7 +497,7 @@ will not terminate with any useful value.
 
 :f Data/Enumerator.hs
 |apidoc enumEOF|
-enumEOF :: Monad m => Enumerator e a m b
+enumEOF :: Monad m => Enumerator a m b
 enumEOF (Yield x _) = yield x EOF
 enumEOF (Error err) = throwError err
 enumEOF (Continue k) = k EOF >>== check where
@@ -529,7 +511,7 @@ code.
 
 :f Data/Enumerator.hs
 |apidoc enumList|
-enumList :: Monad m => Integer -> [a] -> Enumerator e a m b
+enumList :: Monad m => Integer -> [a] -> Enumerator a m b
 enumList n xs (Continue k) | not (null xs) = k chunk >>== loop where
 	(s1, s2) = genericSplitAt n xs
 	chunk = Chunks s1
@@ -542,7 +524,7 @@ cases, it's useful to have a small utility wrapper.
 
 :f Data/Enumerator.hs
 |apidoc concatEnums|
-concatEnums :: Monad m => [Enumerator e a m b] -> Enumerator e a m b
+concatEnums :: Monad m => [Enumerator a m b] -> Enumerator a m b
 concatEnums = foldl (>==>) returnI
 {-# INLINE concatEnums #-}
 :
@@ -561,7 +543,7 @@ concatEnums = foldl (>==>) returnI
 
 :f Data/Enumerator.hs
 |apidoc joinI|
-joinI :: Monad m => Iteratee e a m (Step e a' m b) -> Iteratee e a m b
+joinI :: Monad m => Iteratee a m (Step a' m b) -> Iteratee a m b
 joinI outer = outer >>= check where
 	check (Continue k) = k EOF >>== \s -> case s of
 		Continue _ -> error "joinI: divergent iteratee"
@@ -578,8 +560,8 @@ can still consume input, or yields otherwise.
 :f Data/Enumerator.hs
 |apidoc checkDone|
 checkDone :: Monad m =>
-	((Stream a -> Iteratee e a m b) -> Iteratee e a' m (Step e a m b)) ->
-	Enumeratee e a' a m b
+	((Stream a -> Iteratee a m b) -> Iteratee a' m (Step a m b)) ->
+	Enumeratee a' a m b
 checkDone _ (Yield x chunk) = return $ Yield x chunk
 checkDone f (Continue k) = f k
 checkDone _ (Error err) = throwError err
@@ -593,7 +575,7 @@ transform the stream.
 
 :f Data/Enumerator.hs
 |apidoc map|
-map :: Monad m => (ao -> ai) -> Enumeratee e ao ai m b
+map :: Monad m => (ao -> ai) -> Enumeratee ao ai m b
 map f = loop where
 	loop = checkDone $ continue . step
 	step k EOF = yield (Continue k) EOF
@@ -603,7 +585,7 @@ map f = loop where
 
 :f Data/Enumerator.hs
 |apidoc sequence|
-sequence :: Monad m => Iteratee e ao m ai -> Enumeratee e ao ai m b
+sequence :: Monad m => Iteratee ao m ai -> Enumeratee ao ai m b
 sequence i = loop where
 	loop = checkDone check
 	check k = isEOF >>= \f -> if f
@@ -629,7 +611,7 @@ Attoparsec.
 
 :f Data/Enumerator.hs
 |apidoc head|
-head :: Monad m => Iteratee e a m (Maybe a)
+head :: Monad m => Iteratee a m (Maybe a)
 head = liftI step where
 	step (Chunks []) = Continue $ returnI . step
 	step (Chunks (x:xs)) = Yield (Just x) (Chunks xs)
@@ -638,7 +620,7 @@ head = liftI step where
 
 :f Data/Enumerator.hs
 |apidoc peek|
-peek :: Monad m => Iteratee e a m (Maybe a)
+peek :: Monad m => Iteratee a m (Maybe a)
 peek = liftI step where
 	step (Chunks []) = Continue $ returnI . step
 	step chunk@(Chunks (x:_)) = Yield (Just x) chunk
@@ -647,7 +629,7 @@ peek = liftI step where
 
 :f Data/Enumerator.hs
 |apidoc last|
-last :: Monad m => Iteratee e a m (Maybe a)
+last :: Monad m => Iteratee a m (Maybe a)
 last = liftI $ step Nothing where
 	step ret (Chunks xs) = let
 		ret' = case xs of
@@ -659,7 +641,7 @@ last = liftI $ step Nothing where
 
 :f Data/Enumerator.hs
 |apidoc length|
-length :: Monad m => Iteratee e a m Integer
+length :: Monad m => Iteratee a m Integer
 length = liftI $ step 0 where
 	step n (Chunks xs) = Continue $ returnI . step (n + genericLength xs)
 	step n EOF = Yield n EOF
@@ -667,7 +649,7 @@ length = liftI $ step 0 where
 
 :f Data/Enumerator.hs
 |apidoc drop|
-drop :: Monad m => Integer -> Iteratee e a m ()
+drop :: Monad m => Integer -> Iteratee a m ()
 drop 0 = return ()
 drop n = liftI $ step n where
 	step n' (Chunks xs)
@@ -679,7 +661,7 @@ drop n = liftI $ step n where
 
 :f Data/Enumerator.hs
 |apidoc dropWhile|
-dropWhile :: Monad m => (a -> Bool) -> Iteratee e a m ()
+dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
 dropWhile p = liftI step where
 	step (Chunks xs) = case Prelude.dropWhile p xs of
 		[] -> Continue $ returnI . step
@@ -689,7 +671,7 @@ dropWhile p = liftI step where
 
 :f Data/Enumerator.hs
 |apidoc span|
-span :: Monad m => (a -> Bool) -> Iteratee e a m [a]
+span :: Monad m => (a -> Bool) -> Iteratee a m [a]
 span f = liftI $ step [] where
 	step acc (Chunks xs) = case Prelude.span f xs of
 		(_, []) -> Continue $ returnI . step (acc ++ xs)
@@ -697,7 +679,7 @@ span f = liftI $ step [] where
 	step acc EOF = Yield acc EOF
 
 |apidoc break|
-break :: Monad m => (a -> Bool) -> Iteratee e a m [a]
+break :: Monad m => (a -> Bool) -> Iteratee a m [a]
 break p = span $ not . p
 :
 
@@ -735,7 +717,7 @@ import System.IO.Error (isEOFError)
 |apidoc enumHandle|
 enumHandle :: Integer -- ^ Buffer size
            -> IO.Handle
-           -> Enumerator E.SomeException B.ByteString IO b
+           -> Enumerator B.ByteString IO b
 enumHandle bufferSize h = Iteratee . loop where
 	loop (Continue k) = withBytes $ \bytes -> if B.null bytes
 		then return $ Continue k
@@ -757,7 +739,7 @@ enumHandle bufferSize h = Iteratee . loop where
 
 :f Data/Enumerator/IO.hs
 |apidoc enumFile|
-enumFile :: FilePath -> Enumerator E.SomeException B.ByteString IO b
+enumFile :: FilePath -> Enumerator B.ByteString IO b
 enumFile path s = Iteratee io where
 	withHandle = tryStep (IO.openBinaryFile path IO.ReadMode)
 	io = withHandle $ \h -> E.finally
@@ -767,7 +749,7 @@ enumFile path s = Iteratee io where
 
 :f Data/Enumerator/IO.hs
 |apidoc iterHandle|
-iterHandle :: IO.Handle -> Iteratee E.SomeException B.ByteString IO ()
+iterHandle :: IO.Handle -> Iteratee B.ByteString IO ()
 iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
@@ -807,7 +789,7 @@ import System.IO.Error (isEOFError)
 
 :f Data/Enumerator/Text.hs
 |apidoc enumHandle (text)|
-enumHandle :: IO.Handle -> Enumerator E.SomeException T.Text IO b
+enumHandle :: IO.Handle -> Enumerator T.Text IO b
 enumHandle h = Iteratee . loop where
 	loop (Continue k) = withText $ \maybeText -> case maybeText of
 		Nothing -> return $ Continue k
@@ -823,7 +805,7 @@ enumHandle h = Iteratee . loop where
 
 :f Data/Enumerator/Text.hs
 |apidoc enumFile (text)|
-enumFile :: FilePath -> Enumerator E.SomeException T.Text IO b
+enumFile :: FilePath -> Enumerator T.Text IO b
 enumFile path s = Iteratee io where
 	withHandle = tryStep (IO.openFile path IO.ReadMode)
 	io = withHandle $ \h -> E.finally
@@ -833,7 +815,7 @@ enumFile path s = Iteratee io where
 
 :f Data/Enumerator/Text.hs
 |apidoc iterHandle (text)|
-iterHandle :: IO.Handle -> Iteratee E.SomeException T.Text IO ()
+iterHandle :: IO.Handle -> Iteratee T.Text IO ()
 iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
@@ -875,7 +857,7 @@ instance Show Codec where
 
 :f Data/Enumerator/Text.hs
 |apidoc encode|
-encode :: Monad m => Codec -> Enumeratee E.SomeException T.Text B.ByteString m b
+encode :: Monad m => Codec -> Enumeratee T.Text B.ByteString m b
 encode codec = loop where
 	loop = checkDone $ continue . step
 	step k EOF = yield (Continue k) EOF
@@ -887,7 +869,7 @@ encode codec = loop where
 
 :f Data/Enumerator/Text.hs
 |apidoc decode|
-decode :: Monad m => Codec -> Enumeratee E.SomeException B.ByteString T.Text m b
+decode :: Monad m => Codec -> Enumeratee B.ByteString T.Text m b
 decode codec = loop B.empty where
 	dec = codecDecode codec
 	
@@ -1125,9 +1107,7 @@ module Data.Enumerator.Util where
 import Data.Enumerator
 import qualified Control.Exception as E
 
-tryStep :: IO t
-       -> (t -> IO (Step E.SomeException a IO b))
-       -> IO (Step E.SomeException a IO b)
+tryStep :: IO t -> (t -> IO (Step a IO b)) -> IO (Step a IO b)
 tryStep get io = do
 	tried <- E.try get
 	case tried of
@@ -1186,14 +1166,9 @@ This section just repeats literate documentation in Haddock syntax.
 -- composed 'Iteratee's.
 :
 
-:d Data.Enumerator imports
-import qualified Control.Exception as E
-:
-
 :d apidoc Step.Error
 -- | The 'Iteratee' encountered an error which prevents it from proceeding
--- further. The type of error will depend on the 'Enumerator' and/or
--- 'Iteratee' -- common choices are 'String' and 'E.SomeException'.
+-- further.
 :
 
 :d apidoc Iteratee
@@ -1210,9 +1185,9 @@ import qualified Control.Exception as E
 
 :d apidoc Enumerator
 -- | While 'Iteratee's consume data, enumerators generate it. Since
--- @'Iteratee'@ is an alias for @m ('Step' e a m b)@, 'Enumerator's can
+-- @'Iteratee'@ is an alias for @m ('Step' a m b)@, 'Enumerator's can
 -- be considered step transformers of type
--- @'Step' e a m b -> m ('Step' e a m b)@.
+-- @'Step' a m b -> m ('Step' a m b)@.
 --
 -- 'Enumerator's typically read from an external source (parser, handle,
 -- random generator, etc). They feed chunks into an 'Iteratee' until the
@@ -1229,12 +1204,6 @@ import qualified Control.Exception as E
 :d apidoc liftTrans
 -- | Lift an 'Iteratee' onto a monad transformer, re-wrapping the
 -- 'Iteratee'&#x2019;s inner monadic values.
-:
-
-:d apidoc mapError
--- | A pseudo-'Enumerator' which alters the error representation of its
--- iteratee. Use this to compose enumerators and iteratees with differing
--- or sub-optimal error types.
 :
 
 :d apidoc (>>==)

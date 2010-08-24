@@ -29,7 +29,7 @@ import System.Exit
 -- iterBytes simply counts how many bytes are in each chunk, accumulates this
 -- count, and returns it when EOF is received
 
-iterBytes :: Monad m => Iteratee e B.ByteString m Integer
+iterBytes :: Monad m => Iteratee B.ByteString m Integer
 iterBytes = continue (step 0) where
 	step acc EOF = yield acc EOF
 	step acc (Chunks xs) = continue $ step $! foldl' foldStep acc xs
@@ -40,7 +40,7 @@ iterBytes = continue (step 0) where
 -- Because it's basically the same as 'iterBytes', we use it to demonstrate
 -- the 'liftFoldL\'' helper function.
 
-iterLines :: Monad m => Iteratee e B.ByteString m Integer
+iterLines :: Monad m => Iteratee B.ByteString m Integer
 iterLines = liftFoldL' step 0 where
 	step acc bytes = acc + countChar '\n' bytes
 	countChar c = B8.foldl (\acc c' -> if c' == c then acc + 1 else acc) 0
@@ -49,14 +49,11 @@ iterLines = liftFoldL' step 0 where
 -- assuming UTF-8) before performing any counting. Leftover bytes, not part
 -- of a valid UTF-8 character, are yielded as surplus
 --
--- Since it's possible for the input file's encoding to be non-UTF8, a bit
--- of error handling is also required.
---
 -- Note the use of joinI. 'ET.decode' is an enumeratee, which means it returns
 -- an iteratee yielding an inner step. 'joinI' "collapses" an enumeratee's
 -- return value, much as 'join' does to monadic values.
 
-iterChars :: Monad m => Iteratee E.SomeException B.ByteString m Integer
+iterChars :: Monad m => Iteratee B.ByteString m Integer
 iterChars = joinI (ET.decode ET.utf8 $$ count) where
 	count = liftFoldL' (\acc t -> acc + toInteger (T.length t)) 0
 

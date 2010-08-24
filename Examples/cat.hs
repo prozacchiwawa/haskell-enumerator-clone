@@ -14,6 +14,7 @@ import Data.Enumerator
 import qualified Data.ByteString as B
 import qualified Foreign as F
 import System.IO
+import System.IO.Error (isEOFError)
 import System.Environment (getArgs)
 
 -- The following definitions of 'enumHandle', 'enumFile', and 'iterHandle' are
@@ -22,47 +23,51 @@ import System.Environment (getArgs)
 
 enumHandle :: Integer -- ^ Buffer size
            -> Handle
-           -> Enumerator SomeException B.ByteString IO b
-enumHandle bufferSize h = Iteratee . io where
+           -> Enumerator B.ByteString IO b
+enumHandle bufferSize h = Iteratee . loop where
 	intSize = fromInteger bufferSize
 	
-	-- Allocate a single buffer for reading from the file
-	io step = F.allocaBytes intSize $ \p -> loop step p
-	
 	-- If more input is required before the enumerator's iteratee can
-	-- yield a result, feed it from the handle. If a different step is
-	-- received ('Error' or 'Yield'), just pass it through.
-	loop (Continue k) = read' k
-	loop step = const $ return step
-	
-	read' k p = do
+	-- yield a result, feed it from the handle.
+	loop (Continue k) = do
 		-- While not strictly necessary to proper operation, catching
 		-- exceptions here allows more unified exception handling when
 		-- the enumerator/iteratee is run.
-		eitherN <- E.try $ hGetBuf h p intSize
-		case eitherN of
+		eitherBytes <- E.try $ do
+			
+			-- The enumerator must function normally when the
+			-- handle is something like a slow file, or network
+			-- socket; if there's not enough data to fill the
+			-- buffer yet, a partial read is returned.
+			hasInput <- E.catch
+				(hWaitForInput h (1))
+				(\err -> if isEOFError err
+					then return False
+					else E.throwIO err)
+			
+			-- An EOF is represented by the empty bytestring
+			if hasInput
+				then B.hGetNonBlocking h intSize
+				else return B.empty
+			
+		case eitherBytes of
+			-- Interacting with the socket threw an IO error of
+			-- some sort
 			Left err -> return $ Error err
 			
-			-- if 'hGetBuf' returns 0, then the handle has reached
-			-- EOF. The enumerator has two choices:
-			--
-			-- * Send EOF to its iteratee, and return the result
-			-- * Return a Continue, with the current continuation
-			--
-			-- The second is better, because it allows enumerators
-			-- to be composed with (>>==). If EOF is sent, only
-			-- one enumerator can be read at a time.
-			Right 0 -> return $ Continue k
+			-- The socket has reached EOF; pass control to the
+			-- next enumerator
+			Right bytes | B.null bytes -> return (Continue k)
 			
-			-- 'hGetBuf' was at least partially successful, so read
-			-- bytes into a ByteString and pass it through to the
-			-- iteratee.
-			Right n -> do
-				bytes <- B.packCStringLen (p, n)
-				step <- runIteratee (k (Chunks [bytes]))
-				loop step p
+			-- Bytes were read successfully; feed them to the
+			-- iteratee and continue looping
+			Right bytes -> runIteratee (k (Chunks [bytes])) >>= loop
+	
+	-- If a different step is received ('Error' or 'Yield'), just pass
+	-- it through.
+	loop step = return step
 
-enumFile :: FilePath -> Enumerator E.SomeException B.ByteString IO b
+enumFile :: FilePath -> Enumerator B.ByteString IO b
 enumFile path s = Iteratee $ do
 	-- Opening the file can be performed either inside or outside of the
 	-- Iteratee. Inside allows exceptions to be caught and propagated
@@ -77,7 +82,7 @@ enumFile path s = Iteratee $ do
 -- 'iterHandle' is the opposite of 'enumHandle', in that it *writes to* a
 -- handle instead of reading from it. An enumerator is a source, an iteratee
 -- is a sink.
-iterHandle :: Handle -> Iteratee SomeException B.ByteString IO ()
+iterHandle :: Handle -> Iteratee B.ByteString IO ()
 
 -- Most iteratees start in the 'Continue' state, as they need some
 -- input before they can produce any value.
