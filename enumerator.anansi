@@ -465,6 +465,14 @@ run i = do
 		Continue _ -> error "run: divergent iteratee"
 :
 
+{\tt run\_} is even more simplified; it's used in simple scripts, where the
+user doesn't care about error handling.
+
+:f Data/Enumerator.hs
+run_ :: Monad m => Iteratee a m b -> m b
+run_ i = run i >>= either E.throw return
+:
+
 {\tt printChunks} is useful for debugging; it prints out exactly what input
 it received, and optionally, any empty input chunks.
 
@@ -480,6 +488,7 @@ printChunks printEmpty = continue step where
 :d Data.Enumerator exports
   -- ** Iteratees
 , run
+, run_
 , consume
 , isEOF
 , liftTrans
