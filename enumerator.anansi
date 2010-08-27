@@ -716,6 +716,7 @@ module Data.Enumerator.IO
 	) where
 import Data.Enumerator
 import Data.Enumerator.Util
+import Control.Monad.IO.Class (MonadIO)
 import qualified Control.Exception as E
 import qualified Data.ByteString as B
 import qualified System.IO as IO
@@ -724,9 +725,10 @@ import System.IO.Error (isEOFError)
 
 :f Data/Enumerator/IO.hs
 |apidoc enumHandle|
-enumHandle :: Integer -- ^ Buffer size
+enumHandle :: MonadIO m
+           => Integer -- ^ Buffer size
            -> IO.Handle
-           -> Enumerator B.ByteString IO b
+           -> Enumerator B.ByteString m b
 enumHandle bufferSize h = Iteratee . loop where
 	loop (Continue k) = withBytes $ \bytes -> if B.null bytes
 		then return $ Continue k
@@ -758,7 +760,7 @@ enumFile path s = Iteratee io where
 
 :f Data/Enumerator/IO.hs
 |apidoc iterHandle|
-iterHandle :: IO.Handle -> Iteratee B.ByteString IO ()
+iterHandle :: MonadIO m => IO.Handle -> Iteratee B.ByteString m ()
 iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
@@ -789,6 +791,7 @@ import Data.Enumerator.Util
 :
 
 :d Data.Enumerator.Text imports
+import Control.Monad.IO.Class (MonadIO)
 import qualified Control.Exception as E
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
@@ -798,7 +801,7 @@ import System.IO.Error (isEOFError)
 
 :f Data/Enumerator/Text.hs
 |apidoc enumHandle (text)|
-enumHandle :: IO.Handle -> Enumerator T.Text IO b
+enumHandle :: MonadIO m => IO.Handle -> Enumerator T.Text m b
 enumHandle h = Iteratee . loop where
 	loop (Continue k) = withText $ \maybeText -> case maybeText of
 		Nothing -> return $ Continue k
@@ -824,7 +827,7 @@ enumFile path s = Iteratee io where
 
 :f Data/Enumerator/Text.hs
 |apidoc iterHandle (text)|
-iterHandle :: IO.Handle -> Iteratee T.Text IO ()
+iterHandle :: MonadIO m => IO.Handle -> Iteratee T.Text m ()
 iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
@@ -1114,11 +1117,12 @@ unsafeTryDec (a, b) = unsafePerformIO $ do
 :f Data/Enumerator/Util.hs
 module Data.Enumerator.Util where
 import Data.Enumerator
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Control.Exception as E
 
-tryStep :: IO t -> (t -> IO (Step a IO b)) -> IO (Step a IO b)
+tryStep :: MonadIO m => IO t -> (t -> m (Step a m b)) -> m (Step a m b)
 tryStep get io = do
-	tried <- E.try get
+	tried <- liftIO (E.try get)
 	case tried of
 		Right t -> io t
 		Left err -> return $ Error err
