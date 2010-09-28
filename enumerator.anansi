@@ -287,7 +287,7 @@ continue = returnI . Continue
 
 -- | @throwError err = returnI (Error err)@
 throwError :: (Monad m, E.Exception e) => e -> Iteratee a m b
-throwError = returnI . Error . E.SomeException
+throwError = returnI . Error . E.toException
 {-# INLINE throwError #-}
 
 -- | @liftI f = continue (returnI . f)@
@@ -1083,7 +1083,7 @@ import System.IO.Unsafe (unsafePerformIO)
 
 :f Data/Enumerator/Text.hs
 illegalEnc :: T.Text -> Char -> Either E.SomeException a
-illegalEnc name c = Left . E.SomeException . E.ErrorCall $ msg "" where
+illegalEnc name c = Left . E.toException . E.ErrorCall $ msg "" where
 	len = Prelude.length
 	pad str | len str < 4 = replicate (4 - len str) '0' ++ str
 	        | otherwise      = str
@@ -1094,7 +1094,7 @@ illegalEnc name c = Left . E.SomeException . E.ErrorCall $ msg "" where
 
 :f Data/Enumerator/Text.hs
 illegalDec :: T.Text -> Word8 -> Either E.SomeException a
-illegalDec name w = Left . E.SomeException . E.ErrorCall $ msg "" where
+illegalDec name w = Left . E.toException . E.ErrorCall $ msg "" where
 	len = Prelude.length
 	pad str | len str < 2 = replicate (2 - len str) '0' ++ str
 	        | otherwise      = str
