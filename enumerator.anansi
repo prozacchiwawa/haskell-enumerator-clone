@@ -225,11 +225,12 @@ instance Monad m => A.Applicative (Iteratee a m) where
 :
 
 Most iteratees are used to wrap I/O operations, so it's sensible to define
-a {\tt MonadIO} instance.
+instances for typeclasses from {\tt transformers} and other related libraries.
 
 :d Data.Enumerator imports
 import qualified Control.Monad.IO.Class as MIO
 import qualified Control.Monad.Trans.Class as MT
+import qualified Control.Monad.CatchIO as CatchIO
 :
 
 :f Data/Enumerator.hs
@@ -240,6 +241,16 @@ instance MT.MonadTrans (Iteratee a) where
 instance MIO.MonadIO m => MIO.MonadIO (Iteratee a m) where
 	liftIO = MT.lift . MIO.liftIO
 	{-# INLINE liftIO #-}
+
+instance CatchIO.MonadCatchIO m => CatchIO.MonadCatchIO (Iteratee a m) where
+	catch m f = Iteratee (CatchIO.catch (runIteratee m) (runIteratee . f))
+	{-# INLINE catch #-}
+	
+	block = Iteratee . CatchIO.block . runIteratee
+	{-# INLINE block #-}
+	
+	unblock = Iteratee . CatchIO.unblock . runIteratee
+	{-# INLINE unblock #-}
 :
 
 To simplify dealing with monad transformers, liftTrans allows lifting an
