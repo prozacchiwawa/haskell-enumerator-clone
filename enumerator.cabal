@@ -1,5 +1,5 @@
 name: enumerator
-version: 0.4.1
+version: 0.4.1.1
 synopsis: Implementation of Oleg Kiselyov's left-fold enumerators
 license: MIT
 license-file: license.txt
@@ -22,17 +22,17 @@ extra-source-files:
   readme.txt
 
 source-repository head
-  type: darcs
+  type: bazaar
   location: http://john-millikin.com/software/enumerator/
 
 library
-  ghc-options: -Wall -fno-warn-unused-do-bind
+  ghc-options: -Wall
   hs-source-dirs: hs
 
   build-depends:
       transformers >= 0.2 && < 0.3
     , bytestring >= 0.9 && < 0.10
-    , text >= 0.7 && < 0.10
+    , text >= 0.7 && < 0.11
     , MonadCatchIO-transformers >= 0.0 && < 0.3
 
   if impl(ghc >= 6.10)
