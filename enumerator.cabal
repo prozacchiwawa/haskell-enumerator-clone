@@ -1,5 +1,5 @@
 name: enumerator
-version: 0.4.2
+version: 0.4.3
 synopsis: Implementation of Oleg Kiselyov's left-fold enumerators
 license: MIT
 license-file: license.txt

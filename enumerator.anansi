@@ -566,14 +566,27 @@ the inner {\tt Iteratee} has finished, and if so, to return its output.
 {\tt checkDone} passes its parameter a continuation if the {\tt Iteratee}
 can still consume input, or yields otherwise.
 
+Oleg's version of {\tt checkDone} has a problem---when the enumeratee has
+some sort of input buffer, but the underlying iteratee enters {\tt Yield},
+it will discard the output buffer. {\tt checkDoneEx} corrects this; for
+backwards compatibility, {\tt checkDone} remains.
+
 :f Data/Enumerator.hs
+|apidoc checkDoneEx|
+checkDoneEx :: Monad m =>
+	Stream a' ->
+	((Stream a -> Iteratee a m b) -> Iteratee a' m (Step a m b)) ->
+	Enumeratee a' a m b
+checkDoneEx extra _ (Yield x chunk) = returnI (Yield (Yield x chunk) extra)
+checkDoneEx _ f (Continue k) = f k
+checkDoneEx _ _ (Error err) = throwError err
+{-# INLINE checkDoneEx #-}
+
 |apidoc checkDone|
 checkDone :: Monad m =>
 	((Stream a -> Iteratee a m b) -> Iteratee a' m (Step a m b)) ->
 	Enumeratee a' a m b
-checkDone _ (Yield x chunk) = return $ Yield x chunk
-checkDone f (Continue k) = f k
-checkDone _ (Error err) = throwError err
+checkDone = checkDoneEx (Chunks [])
 {-# INLINE checkDone #-}
 :
 
@@ -606,6 +619,7 @@ sequence i = loop where
 :d Data.Enumerator exports
   -- ** Enumeratees
 , checkDone
+, checkDoneEx
 , Data.Enumerator.map
 , Data.Enumerator.sequence
 , joinI
@@ -885,7 +899,7 @@ decode :: Monad m => Codec -> Enumeratee B.ByteString T.Text m b
 decode codec = loop B.empty where
 	dec = codecDecode codec
 	
-	loop acc = checkDone $ continue . step acc
+	loop acc = checkDoneEx (Chunks [acc]) (continue . step acc)
 	step acc k EOF = yield (Continue k) $ if B.null acc
 		then EOF
 		else Chunks [acc]
@@ -1284,11 +1298,17 @@ This section just repeats literate documentation in Haddock syntax.
 -- 'Iteratee'.
 :
 
-:d apidoc checkDone
+:d apidoc checkDoneEx
 -- | A common pattern in 'Enumeratee' implementations is to check whether
 -- the inner 'Iteratee' has finished, and if so, to return its output.
 -- 'checkDone' passes its parameter a continuation if the 'Iteratee'
 -- can still consume input, or yields otherwise.
+:
+
+:d apidoc checkDone
+-- | @checkDone = checkDoneEx (Chunks [])@
+--
+-- Use this for enumeratees which do not have an input buffer.
 :
 
 API docs for these are still TODO
