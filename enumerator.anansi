@@ -606,6 +606,29 @@ map f = loop where
 :
 
 :f Data/Enumerator.hs
+|apidoc concatMap|
+concatMap :: Monad m => (ao -> [ai]) -> Enumeratee ao ai m b
+concatMap f = loop where
+	loop = checkDone $ continue . step
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks []) = continue $ step k
+	step k (Chunks xs) = k (Chunks (Prelude.concatMap f xs)) >>== loop
+:
+
+:f Data/Enumerator.hs
+|apidoc mapM|
+mapM :: Monad m => (ao -> m ai) -> Enumeratee ao ai m b
+mapM f = checkDone (continue . step) where
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks xs) = loop k xs
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = do
+		fx <- MT.lift (f x)
+		k (Chunks [fx]) >>== checkDoneEx (Chunks xs) (\k' -> loop k' xs)
+:
+
+:f Data/Enumerator.hs
 |apidoc sequence|
 sequence :: Monad m => Iteratee ao m ai -> Enumeratee ao ai m b
 sequence i = loop where
@@ -621,6 +644,8 @@ sequence i = loop where
 , checkDone
 , checkDoneEx
 , Data.Enumerator.map
+, Data.Enumerator.concatMap
+, Data.Enumerator.mapM
 , Data.Enumerator.sequence
 , joinI
 :
@@ -1314,6 +1339,12 @@ This section just repeats literate documentation in Haddock syntax.
 API docs for these are still TODO
 
 :d apidoc map
+:
+
+:d apidoc concatMap
+:
+
+:d apidoc mapM
 :
 
 :d apidoc sequence
