@@ -820,6 +820,31 @@ import Data.Enumerator
 import Data.Enumerator.Util
 :
 
+{\tt text-0.11} changed some function names to appease a few bikeshedding
+idiots in -cafe; to support it, a special compatibility module is needed.
+
+:d Data.Enumerator.Text imports
+import qualified Data.Enumerator.Text.Compat as TC
+:
+
+:f text-0.11/Data/Enumerator/Text/Compat.hs
+|text compatibility module header|
+findBy = T.find
+:
+
+:f text-0.10/Data/Enumerator/Text/Compat.hs
+|text compatibility module header|
+findBy = T.findBy
+:
+
+:d text compatibility module header
+module Data.Enumerator.Text.Compat
+	( findBy
+	) where
+import qualified Data.Text as T
+findBy :: (Char -> Bool) -> T.Text -> Maybe Char
+:
+
 \subsection{Text IO}
 
 :d Data.Enumerator.Text exports
@@ -1086,7 +1111,7 @@ utf32SplitBytes dec bytes = (dec toDecode, extra) where
 ascii :: Codec
 ascii = Codec name (mapEither enc) dec where
 	name = T.pack "ASCII"
-	enc t = case T.findBy (\c -> ord c > 0x7F) t of
+	enc t = case TC.findBy (\c -> ord c > 0x7F) t of
 		Nothing -> Right . B8.pack . T.unpack $ t
 		Just c -> illegalEnc name c
 	dec bytes = case B.find (\w -> w > 0x7F) bytes of
@@ -1104,7 +1129,7 @@ ascii = Codec name (mapEither enc) dec where
 iso8859_1 :: Codec
 iso8859_1 = Codec name (mapEither enc) dec where
 	name = T.pack "ISO-8859-1"
-	enc t = case T.findBy (\c -> ord c > 0xFF) t of
+	enc t = case TC.findBy (\c -> ord c > 0xFF) t of
 		Nothing -> Right . B8.pack . T.unpack $ t
 		Just c -> illegalEnc name c
 	dec bytes = Right (T.pack (B8.unpack bytes), B.empty)

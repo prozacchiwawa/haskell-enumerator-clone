@@ -1,5 +1,5 @@
 name: enumerator
-version: 0.4.3
+version: 0.4.3.1
 synopsis: Implementation of Oleg Kiselyov's left-fold enumerators
 license: MIT
 license-file: license.txt
@@ -25,6 +25,10 @@ source-repository head
   type: bazaar
   location: http://john-millikin.com/software/enumerator/
 
+-- text-0.11 changed some function names to appease a few bikeshedding idiots
+-- in -cafe; to support it, a special compatibility module is needed.
+flag text-names-broken
+
 library
   ghc-options: -Wall
   hs-source-dirs: hs
@@ -32,7 +36,6 @@ library
   build-depends:
       transformers >= 0.2 && < 0.3
     , bytestring >= 0.9 && < 0.10
-    , text >= 0.7 && < 0.12
 
   if impl(ghc >= 6.10)
     build-depends:
@@ -42,6 +45,15 @@ library
         base >= 3 && < 4
       , extensible-exceptions >= 0.1 && < 0.2
 
+  if flag(text-names-broken)
+    hs-source-dirs: hs/text-0.11
+    build-depends:
+      text >= 0.11 && < 0.12
+  else
+    hs-source-dirs: hs/text-0.10
+    build-depends:
+      text >= 0.7 && < 0.11
+
   exposed-modules:
     Data.Enumerator
     Data.Enumerator.IO
@@ -49,3 +61,4 @@ library
 
   other-modules:
     Data.Enumerator.Util
+    Data.Enumerator.Text.Compat
