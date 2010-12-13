@@ -298,11 +298,10 @@ liftI k = continue $ returnI . k
 
 :f Data/Enumerator.hs
 catchError :: Monad m => Iteratee a m b -> (E.SomeException -> Iteratee a m b) -> Iteratee a m b
-catchError iter h = Iteratee $ do
-	step <- runIteratee iter
-	case step of
-		Error err -> runIteratee (h err)
-		_ -> return step
+catchError iter h = iter >>== step where
+	step (Yield b as) = yield b as
+	step (Error err) = h err
+	step (Continue k) = continue (\stream -> k stream >>== step)
 :
 
 These next two are equivalent to {\tt (>>=)} and {\tt (=<<)} respectively,
