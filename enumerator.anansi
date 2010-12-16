@@ -208,19 +208,20 @@ always be a monad the extra requirement is OK.
 
 :d Data.Enumerator imports
 import qualified Control.Applicative as A
-import Control.Monad (liftM, ap)
+import qualified Control.Monad as CM
+import Control.Monad (liftM)
 :
 
 :f Data/Enumerator.hs
 instance Monad m => Functor (Iteratee a m) where
-	fmap = liftM
+	fmap = CM.liftM
 	{-# INLINE fmap #-}
 
 instance Monad m => A.Applicative (Iteratee a m) where
 	pure = return
 	{-# INLINE pure #-}
 	
-	(<*>) = ap
+	(<*>) = CM.ap
 	{-# INLINE (<*>) #-}
 :
 
@@ -595,36 +596,56 @@ element of the stream, and {\tt sequence} repeatedly runs its parameter to
 transform the stream.
 
 :f Data/Enumerator.hs
-|apidoc map|
-map :: Monad m => (ao -> ai) -> Enumeratee ao ai m b
-map f = loop where
-	loop = checkDone $ continue . step
+|apidoc liftMap|
+liftMap :: Monad m => ([ao] -> [ai]) -> Enumeratee ao ai m b
+liftMap f = loop where
+	loop = checkDone (continue . step)
 	step k EOF = yield (Continue k) EOF
-	step k (Chunks []) = continue $ step k
-	step k (Chunks xs) = k (Chunks (Prelude.map f xs)) >>== loop
+	step k (Chunks []) = continue (step k)
+	step k (Chunks xs) = k (Chunks (f xs)) >>== loop
 :
 
 :f Data/Enumerator.hs
-|apidoc concatMap|
-concatMap :: Monad m => (ao -> [ai]) -> Enumeratee ao ai m b
-concatMap f = loop where
-	loop = checkDone $ continue . step
-	step k EOF = yield (Continue k) EOF
-	step k (Chunks []) = continue $ step k
-	step k (Chunks xs) = k (Chunks (Prelude.concatMap f xs)) >>== loop
-:
-
-:f Data/Enumerator.hs
-|apidoc mapM|
-mapM :: Monad m => (ao -> m ai) -> Enumeratee ao ai m b
-mapM f = checkDone (continue . step) where
+|apidoc concatMapM|
+concatMapM :: Monad m => (ao -> m [ai]) -> Enumeratee ao ai m b
+concatMapM f = checkDone (continue . step) where
 	step k EOF = yield (Continue k) EOF
 	step k (Chunks xs) = loop k xs
 	
 	loop k [] = continue (step k)
 	loop k (x:xs) = do
 		fx <- MT.lift (f x)
-		k (Chunks [fx]) >>== checkDoneEx (Chunks xs) (\k' -> loop k' xs)
+		k (Chunks fx) >>== checkDoneEx (Chunks xs) (\k' -> loop k' xs)
+:
+
+:f Data/Enumerator.hs
+|apidoc map|
+map :: Monad m => (ao -> ai) -> Enumeratee ao ai m b
+map f = liftMap (Prelude.map f)
+:
+
+:f Data/Enumerator.hs
+|apidoc concatMap|
+concatMap :: Monad m => (ao -> [ai]) -> Enumeratee ao ai m b
+concatMap f = liftMap (Prelude.concatMap f)
+:
+
+:f Data/Enumerator.hs
+|apidoc filter|
+filter :: Monad m => (a -> Bool) -> Enumeratee a a m b
+filter p = liftMap (Prelude.filter p)
+:
+
+:f Data/Enumerator.hs
+|apidoc mapM|
+mapM :: Monad m => (ao -> m ai) -> Enumeratee ao ai m b
+mapM f = concatMapM (\x -> Prelude.mapM f [x])
+:
+
+:f Data/Enumerator.hs
+|apidoc filterM|
+filterM :: Monad m => (a -> m Bool) -> Enumeratee a a m b
+filterM p = concatMapM (\x -> CM.filterM p [x])
 :
 
 :f Data/Enumerator.hs
@@ -642,9 +663,13 @@ sequence i = loop where
   -- ** Enumeratees
 , checkDone
 , checkDoneEx
+, liftMap
 , Data.Enumerator.map
 , Data.Enumerator.concatMap
 , Data.Enumerator.mapM
+, Data.Enumerator.concatMapM
+, Data.Enumerator.filter
+, Data.Enumerator.filterM
 , Data.Enumerator.sequence
 , joinI
 :
@@ -1362,13 +1387,28 @@ This section just repeats literate documentation in Haddock syntax.
 
 API docs for these are still TODO
 
+:d apidoc liftMap
+:
+
 :d apidoc map
+-- | @map f = 'liftMap' ('Prelude.map' f)@
 :
 
 :d apidoc concatMap
+-- | @concatMap f = 'liftMap' ('Prelude.concatMap' f)@
+:
+
+:d apidoc filter
+-- | @filter p = 'liftMap' ('Prelude.filter' p)@
+:
+
+:d apidoc concatMapM
 :
 
 :d apidoc mapM
+:
+
+:d apidoc filterM
 :
 
 :d apidoc sequence
