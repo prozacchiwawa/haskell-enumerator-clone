@@ -576,7 +576,8 @@ iterate f = loop where
 :
 
 :f Data/Enumerator.hs
-iterateM :: Monad m => (a -> m a) -> a -> Enumerator a m b
+iterateM :: Monad m => (a -> m a) -> a
+         -> Enumerator a m b
 iterateM f base = loop (return base) where
 	loop m_a (Continue k) = do
 		a <- lift m_a
@@ -746,12 +747,13 @@ enumHandle :: MonadIO m
            => Integer -- ^ Buffer size
            -> IO.Handle
            -> Enumerator B.ByteString m b
-enumHandle bufferSize h = Iteratee . loop where
-	loop (Continue k) = withBytes $ \bytes -> if B.null bytes
-		then return $ Continue k
-		else runIteratee (k (Chunks [bytes])) >>= loop
+enumHandle bufferSize h = loop where
+	loop (Continue k) = withBytes $ \bytes ->
+		if B.null bytes
+			then continue k
+			else k (Chunks [bytes]) >>== loop
 	
-	loop step = return step
+	loop step = returnI step
 	
 	intSize = fromInteger bufferSize
 	withBytes = tryStep $ do
@@ -768,22 +770,24 @@ enumHandle bufferSize h = Iteratee . loop where
 :f Data/Enumerator/IO.hs
 |apidoc enumFile|
 enumFile :: FilePath -> Enumerator B.ByteString IO b
-enumFile path s = Iteratee io where
+enumFile path = enum where
 	withHandle = tryStep (IO.openBinaryFile path IO.ReadMode)
-	io = withHandle $ \h -> Exc.finally
-		(runIteratee (enumHandle 4096 h s))
-		(IO.hClose h)
+	enum step = withHandle $ \h -> do
+		Iteratee $ Exc.finally
+			(runIteratee (enumHandle 4096 h step))
+			(IO.hClose h)
 :
 
 :f Data/Enumerator/IO.hs
 |apidoc iterHandle|
-iterHandle :: MonadIO m => IO.Handle -> Iteratee B.ByteString m ()
+iterHandle :: MonadIO m => IO.Handle
+           -> Iteratee B.ByteString m ()
 iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
-	step (Chunks bytes) = Iteratee io where
+	step (Chunks bytes) = let
 		put = mapM_ (B.hPut h) bytes
-		io = tryStep put (\_ -> return $ Continue step)
+		in tryStep put (\_ -> continue step)
 :
 
 \section{Text handling}
@@ -843,13 +847,15 @@ import System.IO.Error (isEOFError)
 
 :f Data/Enumerator/Text.hs
 |apidoc enumHandle (text)|
-enumHandle :: MonadIO m => IO.Handle -> Enumerator T.Text m b
-enumHandle h = Iteratee . loop where
-	loop (Continue k) = withText $ \maybeText -> case maybeText of
-		Nothing -> return $ Continue k
-		Just text -> runIteratee (k (Chunks [text])) >>= loop
+enumHandle :: MonadIO m => IO.Handle
+           -> Enumerator T.Text m b
+enumHandle h = loop where
+	loop (Continue k) = withText $ \maybeText ->
+		case maybeText of
+			Nothing -> continue k
+			Just text -> k (Chunks [text]) >>== loop
 	
-	loop step = return step
+	loop step = returnI step
 	withText = tryStep $ Exc.catch
 		(Just `fmap` T.hGetLine h)
 		(\err -> if isEOFError err
@@ -860,22 +866,23 @@ enumHandle h = Iteratee . loop where
 :f Data/Enumerator/Text.hs
 |apidoc enumFile (text)|
 enumFile :: FilePath -> Enumerator T.Text IO b
-enumFile path s = Iteratee io where
+enumFile path = enum where
 	withHandle = tryStep (IO.openFile path IO.ReadMode)
-	io = withHandle $ \h -> Exc.finally
-		(runIteratee (enumHandle h s))
+	enum step = withHandle $ \h -> Iteratee $ Exc.finally
+		(runIteratee (enumHandle h step))
 		(IO.hClose h)
 :
 
 :f Data/Enumerator/Text.hs
 |apidoc iterHandle (text)|
-iterHandle :: MonadIO m => IO.Handle -> Iteratee T.Text m ()
+iterHandle :: MonadIO m => IO.Handle
+           -> Iteratee T.Text m ()
 iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
-	step (Chunks chunks) = Iteratee io where
+	step (Chunks chunks) = let
 		put = mapM_ (T.hPutStr h) chunks
-		io = tryStep put (\_ -> return $ Continue step)
+		in tryStep put (\_ -> continue step)
 :
 
 \subsection{Codecs}
@@ -900,8 +907,12 @@ import qualified Data.Text.Encoding as TE
 |apidoc Codec|
 data Codec = Codec
 	{ codecName :: T.Text
-	, codecEncode :: [T.Text] -> Either Exc.SomeException [B.ByteString]
-	, codecDecode :: B.ByteString -> Either Exc.SomeException (T.Text, B.ByteString)
+	, codecEncode
+		:: T.Text
+		-> Either Exc.SomeException B.ByteString
+	, codecDecode
+		:: B.ByteString
+		-> Either Exc.SomeException (T.Text, B.ByteString)
 	}
 
 instance Show Codec where
@@ -911,32 +922,35 @@ instance Show Codec where
 
 :f Data/Enumerator/Text.hs
 |apidoc encode|
-encode :: Monad m => Codec -> Enumeratee T.Text B.ByteString m b
-encode codec = loop where
-	loop = checkDone $ continue . step
+encode :: Monad m => Codec
+       -> Enumeratee T.Text B.ByteString m b
+encode codec = checkDone (continue . step) where
 	step k EOF = yield (Continue k) EOF
-	step k (Chunks []) = continue $ step k
-	step k (Chunks xs) = case codecEncode codec xs of
+	step k (Chunks xs) = loop k xs
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = case codecEncode codec x of
 		Left err -> throwError err
-		Right byteChunks -> k (Chunks byteChunks) >>== loop
+		Right bytes -> k (Chunks [bytes]) >>==
+			checkDoneEx (Chunks xs) (\k' -> loop k' xs)
 :
 
 :f Data/Enumerator/Text.hs
 |apidoc decode|
-decode :: Monad m => Codec -> Enumeratee B.ByteString T.Text m b
+decode :: Monad m => Codec
+       -> Enumeratee B.ByteString T.Text m b
 decode codec = loop B.empty where
-	dec = codecDecode codec
-	
 	loop acc = checkDoneEx (Chunks [acc]) (continue . step acc)
-	step acc k EOF = yield (Continue k) $ if B.null acc
-		then EOF
-		else Chunks [acc]
-	step acc k (Chunks []) = continue $ step acc k
-	step acc k (Chunks xs) = case dec (B.concat (acc:xs)) of
+	
+	step _   k EOF = yield (Continue k) EOF
+	step acc k (Chunks xs) = loop2 acc k xs
+	
+	loop2 acc k [] = continue (step acc k)
+	loop2 acc k (x:xs) = case codecDecode codec (B.append acc x) of
 		Left err -> throwError err
 		Right (text, extra) -> if T.null text
-			then continue $ step extra k
-			else k (Chunks [text]) >>== loop extra
+			then continue (step extra k)
+			else k (Chunks [text]) >>== checkDoneEx (Chunks xs) (\k' -> loop2 extra k' xs)
 :
 
 \subsubsection{UTF-8}
@@ -949,7 +963,7 @@ decode codec = loop B.empty where
 utf8 :: Codec
 utf8 = Codec name enc dec where
 	name = T.pack "UTF-8"
-	enc = Right . Prelude.map TE.encodeUtf8
+	enc = Right . TE.encodeUtf8
 	dec = unsafeTryDec . splitBytes
 	|utf8 split bytes|
 :
@@ -994,7 +1008,7 @@ import Data.Word (Word16)
 utf16_le :: Codec
 utf16_le = Codec name enc dec where
 	name = T.pack "UTF-16-LE"
-	enc = Right . Prelude.map TE.encodeUtf16LE
+	enc = Right . TE.encodeUtf16LE
 	dec = unsafeTryDec . splitBytes
 	|utf16-le split bytes|
 :
@@ -1003,7 +1017,7 @@ utf16_le = Codec name enc dec where
 utf16_be :: Codec
 utf16_be = Codec name enc dec where
 	name = T.pack "UTF-16-BE"
-	enc = Right . Prelude.map TE.encodeUtf16BE
+	enc = Right . TE.encodeUtf16BE
 	dec = unsafeTryDec . splitBytes
 	|utf16-be split bytes|
 :
@@ -1057,14 +1071,13 @@ utf16Required x0 x1 = required where
 utf32_le :: Codec
 utf32_le = Codec name enc dec where
 	name = T.pack "UTF-32-LE"
-	enc = Right . Prelude.map TE.encodeUtf32LE
+	enc = Right . TE.encodeUtf32LE
 	dec = unsafeTryDec . utf32SplitBytes TE.decodeUtf32LE
-	
 
 utf32_be :: Codec
 utf32_be = Codec name enc dec where
 	name = T.pack "UTF-32-BE"
-	enc = Right . Prelude.map TE.encodeUtf32BE
+	enc = Right . TE.encodeUtf32BE
 	dec = unsafeTryDec . utf32SplitBytes TE.decodeUtf32BE
 :
 
@@ -1087,7 +1100,7 @@ utf32SplitBytes dec bytes = (dec toDecode, extra) where
 
 :f Data/Enumerator/Text.hs
 ascii :: Codec
-ascii = Codec name (mapEither enc) dec where
+ascii = Codec name enc dec where
 	name = T.pack "ASCII"
 	enc t = case TC.findBy (\c -> ord c > 0x7F) t of
 		Nothing -> Right . B8.pack . T.unpack $ t
@@ -1105,7 +1118,7 @@ ascii = Codec name (mapEither enc) dec where
 
 :f Data/Enumerator/Text.hs
 iso8859_1 :: Codec
-iso8859_1 = Codec name (mapEither enc) dec where
+iso8859_1 = Codec name enc dec where
 	name = T.pack "ISO-8859-1"
 	enc t = case TC.findBy (\c -> ord c > 0xFF) t of
 		Nothing -> Right . B8.pack . T.unpack $ t
@@ -1434,19 +1447,12 @@ import Data.Enumerator
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Control.Exception as Exc
 
-tryStep :: MonadIO m => IO t -> (t -> m (Step a m b)) -> m (Step a m b)
+tryStep :: MonadIO m => IO t -> (t -> Iteratee a m b) -> Iteratee a m b
 tryStep get io = do
 	tried <- liftIO (Exc.try get)
 	case tried of
 		Right t -> io t
-		Left err -> return $ Error err
-
-mapEither :: (a -> Either e b) -> [a] -> Either e [b]
-mapEither f = loop [] where
-	loop acc [] = Right (reverse acc)
-	loop acc (a:as) = case f a of
-		Left err -> Left err
-		Right b -> loop (b:acc) as
+		Left err -> throwError (err :: Exc.SomeException)
 :
 
 \onecolumn
