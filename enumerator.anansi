@@ -604,15 +604,6 @@ repeatM m_a step = do
 quantity of the input value.
 
 :f Data/Enumerator.hs
-replicate :: Monad m => Integer -> a
-          -> Enumerator a m b
-replicate maxCount a = loop maxCount where
-	loop 0 step = returnI step
-	loop n (Continue k) = k (Chunks [a]) >>== loop (n - 1)
-	loop _ step = returnI step
-:
-
-:f Data/Enumerator.hs
 replicateM :: Monad m => Integer -> m a
            -> Enumerator a m b
 replicateM maxCount getNext = loop maxCount where
@@ -621,6 +612,12 @@ replicateM maxCount getNext = loop maxCount where
 		next <- lift getNext
 		k (Chunks [next]) >>== loop (n - 1)
 	loop _ step = returnI step
+:
+
+:f Data/Enumerator.hs
+replicate :: Monad m => Integer -> a
+          -> Enumerator a m b
+replicate maxCount a = replicateM maxCount (return a)
 :
 
 {\tt generateM} runs a monadic computation until it returns {\tt Nothing},
@@ -929,9 +926,9 @@ encode codec = checkDone (continue . step) where
 	step k (Chunks xs) = loop k xs
 	
 	loop k [] = continue (step k)
-	loop k (x:xs) = case codecEncode codec x of
-		Left err -> throwError err
-		Right bytes -> k (Chunks [bytes]) >>==
+	loop k (x:xs) = do
+		bytes <- liftEither (codecEncode codec x)
+		k (Chunks [bytes]) >>==
 			checkDoneEx (Chunks xs) (\k' -> loop k' xs)
 :
 
@@ -940,17 +937,20 @@ encode codec = checkDone (continue . step) where
 decode :: Monad m => Codec
        -> Enumeratee B.ByteString T.Text m b
 decode codec = loop B.empty where
+	loop acc | B.null acc = checkDone (continue . step acc)
 	loop acc = checkDoneEx (Chunks [acc]) (continue . step acc)
 	
 	step _   k EOF = yield (Continue k) EOF
 	step acc k (Chunks xs) = loop2 acc k xs
 	
 	loop2 acc k [] = continue (step acc k)
-	loop2 acc k (x:xs) = case codecDecode codec (B.append acc x) of
-		Left err -> throwError err
-		Right (text, extra) -> if T.null text
-			then continue (step extra k)
-			else k (Chunks [text]) >>== checkDoneEx (Chunks xs) (\k' -> loop2 extra k' xs)
+	loop2 acc k (x:xs) = do
+		let bytes = B.append acc x
+		(text, extra) <- liftEither (codecDecode codec bytes)
+		if T.null text
+			then loop2 extra k xs
+			else k (Chunks [text]) >>==
+				checkDoneEx (Chunks (extra:xs)) (\k' -> loop2 extra k' xs)
 :
 
 \subsubsection{UTF-8}
@@ -1453,6 +1453,9 @@ tryStep get io = do
 	case tried of
 		Right t -> io t
 		Left err -> throwError (err :: Exc.SomeException)
+
+liftEither :: (Monad m, Exc.Exception e) => Either e b -> Iteratee a m b
+liftEither = either throwError return
 :
 
 \onecolumn
