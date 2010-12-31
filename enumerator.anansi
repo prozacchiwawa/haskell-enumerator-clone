@@ -133,14 +133,18 @@ data Stream a
 	| EOF
 	deriving (Show, Eq)
 
-instance Functor Stream where
-	fmap f (Chunks xs) = Chunks (fmap f xs)
-	fmap _ EOF = EOF
-
 instance Monad Stream where
 	return = Chunks . return
 	Chunks xs >>= f = mconcat (fmap f xs)
 	EOF >>= _ = EOF
+
+instance Functor Stream where
+	fmap f (Chunks xs) = Chunks (fmap f xs)
+	fmap _ EOF = EOF
+
+instance A.Applicative Stream where
+	pure = return
+	(<*>) = CM.ap
 :
 
 The {\tt Monoid} instance deserves some special attention, because it has
