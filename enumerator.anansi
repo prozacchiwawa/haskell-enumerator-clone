@@ -794,6 +794,7 @@ iterHandle h = continue step where
 \section{Text handling}
 
 :f Data/Enumerator/Text.hs
+{-# LANGUAGE CPP #-}
 |Data.Enumerator.Text module header|
 module Data.Enumerator.Text (
 	|Data.Enumerator.Text exports|
@@ -801,29 +802,6 @@ module Data.Enumerator.Text (
 |Data.Enumerator.Text imports|
 import Data.Enumerator
 import Data.Enumerator.Util
-:
-
-{\tt text-0.11} changed some function names to appease a few bikeshedding
-idiots in -cafe; to support it, a special compatibility module is needed.
-
-:d Data.Enumerator.Text imports
-import qualified Data.Enumerator.Text.Compat as TC
-:
-
-:f text-0.11/Data/Enumerator/Text/Compat.hs
-|text compatibility module header|
-spanBy = T.span
-:
-
-:f text-0.10/Data/Enumerator/Text/Compat.hs
-|text compatibility module header|
-spanBy = T.spanBy
-:
-
-:d text compatibility module header
-module Data.Enumerator.Text.Compat where
-import qualified Data.Text as T
-spanBy :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
 :
 
 \subsection{Text IO}
@@ -1144,7 +1122,7 @@ ascii :: Codec
 ascii = Codec name enc dec where
 	name = T.pack "ASCII"
 	enc text = (bytes, extra) where
-		(safe, unsafe) = TC.spanBy (\c -> ord c <= 0x7F) text
+		(safe, unsafe) = textSpanBy (\c -> ord c <= 0x7F) text
 		bytes = B8.pack (T.unpack safe)
 		extra = if T.null unsafe
 			then Nothing
@@ -1169,7 +1147,7 @@ iso8859_1 :: Codec
 iso8859_1 = Codec name enc dec where
 	name = T.pack "ISO-8859-1"
 	enc text = (bytes, extra) where
-		(safe, unsafe) = TC.spanBy (\c -> ord c <= 0xFF) text
+		(safe, unsafe) = textSpanBy (\c -> ord c <= 0xFF) text
 		bytes = B8.pack (T.unpack safe)
 		extra = if T.null unsafe
 			then Nothing
@@ -1179,6 +1157,23 @@ iso8859_1 = Codec name enc dec where
 :
 
 \subsection{Text utility functions}
+
+{\tt text-0.11} changed some function names to appease a few bikeshedding
+idiots in -cafe; to support it, a bit of compatibility code is needed.
+
+I had a choice between using the preprocessor, or a separate module plus
+some Cabal magic. It turns out that {\tt cabal sdist} doesn't properly
+handle multiple source directories selected by flags, so the preprocessor
+is used for now.
+
+:f Data/Enumerator/Text.hs
+textSpanBy :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
+#if MIN_VERSION_text(0,11,0)
+textSpanBy = T.span
+#else
+textSpanBy = T.spanBy
+#endif
+:
 
 :d Data.Enumerator.Text imports
 import Prelude as Prelude
