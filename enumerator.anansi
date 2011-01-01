@@ -812,20 +812,18 @@ import qualified Data.Enumerator.Text.Compat as TC
 
 :f text-0.11/Data/Enumerator/Text/Compat.hs
 |text compatibility module header|
-findBy = T.find
+spanBy = T.span
 :
 
 :f text-0.10/Data/Enumerator/Text/Compat.hs
 |text compatibility module header|
-findBy = T.findBy
+spanBy = T.spanBy
 :
 
 :d text compatibility module header
-module Data.Enumerator.Text.Compat
-	( findBy
-	) where
+module Data.Enumerator.Text.Compat where
 import qualified Data.Text as T
-findBy :: (Char -> Bool) -> T.Text -> Maybe Char
+spanBy :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
 :
 
 \subsection{Text IO}
@@ -910,7 +908,7 @@ data Codec = Codec
 	{ codecName :: T.Text
 	, codecEncode
 		:: T.Text
-		-> Either Exc.SomeException B.ByteString
+		-> (B.ByteString, Maybe (Exc.SomeException, T.Text))
 	, codecDecode
 		:: B.ByteString
 		-> (T.Text, Either (Exc.SomeException, B.ByteString) B.ByteString)
@@ -931,9 +929,19 @@ encode codec = checkDone (continue . step) where
 	
 	loop k [] = continue (step k)
 	loop k (x:xs) = do
-		bytes <- liftEither (codecEncode codec x)
-		k (Chunks [bytes]) >>==
-			checkDoneEx (Chunks xs) (\k' -> loop k' xs)
+		let (bytes, extra) = codecEncode codec x
+		let extraChunks = Chunks $ case extra of
+			Nothing -> xs
+			Just (_, text) -> text:xs
+		
+		let checkError k' = case extra of
+			Nothing -> loop k' xs
+			Just (exc, _) -> throwError exc
+		
+		if B.null bytes
+			then checkError k
+			else k (Chunks [bytes]) >>==
+				checkDoneEx extraChunks checkError
 :
 
 :f Data/Enumerator/Text.hs
@@ -976,7 +984,7 @@ decode codec = loop B.empty where
 utf8 :: Codec
 utf8 = Codec name enc dec where
 	name = T.pack "UTF-8"
-	enc = Right . TE.encodeUtf8
+	enc text = (TE.encodeUtf8 text, Nothing)
 	dec bytes = case splitQuickly bytes of
 		Just (text, extra) -> (text, Right extra)
 		Nothing -> splitSlowly TE.decodeUtf8 bytes
@@ -1027,7 +1035,7 @@ import Data.Word (Word16)
 utf16_le :: Codec
 utf16_le = Codec name enc dec where
 	name = T.pack "UTF-16-LE"
-	enc = Right . TE.encodeUtf16LE
+	enc text = (TE.encodeUtf16LE text, Nothing)
 	dec bytes = case splitQuickly bytes of
 		Just (text, extra) -> (text, Right extra)
 		Nothing -> splitSlowly TE.decodeUtf16LE bytes
@@ -1038,7 +1046,7 @@ utf16_le = Codec name enc dec where
 utf16_be :: Codec
 utf16_be = Codec name enc dec where
 	name = T.pack "UTF-16-BE"
-	enc = Right . TE.encodeUtf16BE
+	enc text = (TE.encodeUtf16BE text, Nothing)
 	dec bytes = case splitQuickly bytes of
 		Just (text, extra) -> (text, Right extra)
 		Nothing -> splitSlowly TE.decodeUtf16BE bytes
@@ -1098,7 +1106,7 @@ utf16Required x0 x1 = required where
 utf32_le :: Codec
 utf32_le = Codec name enc dec where
 	name = T.pack "UTF-32-LE"
-	enc = Right . TE.encodeUtf32LE
+	enc text = (TE.encodeUtf32LE text, Nothing)
 	dec bytes = case utf32SplitBytes TE.decodeUtf32LE bytes of
 		Just (text, extra) -> (text, Right extra)
 		Nothing -> splitSlowly TE.decodeUtf32LE bytes
@@ -1106,7 +1114,7 @@ utf32_le = Codec name enc dec where
 utf32_be :: Codec
 utf32_be = Codec name enc dec where
 	name = T.pack "UTF-32-BE"
-	enc = Right . TE.encodeUtf32BE
+	enc text = (TE.encodeUtf32BE text, Nothing)
 	dec bytes = case utf32SplitBytes TE.decodeUtf32BE bytes of
 		Just (text, extra) -> (text, Right extra)
 		Nothing -> splitSlowly TE.decodeUtf32BE bytes
@@ -1135,9 +1143,13 @@ utf32SplitBytes dec bytes = tryDecMaybe (dec toDecode, extra) where
 ascii :: Codec
 ascii = Codec name enc dec where
 	name = T.pack "ASCII"
-	enc t = case TC.findBy (\c -> ord c > 0x7F) t of
-		Nothing -> Right . B8.pack . T.unpack $ t
-		Just c -> illegalEnc name c
+	enc text = (bytes, extra) where
+		(safe, unsafe) = TC.spanBy (\c -> ord c > 0x7F) text
+		bytes = B8.pack (T.unpack safe)
+		extra = if T.null unsafe
+			then Nothing
+			else Just (illegalEnc name (T.head unsafe), unsafe)
+	
 	dec bytes = (text, extra) where
 		(safe, unsafe) = B.span (\w -> w > 0x7F) bytes
 		text = T.pack (B8.unpack safe)
@@ -1156,9 +1168,13 @@ ascii = Codec name enc dec where
 iso8859_1 :: Codec
 iso8859_1 = Codec name enc dec where
 	name = T.pack "ISO-8859-1"
-	enc t = case TC.findBy (\c -> ord c > 0xFF) t of
-		Nothing -> Right . B8.pack . T.unpack $ t
-		Just c -> illegalEnc name c
+	enc text = (bytes, extra) where
+		(safe, unsafe) = TC.spanBy (\c -> ord c > 0xFF) text
+		bytes = B8.pack (T.unpack safe)
+		extra = if T.null unsafe
+			then Nothing
+			else Just (illegalEnc name (T.head unsafe), unsafe)
+	
 	dec bytes = (T.pack (B8.unpack bytes), Right B.empty)
 :
 
@@ -1173,8 +1189,8 @@ import System.IO.Unsafe (unsafePerformIO)
 :
 
 :f Data/Enumerator/Text.hs
-illegalEnc :: T.Text -> Char -> Either Exc.SomeException a
-illegalEnc name c = Left . Exc.toException . Exc.ErrorCall $ msg "" where
+illegalEnc :: T.Text -> Char -> Exc.SomeException
+illegalEnc name c = Exc.toException . Exc.ErrorCall $ msg "" where
 	len = Prelude.length
 	pad str | len str < 4 = Prelude.replicate (4 - len str) '0' ++ str
 	        | otherwise      = str
