@@ -913,7 +913,7 @@ data Codec = Codec
 		-> Either Exc.SomeException B.ByteString
 	, codecDecode
 		:: B.ByteString
-		-> Either Exc.SomeException (T.Text, B.ByteString)
+		-> (T.Text, Either (Exc.SomeException, B.ByteString) B.ByteString)
 	}
 
 instance Show Codec where
@@ -949,12 +949,21 @@ decode codec = loop B.empty where
 	
 	loop2 acc k [] = continue (step acc k)
 	loop2 acc k (x:xs) = do
-		let bytes = B.append acc x
-		(text, extra) <- liftEither (codecDecode codec bytes)
+		let (text, extra) = codecDecode codec (B.append acc x)
+		let extraBytes = case extra of
+			Left (_, bytes) -> bytes
+			Right bytes -> bytes
+		
+		let extraChunks = Chunks (extraBytes:xs)
+		
+		let checkError k' = case extra of
+			Left (exc, _) -> throwError exc
+			Right bytes -> loop2 bytes k' xs
+		
 		if T.null text
-			then loop2 extra k xs
+			then checkError k
 			else k (Chunks [text]) >>==
-				checkDoneEx (Chunks (extra:xs)) (\k' -> loop2 extra k' xs)
+				checkDoneEx extraChunks checkError
 :
 
 \subsubsection{UTF-8}
@@ -968,21 +977,27 @@ utf8 :: Codec
 utf8 = Codec name enc dec where
 	name = T.pack "UTF-8"
 	enc = Right . TE.encodeUtf8
-	dec = unsafeTryDec . splitBytes
+	dec bytes = case splitQuickly bytes of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf8 bytes
 	|utf8 split bytes|
 :
 
 :d utf8 split bytes
-splitBytes bytes = loop 0 where
+splitQuickly bytes = loop 0 >>= tryDecMaybe where
 	|utf8 required bytes count|
 	maxN = B.length bytes
 	
-	loop n | n == maxN = (TE.decodeUtf8 bytes, B.empty)
+	loop n | n == maxN = Just (TE.decodeUtf8 bytes, B.empty)
 	loop n = let
-		req = required $ B.index bytes n
-		tooLong = first TE.decodeUtf8 $ B.splitAt n bytes
+		req = required (B.index bytes n)
+		tooLong = first TE.decodeUtf8 (B.splitAt n bytes)
 		decodeMore = loop $! n + req
-		in if req > maxN then tooLong else decodeMore
+		in if req == 0
+			then Nothing
+			else if n + req > maxN
+				then Just tooLong
+				else decodeMore
 :
 
 :d utf8 required bytes count
@@ -993,7 +1008,7 @@ required x0
 	| x0 .&. 0xF8 == 0xF0 = 4
 	
 	-- Invalid input; let Text figure it out
-	| otherwise           = 1
+	| otherwise           = 0
 :
 
 \subsubsection{UTF-16}
@@ -1013,7 +1028,9 @@ utf16_le :: Codec
 utf16_le = Codec name enc dec where
 	name = T.pack "UTF-16-LE"
 	enc = Right . TE.encodeUtf16LE
-	dec = unsafeTryDec . splitBytes
+	dec bytes = case splitQuickly bytes of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf16LE bytes
 	|utf16-le split bytes|
 :
 
@@ -1022,12 +1039,14 @@ utf16_be :: Codec
 utf16_be = Codec name enc dec where
 	name = T.pack "UTF-16-BE"
 	enc = Right . TE.encodeUtf16BE
-	dec = unsafeTryDec . splitBytes
+	dec bytes = case splitQuickly bytes of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf16BE bytes
 	|utf16-be split bytes|
 :
 
 :d utf16-le split bytes
-splitBytes bytes = loop 0 where
+splitQuickly bytes = tryDecMaybe (loop 0) where
 	maxN = B.length bytes
 	
 	loop n |  n      == maxN = (TE.decodeUtf16LE bytes, B.empty)
@@ -1035,13 +1054,15 @@ splitBytes bytes = loop 0 where
 	loop n = let
 		req = utf16Required (B.index bytes 0) (B.index bytes 1)
 		decodeMore = loop $! n + req
-		in if req > maxN then decodeTo n else decodeMore
+		in if n + req > maxN
+			then decodeTo n
+			else decodeMore
 	
-	decodeTo n = first TE.decodeUtf16LE $ B.splitAt n bytes
+	decodeTo n = first TE.decodeUtf16LE (B.splitAt n bytes)
 :
 
 :d utf16-be split bytes
-splitBytes bytes = loop 0 where
+splitQuickly bytes = tryDecMaybe (loop 0) where
 	maxN = B.length bytes
 	
 	loop n |  n      == maxN = (TE.decodeUtf16BE bytes, B.empty)
@@ -1049,9 +1070,11 @@ splitBytes bytes = loop 0 where
 	loop n = let
 		req = utf16Required (B.index bytes 1) (B.index bytes 0)
 		decodeMore = loop $! n + req
-		in if req > maxN then decodeTo n else decodeMore
+		in if n + req > maxN
+			then decodeTo n
+			else decodeMore
 	
-	decodeTo n = first TE.decodeUtf16BE $ B.splitAt n bytes
+	decodeTo n = first TE.decodeUtf16BE (B.splitAt n bytes)
 :
 
 :f Data/Enumerator/Text.hs
@@ -1076,18 +1099,24 @@ utf32_le :: Codec
 utf32_le = Codec name enc dec where
 	name = T.pack "UTF-32-LE"
 	enc = Right . TE.encodeUtf32LE
-	dec = unsafeTryDec . utf32SplitBytes TE.decodeUtf32LE
+	dec bytes = case utf32SplitBytes TE.decodeUtf32LE bytes of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf32LE bytes
 
 utf32_be :: Codec
 utf32_be = Codec name enc dec where
 	name = T.pack "UTF-32-BE"
 	enc = Right . TE.encodeUtf32BE
-	dec = unsafeTryDec . utf32SplitBytes TE.decodeUtf32BE
+	dec bytes = case utf32SplitBytes TE.decodeUtf32BE bytes of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf32BE bytes
 :
 
 :f Data/Enumerator/Text.hs
-utf32SplitBytes :: (B.ByteString -> a) -> B.ByteString -> (a, B.ByteString)
-utf32SplitBytes dec bytes = (dec toDecode, extra) where
+utf32SplitBytes :: (B.ByteString -> T.Text)
+                -> B.ByteString
+                -> Maybe (T.Text, B.ByteString)
+utf32SplitBytes dec bytes = tryDecMaybe (dec toDecode, extra) where
 	len = B.length bytes
 	lenExtra = mod len 4
 	lenToDecode = len - lenExtra
@@ -1109,9 +1138,12 @@ ascii = Codec name enc dec where
 	enc t = case TC.findBy (\c -> ord c > 0x7F) t of
 		Nothing -> Right . B8.pack . T.unpack $ t
 		Just c -> illegalEnc name c
-	dec bytes = case B.find (\w -> w > 0x7F) bytes of
-		Nothing -> Right (T.pack (B8.unpack bytes), B.empty)
-		Just w -> illegalDec name w
+	dec bytes = (text, extra) where
+		(safe, unsafe) = B.span (\w -> w > 0x7F) bytes
+		text = T.pack (B8.unpack safe)
+		extra = if B.null unsafe
+			then Right B.empty
+			else Left (illegalDec name (B.head unsafe), unsafe)
 :
 
 \subsubsection{ISO 8859-1}
@@ -1127,7 +1159,7 @@ iso8859_1 = Codec name enc dec where
 	enc t = case TC.findBy (\c -> ord c > 0xFF) t of
 		Nothing -> Right . B8.pack . T.unpack $ t
 		Just c -> illegalEnc name c
-	dec bytes = Right (T.pack (B8.unpack bytes), B.empty)
+	dec bytes = (T.pack (B8.unpack bytes), Right B.empty)
 :
 
 \subsection{Text utility functions}
@@ -1152,8 +1184,8 @@ illegalEnc name c = Left . Exc.toException . Exc.ErrorCall $ msg "" where
 :
 
 :f Data/Enumerator/Text.hs
-illegalDec :: T.Text -> Word8 -> Either Exc.SomeException a
-illegalDec name w = Left . Exc.toException . Exc.ErrorCall $ msg "" where
+illegalDec :: T.Text -> Word8 -> Exc.SomeException
+illegalDec name w = Exc.toException . Exc.ErrorCall $ msg "" where
 	len = Prelude.length
 	pad str | len str < 2 = Prelude.replicate (2 - len str) '0' ++ str
 	        | otherwise      = str
@@ -1163,12 +1195,49 @@ illegalDec name w = Left . Exc.toException . Exc.ErrorCall $ msg "" where
 :
 
 :f Data/Enumerator/Text.hs
-unsafeTryDec :: (a, b) -> Either Exc.SomeException (a, b)
-unsafeTryDec (a, b) = unsafePerformIO $ do
-	tried <- Exc.try $ Exc.evaluate a
+tryDecode :: (B.ByteString -> T.Text)
+          -> B.ByteString
+          -> Either Exc.SomeException T.Text
+tryDecode dec = unsafePerformIO . Exc.try . Exc.evaluate . dec
+:
+
+:f Data/Enumerator/Text.hs
+tryDecMaybe :: (a, b) -> Maybe (a, b)
+tryDecMaybe (a, b) = unsafePerformIO $ do
+	tried <- Exc.try (Exc.evaluate a)
 	return $ case tried of
-		Left err -> Left err
-		Right _ -> Right (a, b)
+		Left exc -> const Nothing (exc :: Exc.SomeException)
+		Right _ -> Just (a, b)
+:
+
+:f Data/Enumerator/Text.hs
+byteSplits :: B.ByteString -> [(B.ByteString, B.ByteString)]
+byteSplits bytes = loop (B.length bytes) where
+	loop 0 = [(B.empty, bytes)]
+	loop n = B.splitAt n bytes : loop (n - 1)
+:
+
+:d Data.Enumerator.Text imports
+import Data.Maybe (catMaybes)
+:
+
+:f Data/Enumerator/Text.hs
+splitSlowly :: (B.ByteString -> T.Text)
+            -> B.ByteString
+            -> (T.Text, Either (Exc.SomeException, B.ByteString) B.ByteString)
+splitSlowly dec bytes = firstValid (Prelude.map decFirst splits) where
+	splits = byteSplits bytes
+	firstValid = Prelude.head . catMaybes
+	tryDec = tryDecode dec
+	
+	decFirst (a, b) = case tryDec a of
+		Left _ -> Nothing
+		Right text -> Just (text, case tryDec b of
+			Left exc -> Left (exc, b)
+			
+			-- this case shouldn't occur, since splitSlowly
+			-- is only called when parsing failed somewhere
+			Right _ -> Right B.empty)
 :
 
 \section{Parser combinators}
