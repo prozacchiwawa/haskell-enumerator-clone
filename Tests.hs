@@ -18,6 +18,7 @@ import qualified Test.Framework as F
 import Test.Framework.Providers.QuickCheck2 (testProperty)
 
 import Control.Applicative
+import Control.Exception
 import Control.Monad
 import Data.Bits
 import Data.Char (chr)
@@ -122,17 +123,31 @@ test_StreamMonad = F.testGroup "Monad Stream" props where
 
 -- Generic properties {{{
 
-prop_Enumeratee :: E.Enumeratee A A Identity (Maybe A) -> Property
-prop_Enumeratee enee = property (\(Positive n) (NonEmpty xs) -> let
-	result = runIdentity (E.run_ iter)
-	expected = (Just (head xs), tail xs)
+test_Enumeratee :: String -> E.Enumeratee A A Identity (Maybe A) -> F.Test
+test_Enumeratee name enee = F.testGroup name props where
+	props = [ testProperty "incremental" prop_incremental
+	        , testProperty "nest errors" prop_nest_errors
+	        ]
 	
-	iter = E.enumList n xs $$ do
-		a <- E.joinI (enee $$ E.head)
-		b <- E.consume
-		return (a, b)
+	prop_incremental (Positive n) (NonEmpty xs) = let
+		result = runIdentity (E.run_ iter)
+		expected = (Just (head xs), tail xs)
+		
+		iter = E.enumList n xs $$ do
+			a <- E.joinI (enee $$ E.head)
+			b <- E.consume
+			return (a, b)
+		
+		in result == expected
 	
-	in result == expected)
+	prop_nest_errors (Positive n) (NonEmpty xs) = let
+		result = runIdentity (E.run_ iter)
+		
+		iter = E.enumList n xs $$ do
+			a <- enee $$ E.throwError (ErrorCall "")
+			E.consume
+		
+		in result == xs
 
 -- }}}
 
@@ -149,28 +164,22 @@ test_Primitives = F.testGroup "Primitives"
 	]
 
 test_Map :: F.Test
-test_Map = testProperty "map" $
-	prop_Enumeratee (E.map id)
+test_Map = test_Enumeratee "map" (E.map id)
 
 test_ConcatMap :: F.Test
-test_ConcatMap = testProperty "concatMap" $
-	prop_Enumeratee (E.concatMap (:[]))
+test_ConcatMap = test_Enumeratee "concatMap" (E.concatMap (:[]))
 
 test_MapM :: F.Test
-test_MapM = testProperty "mapM" $
-	prop_Enumeratee (E.mapM return)
+test_MapM = test_Enumeratee "mapM" (E.mapM return)
 
 test_ConcatMapM :: F.Test
-test_ConcatMapM = testProperty "concatMapM" $
-	prop_Enumeratee (E.concatMapM (\x -> return [x]))
+test_ConcatMapM = test_Enumeratee "concatMapM" (E.concatMapM (\x -> return [x]))
 
 test_Filter :: F.Test
-test_Filter = testProperty "filter" $
-	prop_Enumeratee (E.filter (\_ -> True))
+test_Filter = test_Enumeratee "filter" (E.filter (\_ -> True))
 
 test_FilterM :: F.Test
-test_FilterM = testProperty "filterM" $
-	prop_Enumeratee (E.filterM (\_ -> return True))
+test_FilterM = test_Enumeratee "filterM" (E.filterM (\_ -> return True))
 
 -- }}}
 

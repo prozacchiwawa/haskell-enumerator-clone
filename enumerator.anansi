@@ -1414,9 +1414,8 @@ checkDoneEx :: Monad m =>
 	Stream a' ->
 	((Stream a -> Iteratee a m b) -> Iteratee a' m (Step a m b)) ->
 	Enumeratee a' a m b
-checkDoneEx extra _ (Yield x chunk) = returnI (Yield (Yield x chunk) extra)
-checkDoneEx _ f (Continue k) = f k
-checkDoneEx _ _ (Error err) = throwError err
+checkDoneEx _     f (Continue k) = f k
+checkDoneEx extra _ step         = yield step extra
 
 |apidoc checkDone|
 checkDone :: Monad m =>
