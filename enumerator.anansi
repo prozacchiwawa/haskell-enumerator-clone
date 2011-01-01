@@ -1144,14 +1144,14 @@ ascii :: Codec
 ascii = Codec name enc dec where
 	name = T.pack "ASCII"
 	enc text = (bytes, extra) where
-		(safe, unsafe) = TC.spanBy (\c -> ord c > 0x7F) text
+		(safe, unsafe) = TC.spanBy (\c -> ord c <= 0x7F) text
 		bytes = B8.pack (T.unpack safe)
 		extra = if T.null unsafe
 			then Nothing
 			else Just (illegalEnc name (T.head unsafe), unsafe)
 	
 	dec bytes = (text, extra) where
-		(safe, unsafe) = B.span (\w -> w > 0x7F) bytes
+		(safe, unsafe) = B.span (<= 0x7F) bytes
 		text = T.pack (B8.unpack safe)
 		extra = if B.null unsafe
 			then Right B.empty
@@ -1169,7 +1169,7 @@ iso8859_1 :: Codec
 iso8859_1 = Codec name enc dec where
 	name = T.pack "ISO-8859-1"
 	enc text = (bytes, extra) where
-		(safe, unsafe) = TC.spanBy (\c -> ord c > 0xFF) text
+		(safe, unsafe) = TC.spanBy (\c -> ord c <= 0xFF) text
 		bytes = B8.pack (T.unpack safe)
 		extra = if T.null unsafe
 			then Nothing
