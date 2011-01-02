@@ -520,43 +520,6 @@ foldM step = continue . loop where
 , Data.Enumerator.foldM
 :
 
-\subsubsection{Debugging}
-
-Debugging enumerator-based code is mostly a question of what inputs are
-being passed around. {\tt consume} allows the entire stream to be read
-into a list, and {\tt printChunks} prints out exactly what chunks are
-being sent from an enumerator.
-
-:f Data/Enumerator.hs
-|apidoc consume|
-consume :: Monad m => Iteratee a m [a]
-consume = continue (loop id) where
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (acc . (xs ++)))
-		EOF -> yield (acc []) EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc printChunks|
-printChunks :: (MonadIO m, Show a) => Bool
-            -> Iteratee a m ()
-printChunks printEmpty = continue loop where
-	loop (Chunks xs) = do
-		let hide = null xs && not printEmpty
-		CM.unless hide (liftIO (print xs))
-		continue loop
-	
-	loop EOF = do
-		liftIO (putStrLn "EOF")
-		yield () EOF
-:
-
-:d Data.Enumerator exports
-, consume
-, printChunks
-:
-
 \subsection{Enumerators}
 
 At their simplest, enumerators just check to see whether their received step
@@ -722,6 +685,207 @@ filterM p = concatMapM (\x -> CM.filterM p [x])
 , Data.Enumerator.mapM
 , concatMapM
 , Data.Enumerator.filterM
+:
+
+\section{title todo}
+
+Oleg's original {\tt IterateeM.hs} includes some basic iteratees for parsing,
+so this section ports them to the new interface. However, in practice most
+parsing will be performed with enumerator-based interfaces to Parsec or
+Attoparsec.
+
+\subsection{Debugging}
+
+Debugging enumerator-based code is mostly a question of what inputs are
+being passed around. {\tt consume} allows the entire stream to be read
+into a list, and {\tt printChunks} prints out exactly what chunks are
+being sent from an enumerator.
+
+:f Data/Enumerator.hs
+|apidoc consume|
+consume :: Monad m => Iteratee a m [a]
+consume = continue (loop id) where
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (acc . (xs ++)))
+		EOF -> yield (acc []) EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc printChunks|
+printChunks :: (MonadIO m, Show a) => Bool
+            -> Iteratee a m ()
+printChunks printEmpty = continue loop where
+	loop (Chunks xs) = do
+		let hide = null xs && not printEmpty
+		CM.unless hide (liftIO (print xs))
+		continue loop
+	
+	loop EOF = do
+		liftIO (putStrLn "EOF")
+		yield () EOF
+:
+
+:d Data.Enumerator exports
+, consume
+, printChunks
+:
+
+\subsection{List Analogues}
+
+:f Data/Enumerator.hs
+|apidoc head|
+head :: Monad m => Iteratee a m (Maybe a)
+head = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
+	loop EOF = yield Nothing EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc peek|
+peek :: Monad m => Iteratee a m (Maybe a)
+peek = continue loop where
+	loop (Chunks []) = continue loop
+	loop chunk@(Chunks (x:_)) = yield (Just x) chunk
+	loop EOF = yield Nothing EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc last|
+last :: Monad m => Iteratee a m (Maybe a)
+last = continue (loop Nothing) where
+	loop ret (Chunks xs) = continue . loop $ case xs of
+		[] -> ret
+		_ -> Just (Prelude.last xs)
+	loop ret EOF = yield ret EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc length|
+length :: Monad m => Iteratee a m Integer
+length = continue (loop 0) where
+	len = genericLength
+	loop n (Chunks xs) = continue (loop (n + len xs))
+	loop n EOF = yield n EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc drop|
+drop :: Monad m => Integer -> Iteratee a m ()
+drop 0 = return ()
+drop n = continue (loop n) where
+	len = genericLength
+	loop n' (Chunks xs)
+		| len xs < n' = continue (loop (n' - len xs))
+		| otherwise   = yield () (Chunks (genericDrop n' xs))
+	loop _ EOF = yield () EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc dropWhile|
+dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
+dropWhile p = continue loop where
+	loop (Chunks xs) = case Prelude.dropWhile p xs of
+		[] -> continue loop
+		xs' -> yield () (Chunks xs')
+	loop EOF = yield () EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc span|
+span :: Monad m => (a -> Bool) -> Iteratee a m [a]
+span p = continue (loop []) where
+	loop acc (Chunks xs) = case Prelude.span p xs of
+		(_, []) -> continue (loop (acc ++ xs))
+		(head', tail') -> yield (acc ++ head') (Chunks tail')
+	loop acc EOF = yield acc EOF
+
+|apidoc break|
+break :: Monad m => (a -> Bool) -> Iteratee a m [a]
+break p = Data.Enumerator.span (not . p)
+:
+
+:d Data.Enumerator exports
+, Data.Enumerator.head
+, peek
+, Data.Enumerator.last
+, Data.Enumerator.length
+, Data.Enumerator.drop
+, Data.Enumerator.dropWhile
+, Data.Enumerator.span
+, Data.Enumerator.break
+:
+
+\subsection{something}
+
+Another small, useful enumerator separates an input list into chunks, and
+sends them to the iteratee. This is useful for testing iteratees in pure
+code.
+
+:d Data.Enumerator imports
+import Data.List (genericSplitAt, genericLength, genericDrop)
+:
+
+:f Data/Enumerator.hs
+|apidoc enumList|
+enumList :: Monad m => Integer -> [a] -> Enumerator a m b
+enumList n = loop where
+	loop xs (Continue k) | not (null xs) = let
+		(s1, s2) = genericSplitAt n xs
+		in k (Chunks s1) >>== loop s2
+	loop _ step = returnI step
+:
+
+Sequencing a fixed set of enumerators is easy, but for more complex
+cases, it's useful to have a small utility wrapper.
+
+:f Data/Enumerator.hs
+|apidoc concatEnums|
+concatEnums :: Monad m => [Enumerator a m b]
+            -> Enumerator a m b
+concatEnums = Prelude.foldl (>==>) returnI
+:
+
+:d Data.Enumerator exports
+, enumList
+, concatEnums
+:
+
+\subsection{Enumeratees}
+
+{\tt joinI} is used to ``flatten'' enumeratees, to transform them into an
+{\tt Iteratee}.
+
+:f Data/Enumerator.hs
+|apidoc joinI|
+joinI :: Monad m => Iteratee a m (Step a' m b)
+      -> Iteratee a m b
+joinI outer = outer >>= check where
+	check (Continue k) = k EOF >>== \s -> case s of
+		Continue _ -> error "joinI: divergent iteratee"
+		_ -> check s
+	check (Yield x _) = return x
+	check (Error e) = throwError e
+:
+
+{\tt sequence} repeatedly runs its parameter to transform the stream.
+
+:f Data/Enumerator.hs
+|apidoc sequence|
+sequence :: Monad m => Iteratee ao m ai
+         -> Enumeratee ao ai m b
+sequence i = loop where
+	loop = checkDone check
+	check k = isEOF >>= \f -> if f
+		then yield (Continue k) EOF
+		else step k
+	step k = i >>= \v -> k (Chunks [v]) >>== loop
+:
+
+:d Data.Enumerator exports
+, joinI
+, Data.Enumerator.sequence
 :
 
 \section{IO}
@@ -984,7 +1148,8 @@ for later. An error will only be thrown if the iteratee requires input,
 but there are no valid bytes remaining.
 
 :f Data/Enumerator/Text.hs
-byteSplits :: B.ByteString -> [(B.ByteString, B.ByteString)]
+byteSplits :: B.ByteString
+           -> [(B.ByteString, B.ByteString)]
 byteSplits bytes = loop (B.length bytes) where
 	loop 0 = [(B.empty, bytes)]
 	loop n = B.splitAt n bytes : loop (n - 1)
@@ -1240,7 +1405,7 @@ illegalDec :: T.Text -> Word8 -> Exc.SomeException
 illegalDec name w = Exc.toException . Exc.ErrorCall $
 	concat [ "Codec "
 	       , show name
-	       , " can't decode byte  "
+	       , " can't decode byte "
 	       , reprWord w
 	       ]
 :
@@ -1257,97 +1422,6 @@ maybeDecode:: (a, b) -> Maybe (a, b)
 maybeDecode (a, b) = case tryEvaluate a of
 	Left _ -> Nothing
 	Right _ -> Just (a, b)
-:
-
-\section{Parser combinators}
-
-Oleg's original {\tt IterateeM.hs} includes some basic iteratees for parsing,
-so this section ports them to the new interface. However, in practice most
-parsing will be performed with enumerator-based interfaces to Parsec or
-Attoparsec.
-
-:f Data/Enumerator.hs
-|apidoc head|
-head :: Monad m => Iteratee a m (Maybe a)
-head = continue loop where
-	loop (Chunks []) = continue loop
-	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
-	loop EOF = yield Nothing EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc peek|
-peek :: Monad m => Iteratee a m (Maybe a)
-peek = continue loop where
-	loop (Chunks []) = continue loop
-	loop chunk@(Chunks (x:_)) = yield (Just x) chunk
-	loop EOF = yield Nothing EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc last|
-last :: Monad m => Iteratee a m (Maybe a)
-last = continue (loop Nothing) where
-	loop ret (Chunks xs) = continue . loop $ case xs of
-		[] -> ret
-		_ -> Just (Prelude.last xs)
-	loop ret EOF = yield ret EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc length|
-length :: Monad m => Iteratee a m Integer
-length = continue (loop 0) where
-	len = genericLength
-	loop n (Chunks xs) = continue (loop (n + len xs))
-	loop n EOF = yield n EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc drop|
-drop :: Monad m => Integer -> Iteratee a m ()
-drop 0 = return ()
-drop n = continue (loop n) where
-	len = genericLength
-	loop n' (Chunks xs)
-		| len xs < n' = continue (loop (n' - len xs))
-		| otherwise   = yield () (Chunks (genericDrop n' xs))
-	loop _ EOF = yield () EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc dropWhile|
-dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
-dropWhile p = continue loop where
-	loop (Chunks xs) = case Prelude.dropWhile p xs of
-		[] -> continue loop
-		xs' -> yield () (Chunks xs')
-	loop EOF = yield () EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc span|
-span :: Monad m => (a -> Bool) -> Iteratee a m [a]
-span p = continue (loop []) where
-	loop acc (Chunks xs) = case Prelude.span p xs of
-		(_, []) -> continue (loop (acc ++ xs))
-		(head', tail') -> yield (acc ++ head') (Chunks tail')
-	loop acc EOF = yield acc EOF
-
-|apidoc break|
-break :: Monad m => (a -> Bool) -> Iteratee a m [a]
-break p = Data.Enumerator.span (not . p)
-:
-
-:d Data.Enumerator exports
-, Data.Enumerator.head
-, peek
-, Data.Enumerator.last
-, Data.Enumerator.length
-, Data.Enumerator.drop
-, Data.Enumerator.dropWhile
-, Data.Enumerator.span
-, Data.Enumerator.break
 :
 
 \section{Misc. utilities}
@@ -1451,69 +1525,6 @@ liftI k = continue (\stream -> returnI (k stream))
 , liftI
 :
 
-\subsection{other}
-
-Another small, useful enumerator separates an input list into chunks, and
-sends them to the iteratee. This is useful for testing iteratees in pure
-code.
-
-:d Data.Enumerator imports
-import Data.List (genericSplitAt, genericLength, genericDrop)
-:
-
-:f Data/Enumerator.hs
-|apidoc enumList|
-enumList :: Monad m => Integer -> [a] -> Enumerator a m b
-enumList n xs (Continue k) | not (null xs) = k chunk >>== loop where
-	(s1, s2) = genericSplitAt n xs
-	chunk = Chunks s1
-	loop = enumList n s2
-enumList _ _ step = returnI step
-:
-
-Sequencing a fixed set of enumerators is easy, but for more complex
-cases, it's useful to have a small utility wrapper.
-
-:f Data/Enumerator.hs
-|apidoc concatEnums|
-concatEnums :: Monad m => [Enumerator a m b] -> Enumerator a m b
-concatEnums = Prelude.foldl (>==>) returnI
-:
-
-:d Data.Enumerator exports
-, enumList
-, concatEnums
-:
-
-\subsection{Enumeratees}
-
-{\tt joinI} is used to ``flatten'' enumeratees, to transform them into an
-{\tt Iteratee}.
-
-:f Data/Enumerator.hs
-|apidoc joinI|
-joinI :: Monad m => Iteratee a m (Step a' m b) -> Iteratee a m b
-joinI outer = outer >>= check where
-	check (Continue k) = k EOF >>== \s -> case s of
-		Continue _ -> error "joinI: divergent iteratee"
-		_ -> check s
-	check (Yield x _) = return x
-	check (Error e) = throwError e
-:
-
-{\tt sequence} repeatedly runs its parameter to transform the stream.
-
-:f Data/Enumerator.hs
-|apidoc sequence|
-sequence :: Monad m => Iteratee ao m ai -> Enumeratee ao ai m b
-sequence i = loop where
-	loop = checkDone check
-	check k = isEOF >>= \f -> if f
-		then yield (Continue k) EOF
-		else step k
-	step k = i >>= \v -> k (Chunks [v]) >>== loop
-:
-
 :f Data/Enumerator.hs
 |apidoc isEOF|
 isEOF :: Monad m => Iteratee a m Bool
@@ -1523,8 +1534,6 @@ isEOF = continue $ \s -> case s of
 :
 
 :d Data.Enumerator exports
-, joinI
-, Data.Enumerator.sequence
 , isEOF
 :
 
