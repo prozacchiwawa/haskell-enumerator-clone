@@ -724,7 +724,30 @@ filterM p = concatMapM (\x -> CM.filterM p [x])
 , Data.Enumerator.filterM
 :
 
-\section{Binary IO}
+\section{IO}
+
+The core use case for enumerators is parsing data from a file or socket.
+As more input becomes available, it's read from the handle and run through
+the iteratee stack.
+
+Any exceptions thrown while reading or writing data are caught and reported
+using {\tt throwError}, so errors can be handled in pure iteratees.
+
+:d io module imports
+import Data.Enumerator
+import Data.Enumerator.Util
+import Control.Monad.IO.Class (MonadIO)
+import qualified Control.Exception as Exc
+import qualified System.IO as IO
+import System.IO.Error (isEOFError)
+import qualified Data.ByteString as B
+:
+
+\subsection{Binary IO}
+
+{\tt enumHandle} and {\tt enumFile} are rough analogues of
+{\tt hGetContents} and {\tt readFile} from the standard library, except
+they operate only in binary mode.
 
 :f Data/Enumerator/IO.hs
 |Data.Enumerator.IO module header|
@@ -733,13 +756,7 @@ module Data.Enumerator.IO
 	, enumFile
 	, iterHandle
 	) where
-import Data.Enumerator
-import Data.Enumerator.Util
-import Control.Monad.IO.Class (MonadIO)
-import qualified Control.Exception as Exc
-import qualified Data.ByteString as B
-import qualified System.IO as IO
-import System.IO.Error (isEOFError)
+|io module imports|
 :
 
 :f Data/Enumerator/IO.hs
@@ -791,35 +808,25 @@ iterHandle h = continue step where
 		in tryStep put (\_ -> continue step)
 :
 
-\section{Text handling}
-
-:f Data/Enumerator/Text.hs
-{-# LANGUAGE CPP #-}
-|Data.Enumerator.Text module header|
-module Data.Enumerator.Text (
-	|Data.Enumerator.Text exports|
-	) where
-|Data.Enumerator.Text imports|
-import Data.Enumerator
-import Data.Enumerator.Util
-:
-
 \subsection{Text IO}
 
-:d Data.Enumerator.Text exports
-  -- * Enumerators and iteratees
-  enumHandle
-, enumFile
-, iterHandle
-:
+Reading text is similar, but the enumerators have slightly different
+behavior -- instead of reading in fixed-size chunks of data, the text
+enumerators read in lines. This matches similar text-based {\sc api}s,
+such as Python's {\tt xreadlines()}.
 
-:d Data.Enumerator.Text imports
-import Control.Monad.IO.Class (MonadIO)
-import qualified Control.Exception as Exc
+:f Data/Enumerator/Text.hs
+|Data.Enumerator.Text module header|
+module Data.Enumerator.Text
+	( enumHandle
+	, enumFile
+	, iterHandle
+	|Data.Enumerator.Text exports|
+	) where
+|io module imports|
+|Data.Enumerator.Text imports|
 import qualified Data.Text as T
 import qualified Data.Text.IO as T
-import qualified System.IO as IO
-import System.IO.Error (isEOFError)
 :
 
 :f Data/Enumerator/Text.hs
@@ -862,7 +869,20 @@ iterHandle h = continue step where
 		in tryStep put (\_ -> continue step)
 :
 
-\subsection{Codecs}
+\section{Text codecs}
+
+Many protocols need the non-blocking input behavior of binary \io{}, but
+are defined in terms of unicode characters. The {\tt encode} and
+{\tt decode} enumeratees allow text-based protocols to be easily parsed
+from a binary input source.
+
+Most common codecs ({\sc utf-8}, {\sc iso-8859-1}, {\sc ascii}) are
+supported; more complex codecs can be implemented by bindings to libraries
+such as libicu.
+
+All of the codecs here are incremental; that is, they try to read as much
+data as possible, but no more. This allows iteratees to read partial data
+if the input stream contains invalid data.
 
 :d Data.Enumerator.Text exports
   -- * Codecs
@@ -870,14 +890,6 @@ iterHandle h = continue step where
 , encode
 , decode
 |text codec exports|
-:
-
-:d Data.Enumerator.Text imports
-import Control.Arrow (first)
-import Data.Bits ((.&.))
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.Text.Encoding as TE
 :
 
 :f Data/Enumerator/Text.hs
@@ -889,7 +901,9 @@ data Codec = Codec
 		-> (B.ByteString, Maybe (Exc.SomeException, T.Text))
 	, codecDecode
 		:: B.ByteString
-		-> (T.Text, Either (Exc.SomeException, B.ByteString) B.ByteString)
+		-> (T.Text, Either
+			(Exc.SomeException, B.ByteString)
+			B.ByteString)
 	}
 
 instance Show Codec where
@@ -906,17 +920,17 @@ encode codec = checkDone (continue . step) where
 	step k (Chunks xs) = loop k xs
 	
 	loop k [] = continue (step k)
-	loop k (x:xs) = do
-		let (bytes, extra) = codecEncode codec x
-		let extraChunks = Chunks $ case extra of
+	loop k (x:xs) = let
+		(bytes, extra) = codecEncode codec x
+		extraChunks = Chunks $ case extra of
 			Nothing -> xs
 			Just (_, text) -> text:xs
 		
-		let checkError k' = case extra of
+		checkError k' = case extra of
 			Nothing -> loop k' xs
 			Just (exc, _) -> throwError exc
 		
-		if B.null bytes
+		in if B.null bytes
 			then checkError k
 			else k (Chunks [bytes]) >>==
 				checkDoneEx extraChunks checkError
@@ -926,33 +940,83 @@ encode codec = checkDone (continue . step) where
 |apidoc decode|
 decode :: Monad m => Codec
        -> Enumeratee B.ByteString T.Text m b
-decode codec = loop B.empty where
-	loop acc | B.null acc = checkDone (continue . step acc)
-	loop acc = checkDoneEx (Chunks [acc]) (continue . step acc)
-	
+decode codec = checkDone (continue . step B.empty) where
 	step _   k EOF = yield (Continue k) EOF
-	step acc k (Chunks xs) = loop2 acc k xs
+	step acc k (Chunks xs) = loop acc k xs
 	
-	loop2 acc k [] = continue (step acc k)
-	loop2 acc k (x:xs) = do
-		let (text, extra) = codecDecode codec (B.append acc x)
-		let extraBytes = case extra of
-			Left (_, bytes) -> bytes
-			Right bytes -> bytes
+	loop acc k [] = continue (step acc k)
+	loop acc k (x:xs) = let
+		(text, extra) = codecDecode codec (B.append acc x)
+		extraChunks = Chunks (either snd id extra : xs)
 		
-		let extraChunks = Chunks (extraBytes:xs)
-		
-		let checkError k' = case extra of
+		checkError k' = case extra of
 			Left (exc, _) -> throwError exc
-			Right bytes -> loop2 bytes k' xs
+			Right bytes -> loop bytes k' xs
 		
-		if T.null text
+		in if T.null text
 			then checkError k
 			else k (Chunks [text]) >>==
 				checkDoneEx extraChunks checkError
 :
 
-\subsubsection{UTF-8}
+Most of the codecs here need to perform at least basic bitbashing, to
+calculate how many input bytes will be needed for the next character.
+
+:d Data.Enumerator.Text imports
+import Control.Arrow (first)
+import Data.Bits ((.&.), (.|.), shiftL)
+import Data.Char (ord)
+import Data.Word (Word8, Word16)
+import qualified Data.ByteString.Char8 as B8
+import qualified Data.Text.Encoding as TE
+:
+
+The variable-width decoders all follow the same basic pattern. First,
+they examine their input to calculate how many bytes the decoder
+function should accept. Next they try to decode it -- if the input
+is valid, decoding is finished.
+
+If the input is invalid, trying to decode the full input will throw
+an exception. When an exception is caught, decoding is passed off to
+{\tt splitSlowly} for a more careful parse. The input is reduced until
+the decoder can parse something, and the rest of the bytes are stored
+for later. An error will only be thrown if the iteratee requires input,
+but there are no valid bytes remaining.
+
+:f Data/Enumerator/Text.hs
+byteSplits :: B.ByteString -> [(B.ByteString, B.ByteString)]
+byteSplits bytes = loop (B.length bytes) where
+	loop 0 = [(B.empty, bytes)]
+	loop n = B.splitAt n bytes : loop (n - 1)
+:
+
+:d Data.Enumerator.Text imports
+import Data.Maybe (catMaybes)
+:
+
+:f Data/Enumerator/Text.hs
+splitSlowly :: (B.ByteString -> T.Text)
+            -> B.ByteString
+            -> (T.Text, Either
+            	(Exc.SomeException, B.ByteString)
+            	B.ByteString)
+splitSlowly dec bytes = valid where
+	valid = firstValid (Prelude.map decFirst splits)
+	splits = byteSplits bytes
+	firstValid = Prelude.head . catMaybes
+	tryDec = tryEvaluate . dec
+	
+	decFirst (a, b) = case tryDec a of
+		Left _ -> Nothing
+		Right text -> Just (text, case tryDec b of
+			Left exc -> Left (exc, b)
+			
+			-- this case shouldn't occur, since splitSlowly
+			-- is only called when parsing failed somewhere
+			Right _ -> Right B.empty)
+:
+
+\subsection{UTF-8}
 
 :d text codec exports
 , utf8
@@ -970,7 +1034,7 @@ utf8 = Codec name enc dec where
 :
 
 :d utf8 split bytes
-splitQuickly bytes = loop 0 >>= tryDecMaybe where
+splitQuickly bytes = loop 0 >>= maybeDecode where
 	|utf8 required bytes count|
 	maxN = B.length bytes
 	
@@ -997,16 +1061,11 @@ required x0
 	| otherwise           = 0
 :
 
-\subsubsection{UTF-16}
+\subsection{UTF-16}
 
 :d text codec exports
 , utf16_le
 , utf16_be
-:
-
-:d Data.Enumerator.Text imports
-import Data.Bits ((.|.), shiftL)
-import Data.Word (Word16)
 :
 
 :f Data/Enumerator/Text.hs
@@ -1032,35 +1091,41 @@ utf16_be = Codec name enc dec where
 :
 
 :d utf16-le split bytes
-splitQuickly bytes = tryDecMaybe (loop 0) where
+splitQuickly bytes = maybeDecode (loop 0) where
 	maxN = B.length bytes
 	
-	loop n |  n      == maxN = (TE.decodeUtf16LE bytes, B.empty)
+	loop n |  n      == maxN = decodeAll
 	       | (n + 1) == maxN = decodeTo n
 	loop n = let
-		req = utf16Required (B.index bytes 0) (B.index bytes 1)
+		req = utf16Required
+			(B.index bytes 0)
+			(B.index bytes 1)
 		decodeMore = loop $! n + req
 		in if n + req > maxN
 			then decodeTo n
 			else decodeMore
 	
 	decodeTo n = first TE.decodeUtf16LE (B.splitAt n bytes)
+	decodeAll = (TE.decodeUtf16LE bytes, B.empty)
 :
 
 :d utf16-be split bytes
-splitQuickly bytes = tryDecMaybe (loop 0) where
+splitQuickly bytes = maybeDecode (loop 0) where
 	maxN = B.length bytes
 	
-	loop n |  n      == maxN = (TE.decodeUtf16BE bytes, B.empty)
+	loop n |  n      == maxN = decodeAll
 	       | (n + 1) == maxN = decodeTo n
 	loop n = let
-		req = utf16Required (B.index bytes 1) (B.index bytes 0)
+		req = utf16Required
+			(B.index bytes 1)
+			(B.index bytes 0)
 		decodeMore = loop $! n + req
 		in if n + req > maxN
 			then decodeTo n
 			else decodeMore
 	
 	decodeTo n = first TE.decodeUtf16BE (B.splitAt n bytes)
+	decodeAll = (TE.decodeUtf16BE bytes, B.empty)
 :
 
 :f Data/Enumerator/Text.hs
@@ -1073,7 +1138,7 @@ utf16Required x0 x1 = required where
 	x = (fromIntegral x1 `shiftL` 8) .|. fromIntegral x0
 :
 
-\subsubsection{UTF-32}
+\subsection{UTF-32}
 
 :d text codec exports
 , utf32_le
@@ -1085,33 +1150,35 @@ utf32_le :: Codec
 utf32_le = Codec name enc dec where
 	name = T.pack "UTF-32-LE"
 	enc text = (TE.encodeUtf32LE text, Nothing)
-	dec bytes = case utf32SplitBytes TE.decodeUtf32LE bytes of
+	dec bs = case utf32SplitBytes TE.decodeUtf32LE bs of
 		Just (text, extra) -> (text, Right extra)
-		Nothing -> splitSlowly TE.decodeUtf32LE bytes
+		Nothing -> splitSlowly TE.decodeUtf32LE bs
 
 utf32_be :: Codec
 utf32_be = Codec name enc dec where
 	name = T.pack "UTF-32-BE"
 	enc text = (TE.encodeUtf32BE text, Nothing)
-	dec bytes = case utf32SplitBytes TE.decodeUtf32BE bytes of
+	dec bs = case utf32SplitBytes TE.decodeUtf32BE bs of
 		Just (text, extra) -> (text, Right extra)
-		Nothing -> splitSlowly TE.decodeUtf32BE bytes
+		Nothing -> splitSlowly TE.decodeUtf32BE bs
 :
 
 :f Data/Enumerator/Text.hs
 utf32SplitBytes :: (B.ByteString -> T.Text)
                 -> B.ByteString
                 -> Maybe (T.Text, B.ByteString)
-utf32SplitBytes dec bytes = tryDecMaybe (dec toDecode, extra) where
+utf32SplitBytes dec bytes = split where
+	split = maybeDecode (dec toDecode, extra)
 	len = B.length bytes
 	lenExtra = mod len 4
+	
 	lenToDecode = len - lenExtra
 	(toDecode, extra) = if lenExtra == 0
 		then (bytes, B.empty)
 		else B.splitAt lenToDecode bytes
 :
 
-\subsubsection{ASCII}
+\subsection{ASCII}
 
 :d text codec exports
 , ascii
@@ -1136,7 +1203,7 @@ ascii = Codec name enc dec where
 			else Left (illegalDec name (B.head unsafe), unsafe)
 :
 
-\subsubsection{ISO 8859-1}
+\subsection{ISO 8859-1}
 
 :d text codec exports
 , iso8859_1
@@ -1156,99 +1223,40 @@ iso8859_1 = Codec name enc dec where
 	dec bytes = (T.pack (B8.unpack bytes), Right B.empty)
 :
 
-\subsection{Text utility functions}
-
-{\tt text-0.11} changed some function names to appease a few bikeshedding
-idiots in -cafe; to support it, a bit of compatibility code is needed.
-
-I had a choice between using the preprocessor, or a separate module plus
-some Cabal magic. It turns out that {\tt cabal sdist} doesn't properly
-handle multiple source directories selected by flags, so the preprocessor
-is used for now.
-
-:f Data/Enumerator/Text.hs
-textSpanBy :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
-#if MIN_VERSION_text(0,11,0)
-textSpanBy = T.span
-#else
-textSpanBy = T.spanBy
-#endif
-:
-
-:d Data.Enumerator.Text imports
-import Prelude as Prelude
-import Numeric (showIntAtBase)
-import Data.Char (toUpper, intToDigit, ord)
-import Data.Word (Word8)
-import System.IO.Unsafe (unsafePerformIO)
-:
+\subsection{Encoding Utilities}
 
 :f Data/Enumerator/Text.hs
 illegalEnc :: T.Text -> Char -> Exc.SomeException
-illegalEnc name c = Exc.toException . Exc.ErrorCall $ msg "" where
-	len = Prelude.length
-	pad str | len str < 4 = Prelude.replicate (4 - len str) '0' ++ str
-	        | otherwise      = str
-	hex = "U+" ++ pad (showIntAtBase 16 (toUpper . intToDigit) (ord c) "")
-	msg = (s "Codec " . shows name . s " can't encode character " . s hex)
-	s = showString
+illegalEnc name c = Exc.toException . Exc.ErrorCall $
+	concat [ "Codec "
+	       , show name
+	       , " can't encode character "
+	       , reprChar c
+	       ]
 :
 
 :f Data/Enumerator/Text.hs
 illegalDec :: T.Text -> Word8 -> Exc.SomeException
-illegalDec name w = Exc.toException . Exc.ErrorCall $ msg "" where
-	len = Prelude.length
-	pad str | len str < 2 = Prelude.replicate (2 - len str) '0' ++ str
-	        | otherwise      = str
-	hex = "0x" ++ pad (showIntAtBase 16 (toUpper . intToDigit) w "")
-	msg = (s "Codec " . shows name . s " can't decode byte " . s hex)
-	s = showString
-:
-
-:f Data/Enumerator/Text.hs
-tryDecode :: (B.ByteString -> T.Text)
-          -> B.ByteString
-          -> Either Exc.SomeException T.Text
-tryDecode dec = unsafePerformIO . Exc.try . Exc.evaluate . dec
-:
-
-:f Data/Enumerator/Text.hs
-tryDecMaybe :: (a, b) -> Maybe (a, b)
-tryDecMaybe (a, b) = unsafePerformIO $ do
-	tried <- Exc.try (Exc.evaluate a)
-	return $ case tried of
-		Left exc -> const Nothing (exc :: Exc.SomeException)
-		Right _ -> Just (a, b)
-:
-
-:f Data/Enumerator/Text.hs
-byteSplits :: B.ByteString -> [(B.ByteString, B.ByteString)]
-byteSplits bytes = loop (B.length bytes) where
-	loop 0 = [(B.empty, bytes)]
-	loop n = B.splitAt n bytes : loop (n - 1)
+illegalDec name w = Exc.toException . Exc.ErrorCall $
+	concat [ "Codec "
+	       , show name
+	       , " can't decode byte  "
+	       , reprWord w
+	       ]
 :
 
 :d Data.Enumerator.Text imports
-import Data.Maybe (catMaybes)
+import System.IO.Unsafe (unsafePerformIO)
 :
 
 :f Data/Enumerator/Text.hs
-splitSlowly :: (B.ByteString -> T.Text)
-            -> B.ByteString
-            -> (T.Text, Either (Exc.SomeException, B.ByteString) B.ByteString)
-splitSlowly dec bytes = firstValid (Prelude.map decFirst splits) where
-	splits = byteSplits bytes
-	firstValid = Prelude.head . catMaybes
-	tryDec = tryDecode dec
-	
-	decFirst (a, b) = case tryDec a of
-		Left _ -> Nothing
-		Right text -> Just (text, case tryDec b of
-			Left exc -> Left (exc, b)
-			
-			-- this case shouldn't occur, since splitSlowly
-			-- is only called when parsing failed somewhere
-			Right _ -> Right B.empty)
+tryEvaluate :: a -> Either Exc.SomeException a
+tryEvaluate = unsafePerformIO . Exc.try . Exc.evaluate
+
+maybeDecode:: (a, b) -> Maybe (a, b)
+maybeDecode (a, b) = case tryEvaluate a of
+	Left _ -> Nothing
+	Right _ -> Just (a, b)
 :
 
 \section{Parser combinators}
@@ -1525,20 +1533,62 @@ isEOF = liftI $ \c -> case c of
 public modules, but not logically part of the {\tt enumerator} API.
 
 :f Data/Enumerator/Util.hs
+{-# LANGUAGE CPP #-}
 module Data.Enumerator.Util where
 import Data.Enumerator
+
+import Data.Char (toUpper, intToDigit, ord)
+import Data.Word (Word8)
+import qualified Data.Text as T
+
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Control.Exception as Exc
+import Numeric (showIntAtBase)
+:
 
+:f Data/Enumerator/Util.hs
 tryStep :: MonadIO m => IO t -> (t -> Iteratee a m b) -> Iteratee a m b
 tryStep get io = do
 	tried <- liftIO (Exc.try get)
 	case tried of
 		Right t -> io t
 		Left err -> throwError (err :: Exc.SomeException)
+:
 
-liftEither :: (Monad m, Exc.Exception e) => Either e b -> Iteratee a m b
-liftEither = either throwError return
+:f Data/Enumerator/Util.hs
+pad0 :: Int -> String -> String
+pad0 size str = padded where
+	len = Prelude.length str
+	padded = if len >= size
+		then str
+		else Prelude.replicate (size - len) '0' ++ str
+:
+
+:f Data/Enumerator/Util.hs
+reprChar :: Char -> String
+reprChar c = "U+" ++ (pad0 4 (showIntAtBase 16 (toUpper . intToDigit) (ord c) ""))
+:
+
+:f Data/Enumerator/Util.hs
+reprWord :: Word8 -> String
+reprWord w = "0x" ++ (pad0 2 (showIntAtBase 16 (toUpper . intToDigit) w ""))
+:
+
+{\tt text-0.11} changed some function names to appease a few bikeshedding
+idiots in -cafe; to support it, a bit of compatibility code is needed.
+
+I had a choice between using the preprocessor, or a separate module plus
+some Cabal magic. It turns out that {\tt cabal sdist} doesn't properly
+handle multiple source directories selected by flags, so the preprocessor
+is used for now.
+
+:f Data/Enumerator/Util.hs
+textSpanBy :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
+#if MIN_VERSION_text(0,11,0)
+textSpanBy = T.span
+#else
+textSpanBy = T.spanBy
+#endif
 :
 
 \onecolumn
