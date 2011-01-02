@@ -1269,75 +1269,74 @@ Attoparsec.
 :f Data/Enumerator.hs
 |apidoc head|
 head :: Monad m => Iteratee a m (Maybe a)
-head = liftI step where
-	step (Chunks []) = Continue $ returnI . step
-	step (Chunks (x:xs)) = Yield (Just x) (Chunks xs)
-	step EOF = Yield Nothing EOF
+head = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
+	loop EOF = yield Nothing EOF
 :
 
 :f Data/Enumerator.hs
 |apidoc peek|
 peek :: Monad m => Iteratee a m (Maybe a)
-peek = liftI step where
-	step (Chunks []) = Continue $ returnI . step
-	step chunk@(Chunks (x:_)) = Yield (Just x) chunk
-	step chunk = Yield Nothing chunk
+peek = continue loop where
+	loop (Chunks []) = continue loop
+	loop chunk@(Chunks (x:_)) = yield (Just x) chunk
+	loop EOF = yield Nothing EOF
 :
 
 :f Data/Enumerator.hs
 |apidoc last|
 last :: Monad m => Iteratee a m (Maybe a)
-last = liftI $ step Nothing where
-	step ret (Chunks xs) = let
-		ret' = case xs of
-			[] -> ret
-			_  -> Just $ Prelude.last xs
-		in Continue $ returnI . step ret'
-	step ret EOF = Yield ret EOF
+last = continue (loop Nothing) where
+	loop ret (Chunks xs) = continue . loop $ case xs of
+		[] -> ret
+		_ -> Just (Prelude.last xs)
+	loop ret EOF = yield ret EOF
 :
 
 :f Data/Enumerator.hs
 |apidoc length|
 length :: Monad m => Iteratee a m Integer
-length = liftI $ step 0 where
-	step n (Chunks xs) = Continue $ returnI . step (n + genericLength xs)
-	step n EOF = Yield n EOF
+length = continue (loop 0) where
+	len = genericLength
+	loop n (Chunks xs) = continue (loop (n + len xs))
+	loop n EOF = yield n EOF
 :
 
 :f Data/Enumerator.hs
 |apidoc drop|
 drop :: Monad m => Integer -> Iteratee a m ()
 drop 0 = return ()
-drop n = liftI $ step n where
-	step n' (Chunks xs)
-		| len xs < n' = Continue $ returnI . step (n' - len xs)
-		| otherwise   = Yield () $ Chunks $ genericDrop n' xs
-	step _ EOF = Yield () EOF
+drop n = continue (loop n) where
 	len = genericLength
+	loop n' (Chunks xs)
+		| len xs < n' = continue (loop (n' - len xs))
+		| otherwise   = yield () (Chunks (genericDrop n' xs))
+	loop _ EOF = yield () EOF
 :
 
 :f Data/Enumerator.hs
 |apidoc dropWhile|
 dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
-dropWhile p = liftI step where
-	step (Chunks xs) = case Prelude.dropWhile p xs of
-		[] -> Continue $ returnI . step
-		xs' -> Yield () $ Chunks xs'
-	step EOF = Yield () EOF
+dropWhile p = continue loop where
+	loop (Chunks xs) = case Prelude.dropWhile p xs of
+		[] -> continue loop
+		xs' -> yield () (Chunks xs')
+	loop EOF = yield () EOF
 :
 
 :f Data/Enumerator.hs
 |apidoc span|
 span :: Monad m => (a -> Bool) -> Iteratee a m [a]
-span f = liftI $ step [] where
-	step acc (Chunks xs) = case Prelude.span f xs of
-		(_, []) -> Continue $ returnI . step (acc ++ xs)
-		(head', tail') -> Yield (acc ++ head') (Chunks tail')
-	step acc EOF = Yield acc EOF
+span p = continue (loop []) where
+	loop acc (Chunks xs) = case Prelude.span p xs of
+		(_, []) -> continue (loop (acc ++ xs))
+		(head', tail') -> yield (acc ++ head') (Chunks tail')
+	loop acc EOF = yield acc EOF
 
 |apidoc break|
 break :: Monad m => (a -> Bool) -> Iteratee a m [a]
-break p = Data.Enumerator.span $ not . p
+break p = Data.Enumerator.span (not . p)
 :
 
 :d Data.Enumerator exports
@@ -1518,9 +1517,9 @@ sequence i = loop where
 :f Data/Enumerator.hs
 |apidoc isEOF|
 isEOF :: Monad m => Iteratee a m Bool
-isEOF = liftI $ \c -> case c of
-	EOF -> Yield True c
-	_   -> Yield False c
+isEOF = continue $ \s -> case s of
+	EOF -> yield True s
+	_ -> yield False s
 :
 
 :d Data.Enumerator exports
