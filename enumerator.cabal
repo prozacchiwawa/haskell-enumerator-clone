@@ -38,8 +38,17 @@ description:
   be both simple and efficient.
 
 extra-source-files:
-  Examples/*.hs
+  enumerator.anansi
   readme.txt
+  --
+  examples/cat.hs
+  examples/wc.hs
+  --
+  scripts/cabal-dist
+  scripts/run-tests
+  --
+  tests/enumerator-tests.cabal
+  tests/Properties.hs
 
 source-repository head
   type: bazaar

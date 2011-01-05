@@ -1,0 +1,17 @@
+name: enumerator-tests
+version: 0
+build-type: Simple
+cabal-version: >= 1.6
+
+executable enumerator_tests
+  main-is: Properties.hs
+
+  build-depends:
+      base > 3 && < 5
+    , transformers
+    , bytestring
+    , text
+    , enumerator
+    , QuickCheck == 2.4.*
+    , test-framework >= 0.2 && < 0.4
+    , test-framework-quickcheck2 == 0.2.9

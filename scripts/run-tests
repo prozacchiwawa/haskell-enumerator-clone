@@ -1,0 +1,21 @@
+#!/bin/bash
+if [ ! -f 'enumerator.cabal' ]; then
+	echo -n "Can't find enumerator.cabal; please run this script as"
+	echo -n " ./scripts/make-tests from within the enumerator source"
+	echo " directory"
+	exit 1
+fi
+
+CABAL=$(which cabal-dev)
+if [ -z "$CABAL" ]; then
+	echo -n "Can't find 'cabal-dev'; cowardly refusing to fuck with the"
+	echo " global package database"
+fi
+
+$CABAL install
+
+pushd tests
+$CABAL -s ../cabal-dev install
+popd
+
+cabal-dev/bin/enumerator_tests
