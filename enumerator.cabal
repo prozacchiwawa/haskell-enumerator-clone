@@ -15,7 +15,27 @@ bug-reports: mailto:jmillikin@gmail.com
 tested-with: GHC==6.12.1
 
 description:
-  Based on Oleg Kiselyov's IterateeM: <http://okmij.org/ftp/Haskell/Iteratee/IterateeM.hs>
+  Typical buffer&#x2013;based incremental I/O is based around a single loop,
+  which reads data from some source (such as a socket or file), transforms
+  it, and generates one or more outputs (such as a line count, HTTP
+  responses, or modified file). Although efficient and safe, these loops are
+  all single&#x2013;purpose; it is difficult or impossible to compose
+  buffer&#x2013;based processing loops.
+  .
+  Haskell&#x2019;s concept of &#x201C;lazy I/O&#x201D; allows pure code to
+  operate on data from an external source. However, lazy I/O has several
+  shortcomings. Most notably, resources such as memory and file handles can
+  be retained for arbitrarily long periods of time, causing unpredictable
+  performance and error conditions.
+  .
+  Enumerators are an efficient, predictable, and safe alternative to lazy
+  I/O. Discovered by Oleg Kiselyov, they allow large datasets to be processed
+  in near&#x2013;constant space by pure code. Although somewhat more complex
+  to write, using enumerators instead of lazy I/O produces more correct
+  programs.
+  .
+  This library contains an enumerator implementation for Haskell, designed to
+  be both simple and efficient.
 
 extra-source-files:
   Examples/*.hs
