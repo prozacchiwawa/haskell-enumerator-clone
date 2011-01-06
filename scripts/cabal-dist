@@ -26,10 +26,10 @@ VERSION=$(awk '/^version:/{print $2}' enumerator.cabal)
 echo "Building dist for enumerator-$VERSION using $CABAL"
 
 rm -rf hs dist
-anansi --noline -o hs enumerator.anansi
-$CABAL configure
-$CABAL build
-$CABAL sdist
+anansi --noline -o hs src/enumerator.anansi || exit 1
+$CABAL configure || exit 1
+$CABAL build || exit 1
+$CABAL sdist || exit 1
 mv "dist/enumerator-$VERSION.tar.gz" "./enumerator_$VERSION.tar.gz"
 if [ -n "$XZ" ]; then
   gzip -dfc "enumerator_$VERSION.tar.gz" > "enumerator_$VERSION.tar"
@@ -38,9 +38,9 @@ fi
 
 if [ -n "$XELATEX" ]; then
   rm -f *.{aux,tex,idx,log,out,toc,pdf}
-  anansi -w -l latex-noweb -o enumerator.tex enumerator.anansi
-  xelatex enumerator.tex > /dev/null
-  xelatex enumerator.tex > /dev/null
+  anansi -w -l latex-noweb -o enumerator.tex src/enumerator.anansi || exit 1
+  xelatex enumerator.tex > /dev/null || exit 1
+  xelatex enumerator.tex > /dev/null || exit 1
 
   mv enumerator.pdf "enumerator_$VERSION.pdf"
 fi

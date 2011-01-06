@@ -11,11 +11,21 @@ if [ -z "$CABAL" ]; then
 	echo -n "Can't find 'cabal-dev'; cowardly refusing to fuck with the"
 	echo " global package database"
 fi
+PATH="$PATH:$PWD/cabal-dev/bin/"
 
-$CABAL install
+ANANSI=$(which anansi)
+if [ -z "$ANANSI" ]; then
+	echo "Can't find 'anansi' executable; make sure it exists on your "'$PATH'
+	exit 1
+fi
+
+rm -rf hs dist
+anansi -o hs src/enumerator.anansi || exit 1
+
+$CABAL install || exit 1
 
 pushd tests
-$CABAL -s ../cabal-dev install
+$CABAL -s ../cabal-dev install || exit 1
 popd
 
 cabal-dev/bin/enumerator_tests

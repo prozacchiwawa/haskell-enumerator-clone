@@ -1,0 +1,267 @@
+\section{Primitives}
+
+\subsection{Error handling}
+
+Most real-world applications have to deal with error conditions; however,
+libraries have various ways of reporting errors. Some throw exceptions,
+others use callbacks, and many just use {\tt Either}. Heterogeneous error
+handling makes composing code very difficult; therefore, all
+enumerator-based code simply uses the standard {\tt Control.Exception}
+module and its types.
+
+Instances for the {\tt MonadError} class are provided in auxiliary
+libraries, to avoid extraneous dependencies.
+
+:f Data/Enumerator.hs
+|apidoc throwError|
+throwError :: (Monad m, Exc.Exception e) => e
+           -> Iteratee a m b
+throwError exc = returnI (Error (Exc.toException exc))
+:
+
+Handling errors has a caveat: any input consumed before the error was
+thrown can't be recovered. If an iteratee needs to continue parsing after an
+error, either buffer the input stream or use a separate framing mechanism.
+
+This limitation means that {\tt catchError} is mostly only useful for
+transforming or logging errors, not ignoring them.
+
+:f Data/Enumerator.hs
+catchError :: Monad m => Iteratee a m b
+           -> (Exc.SomeException -> Iteratee a m b)
+           -> Iteratee a m b
+catchError iter h = iter >>== step where
+	step (Yield b as) = yield b as
+	step (Error err) = h err
+	step (Continue k) = continue (\s -> k s >>== step)
+:
+
+:d Data.Enumerator exports
+, throwError
+, catchError
+:
+
+\subsection{Iteratees}
+
+Since iteratees are semantically a left-fold, there are many existing
+folds that can be lifted to iteratees. The {\tt foldl}, {\tt foldl'}, and
+{\tt foldM} functions work like their standard library namesakes, but
+construct iteratees instead. These iteratees are not as complex as what can
+be created using {\tt Yield} and {\tt Continue}, but cover many common cases.
+
+Each fold consumes input from the stream until {\sc eof}, when it yields its
+current accumulator.
+
+:d Data.Enumerator imports
+import Data.List (foldl')
+:
+
+:f Data/Enumerator.hs
+|apidoc foldl|
+foldl :: Monad m => (b -> a -> b) -> b
+      -> Iteratee a m b
+foldl step = continue . loop where
+	fold = Prelude.foldl step
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (fold acc xs))
+		EOF -> yield acc EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc foldl'|
+foldl' :: Monad m => (b -> a -> b) -> b
+       -> Iteratee a m b
+foldl' step = continue . loop where
+	fold = Data.List.foldl' step
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (fold acc xs))
+		EOF -> yield acc EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc foldM|
+foldM :: Monad m => (b -> a -> m b) -> b
+      -> Iteratee a m b
+foldM step = continue . loop where
+	fold acc = lift . CM.foldM step acc
+	
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> fold acc xs >>= continue . loop
+		EOF -> yield acc EOF
+:
+
+:d Data.Enumerator exports
+, Data.Enumerator.foldl
+, Data.Enumerator.foldl'
+, Data.Enumerator.foldM
+:
+
+\subsection{Enumerators}
+
+At their simplest, enumerators just check to see whether their received step
+can accept any more input. If so, input is generated somehow, fed to the step,
+and its result checked again. Most enumerators are defined using a
+worker/wrapper pair, for efficiency and readability.
+
+Here we define a number of enumerators based on functions from
+{\tt Data.List}. Each generator has a monadic and non-monadic form, to
+demonstrate how side effects might be ordered with respect to the iteratee's
+processing.
+
+{\tt iterate} and {\tt iterateM} apply a function repeatedly to the base
+input, passing the results through as a stream.
+
+:f Data/Enumerator.hs
+iterate :: Monad m => (a -> a) -> a -> Enumerator a m b
+iterate f = loop where
+	loop a (Continue k) = k (Chunks [a]) >>== loop (f a)
+	loop _ step = returnI step
+:
+
+:f Data/Enumerator.hs
+iterateM :: Monad m => (a -> m a) -> a
+         -> Enumerator a m b
+iterateM f base = loop (return base) where
+	loop m_a (Continue k) = do
+		a <- lift m_a
+		k (Chunks [a]) >>== loop (f a)
+	loop _ step = returnI step
+:
+
+{\tt repeat} and {\tt repeatM} create infinite streams, where each input
+is a single value.
+
+:f Data/Enumerator.hs
+repeat :: Monad m => a -> Enumerator a m b
+repeat a = Data.Enumerator.iterate (const a) a
+:
+
+:f Data/Enumerator.hs
+repeatM :: Monad m => m a -> Enumerator a m b
+repeatM m_a step = do
+	a <- lift m_a
+	iterateM (const m_a) a step
+:
+
+{\tt replicate} and {\tt replicateM} create streams containing a given
+quantity of the input value.
+
+:f Data/Enumerator.hs
+replicateM :: Monad m => Integer -> m a
+           -> Enumerator a m b
+replicateM maxCount getNext = loop maxCount where
+	loop 0 step = returnI step
+	loop n (Continue k) = do
+		next <- lift getNext
+		k (Chunks [next]) >>== loop (n - 1)
+	loop _ step = returnI step
+:
+
+:f Data/Enumerator.hs
+replicate :: Monad m => Integer -> a
+          -> Enumerator a m b
+replicate maxCount a = replicateM maxCount (return a)
+:
+
+{\tt generateM} runs a monadic computation until it returns {\tt Nothing},
+which signals the end of enumeration.
+
+Note that when the enumerator is finished, it does not send {\tt EOF} to
+the iteratee. Instead, it returns a continuation, so additional enumerators
+may add their own input to the stream.
+
+:f Data/Enumerator.hs
+generateM :: Monad m => m (Maybe a)
+          -> Enumerator a m b
+generateM getNext = loop where
+	loop (Continue k) = do
+		next <- lift getNext
+		case next of
+			Nothing -> continue k
+			Just x -> k (Chunks [x]) >>== loop
+	loop step = returnI step
+:
+
+:d Data.Enumerator exports
+, Data.Enumerator.iterate
+, iterateM
+, Data.Enumerator.repeat
+, repeatM
+, Data.Enumerator.replicate
+, replicateM
+, generateM
+:
+
+\subsection{Enumeratees}
+
+Enumeratees are conceptually similar to a monadic {\tt concatMap}; each
+outer input element is converted to a list of inner inputs, which are passed
+to the inner iteratee. Error handling and performance considerations
+make most real-life enumeratees more complex, but some don't need the extra
+design.
+
+The {\tt checkDone} and {\tt checkDoneEx} functions referenced here are
+defined later, with other utilities.
+
+:f Data/Enumerator.hs
+concatMapM :: Monad m => (ao -> m [ai])
+           -> Enumeratee ao ai m b
+concatMapM f = checkDone (continue . step) where
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks xs) = loop k xs
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = do
+		fx <- lift (f x)
+		k (Chunks fx) >>==
+			checkDoneEx (Chunks xs) (\k' -> loop k' xs)
+:
+
+Once {\tt concatMapM} is defined, similar enumeratees can be easily created
+via small wrappers.
+
+:d excluded Prelude imports
+concatMap,
+:
+
+:f Data/Enumerator.hs
+concatMap :: Monad m => (ao -> [ai])
+          -> Enumeratee ao ai m b
+concatMap f = concatMapM (return . f)
+:
+
+:f Data/Enumerator.hs
+map :: Monad m => (ao -> ai)
+    -> Enumeratee ao ai m b
+map f = concatMap (\x -> Prelude.map f [x])
+:
+
+:f Data/Enumerator.hs
+filter :: Monad m => (a -> Bool)
+       -> Enumeratee a a m b
+filter p = concatMap (\x -> Prelude.filter p [x])
+:
+
+:f Data/Enumerator.hs
+mapM :: Monad m => (ao -> m ai)
+     -> Enumeratee ao ai m b
+mapM f = concatMapM (\x -> Prelude.mapM f [x])
+:
+
+:f Data/Enumerator.hs
+filterM :: Monad m => (a -> m Bool)
+        -> Enumeratee a a m b
+filterM p = concatMapM (\x -> CM.filterM p [x])
+:
+
+:d Data.Enumerator exports
+, Data.Enumerator.map
+, Data.Enumerator.concatMap
+, Data.Enumerator.filter
+, Data.Enumerator.mapM
+, concatMapM
+, Data.Enumerator.filterM
+:

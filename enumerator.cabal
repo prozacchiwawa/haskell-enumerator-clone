@@ -38,8 +38,17 @@ description:
   be both simple and efficient.
 
 extra-source-files:
-  enumerator.anansi
   readme.txt
+  --
+  src/api-docs.anansi
+  src/codecs.anansi
+  src/enumerator.anansi
+  src/io.anansi
+  src/primitives.anansi
+  src/text.anansi
+  src/title-todo.anansi
+  src/types.anansi
+  src/util.anansi
   --
   examples/cat.hs
   examples/wc.hs
