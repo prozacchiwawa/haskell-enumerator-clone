@@ -1,0 +1,100 @@
+\section{Binary}
+
+:f Data/Enumerator/Binary.hs
+|Data.Enumerator.Binary module header|
+module Data.Enumerator.Binary (
+	|Data.Enumerator.Binary exports|
+	) where
+import Data.Enumerator
+import qualified Data.ByteString as B
+|Data.Enumerator.Binary imports|
+:
+
+\subsection{IO}
+
+{\tt enumHandle} and {\tt enumFile} are rough analogues of
+{\tt hGetContents} and {\tt readFile} from the standard library, except
+they operate only in binary mode.
+
+Any exceptions thrown while reading or writing data are caught and reported
+using {\tt throwError}, so errors can be handled in pure iteratees.
+
+:d Data.Enumerator.Binary imports
+import Data.Enumerator.Util (tryStep)
+import qualified Control.Exception as Exc
+import Control.Monad.IO.Class (MonadIO)
+import qualified System.IO as IO
+import System.IO.Error (isEOFError)
+:
+
+:f Data/Enumerator/Binary.hs
+|apidoc enumHandle|
+enumHandle :: MonadIO m
+           => Integer -- ^ Buffer size
+           -> IO.Handle
+           -> Enumerator B.ByteString m b
+enumHandle bufferSize h = loop where
+	loop (Continue k) = withBytes $ \bytes ->
+		if B.null bytes
+			then continue k
+			else k (Chunks [bytes]) >>== loop
+	
+	loop step = returnI step
+	
+	intSize = fromInteger bufferSize
+	withBytes = tryStep $ do
+		hasInput <- Exc.catch
+			(IO.hWaitForInput h (-1))
+			(\err -> if isEOFError err
+				then return False
+				else Exc.throwIO err)
+		if hasInput
+			then B.hGetNonBlocking h intSize
+			else return B.empty
+:
+
+:f Data/Enumerator/Binary.hs
+|apidoc enumFile|
+enumFile :: FilePath -> Enumerator B.ByteString IO b
+enumFile path = enum where
+	withHandle = tryStep (IO.openBinaryFile path IO.ReadMode)
+	enum step = withHandle $ \h -> do
+		Iteratee $ Exc.finally
+			(runIteratee (enumHandle 4096 h step))
+			(IO.hClose h)
+:
+
+:f Data/Enumerator/Binary.hs
+|apidoc iterHandle|
+iterHandle :: MonadIO m => IO.Handle
+           -> Iteratee B.ByteString m ()
+iterHandle h = continue step where
+	step EOF = yield () EOF
+	step (Chunks []) = continue step
+	step (Chunks bytes) = let
+		put = mapM_ (B.hPut h) bytes
+		in tryStep put (\_ -> continue step)
+:
+
+:d Data.Enumerator.Binary exports
+  -- * Binary IO
+  enumHandle
+, enumFile
+, iterHandle
+:
+
+\subsection{Compatibility}
+
+For compatibility with older versions of this library, some functions in
+{\tt Data.Enumerator.Binary} are re-exported from {\tt Data.Enumerator.IO}.
+
+:f Data/Enumerator/IO.hs
+|Data.Enumerator.IO module header|
+module Data.Enumerator.IO
+	{-# DEPRECATED "use Data.Enumerator.Binary instead" #-}
+	( enumHandle
+	, enumFile
+	, iterHandle
+	) where
+import Data.Enumerator.Binary
+:

@@ -41,9 +41,8 @@ extra-source-files:
   readme.txt
   --
   src/api-docs.anansi
-  src/codecs.anansi
+  src/binary.anansi
   src/enumerator.anansi
-  src/io.anansi
   src/primitives.anansi
   src/text.anansi
   src/title-todo.anansi
@@ -82,8 +81,9 @@ library
 
   exposed-modules:
     Data.Enumerator
-    Data.Enumerator.IO
+    Data.Enumerator.Binary
     Data.Enumerator.Text
+    Data.Enumerator.IO
 
   other-modules:
     Data.Enumerator.Util

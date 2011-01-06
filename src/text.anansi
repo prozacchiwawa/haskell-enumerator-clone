@@ -1,4 +1,80 @@
-\section{Text codecs}
+\section{Text}
+
+:f Data/Enumerator/Text.hs
+|Data.Enumerator.Text module header|
+module Data.Enumerator.Text (
+	|Data.Enumerator.Text exports|
+	) where
+import Data.Enumerator
+import qualified Data.Text as T
+|Data.Enumerator.Text imports|
+:
+
+\subsection{IO}
+
+Reading text is similar to reading bytes, but the enumerators have slightly
+different behavior -- instead of reading in fixed-size chunks of data, the
+text enumerators read in lines. This matches similar text-based {\sc api}s,
+such as Python's {\tt xreadlines()}.
+
+:d Data.Enumerator.Text imports
+import Data.Enumerator.Util (tryStep)
+import qualified Data.Text.IO as TIO
+
+import qualified Control.Exception as Exc
+import Control.Monad.IO.Class (MonadIO)
+import qualified System.IO as IO
+import System.IO.Error (isEOFError)
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc enumHandle (text)|
+enumHandle :: MonadIO m => IO.Handle
+           -> Enumerator T.Text m b
+enumHandle h = loop where
+	loop (Continue k) = withText $ \maybeText ->
+		case maybeText of
+			Nothing -> continue k
+			Just text -> k (Chunks [text]) >>== loop
+	
+	loop step = returnI step
+	withText = tryStep $ Exc.catch
+		(Just `fmap` TIO.hGetLine h)
+		(\err -> if isEOFError err
+			then return Nothing
+			else Exc.throwIO err)
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc enumFile (text)|
+enumFile :: FilePath -> Enumerator T.Text IO b
+enumFile path = enum where
+	withHandle = tryStep (IO.openFile path IO.ReadMode)
+	enum step = withHandle $ \h -> Iteratee $ Exc.finally
+		(runIteratee (enumHandle h step))
+		(IO.hClose h)
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc iterHandle (text)|
+iterHandle :: MonadIO m => IO.Handle
+           -> Iteratee T.Text m ()
+iterHandle h = continue step where
+	step EOF = yield () EOF
+	step (Chunks []) = continue step
+	step (Chunks chunks) = let
+		put = mapM_ (TIO.hPutStr h) chunks
+		in tryStep put (\_ -> continue step)
+:
+
+:d Data.Enumerator.Text exports
+  -- * Text IO
+  enumHandle
+, enumFile
+, iterHandle
+:
+
+\subsection{Codecs}
 
 Many protocols need the non-blocking input behavior of binary \io{}, but
 are defined in terms of unicode characters. The {\tt encode} and
@@ -12,6 +88,11 @@ such as libicu.
 All of the codecs here are incremental; that is, they try to read as much
 data as possible, but no more. This allows iteratees to read partial data
 if the input stream contains invalid data.
+
+:d Data.Enumerator.Text imports
+import qualified Data.ByteString as B
+import Data.Enumerator.Util (textSpanBy, reprWord, reprChar)
+:
 
 :d Data.Enumerator.Text exports
   -- * Codecs

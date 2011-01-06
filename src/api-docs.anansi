@@ -245,17 +245,17 @@ API docs for these are still TODO
 -- printing empty chunks.
 :
 
-:d Data.Enumerator.IO module header
+:d Data.Enumerator.Binary module header
 -----------------------------------------------------------------------------
 -- |
--- Module: Data.Enumerator.IO
+-- Module: Data.Enumerator.Binary
 -- Copyright: 2010 John Millikin
 -- License: MIT
 --
 -- Maintainer: jmillikin@gmail.com
 -- Portability: portable
 --
--- Enumerator-based IO
+-- Enumerator-based binary IO and processing
 --
 -----------------------------------------------------------------------------
 :
@@ -334,3 +334,19 @@ API docs for these are still TODO
 
 :d apidoc decode
 :
+
+:d Data.Enumerator.IO module header
+-----------------------------------------------------------------------------
+-- |
+-- Module: Data.Enumerator.IO
+-- Copyright: 2010 John Millikin
+-- License: MIT
+--
+-- Maintainer: jmillikin@gmail.com
+-- Portability: portable
+--
+-- Deprecated: use 'Data.Enumerator.IO' instead
+--
+-----------------------------------------------------------------------------
+:
+

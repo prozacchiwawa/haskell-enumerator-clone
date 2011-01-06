@@ -66,7 +66,7 @@ be both simple and efficient.
 :include types.anansi
 :include primitives.anansi
 :include title-todo.anansi
-:include io.anansi
+:include binary.anansi
 :include text.anansi
 :include util.anansi
 :include api-docs.anansi
