@@ -1519,11 +1519,25 @@ liftI :: Monad m => (Stream a -> Step a m b) -> Iteratee a m b
 liftI k = continue (\stream -> returnI (k stream))
 :
 
+:f Data/Enumerator.hs
+liftFoldL :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+liftFoldL = Data.Enumerator.foldl
+
+liftFoldL' :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+liftFoldL' = Data.Enumerator.foldl'
+
+liftFoldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
+liftFoldM = Data.Enumerator.foldM
+:
+
 :d Data.Enumerator exports
 , checkDone
 , checkDoneEx
 , liftTrans
 , liftI
+, liftFoldL
+, liftFoldL'
+, liftFoldM
 :
 
 :f Data/Enumerator.hs

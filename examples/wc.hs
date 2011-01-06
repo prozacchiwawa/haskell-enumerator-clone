@@ -32,7 +32,7 @@ import System.Exit
 iterBytes :: Monad m => Iteratee B.ByteString m Integer
 iterBytes = continue (step 0) where
 	step acc EOF = yield acc EOF
-	step acc (Chunks xs) = continue $ step $! foldl' foldStep acc xs
+	step acc (Chunks xs) = continue $ step $! Data.List.foldl' foldStep acc xs
 	foldStep acc bytes = acc + toInteger (B.length bytes)
 
 -- iterLines is similar, except it only counts newlines ('\n')
