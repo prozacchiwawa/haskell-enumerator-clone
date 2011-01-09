@@ -227,7 +227,7 @@ splitSlowly dec bytes = valid where
 			Right _ -> Right B.empty)
 :
 
-\subsection{UTF-8}
+\subsubsection{UTF-8}
 
 :d text codec exports
 , utf8
@@ -272,7 +272,7 @@ required x0
 	| otherwise           = 0
 :
 
-\subsection{UTF-16}
+\subsubsection{UTF-16}
 
 :d text codec exports
 , utf16_le
@@ -349,7 +349,7 @@ utf16Required x0 x1 = required where
 	x = (fromIntegral x1 `shiftL` 8) .|. fromIntegral x0
 :
 
-\subsection{UTF-32}
+\subsubsection{UTF-32}
 
 :d text codec exports
 , utf32_le
@@ -389,7 +389,7 @@ utf32SplitBytes dec bytes = split where
 		else B.splitAt lenToDecode bytes
 :
 
-\subsection{ASCII}
+\subsubsection{ASCII}
 
 :d text codec exports
 , ascii
@@ -414,7 +414,7 @@ ascii = Codec name enc dec where
 			else Left (illegalDec name (B.head unsafe), unsafe)
 :
 
-\subsection{ISO 8859-1}
+\subsubsection{ISO 8859-1}
 
 :d text codec exports
 , iso8859_1
