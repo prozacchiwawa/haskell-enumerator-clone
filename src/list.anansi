@@ -15,7 +15,7 @@ import qualified Data.List as L
 |apidoc head|
 head :: Monad m => Iteratee a m (Maybe a)
 head = continue loop where
-	loop (Chunks []) = continue loop
+	loop (Chunks []) = head
 	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
 	loop EOF = yield Nothing EOF
 :
@@ -27,7 +27,7 @@ drop 0 = return ()
 drop n = continue (loop n) where
 	len = L.genericLength
 	loop n' (Chunks xs)
-		| len xs < n' = continue (loop (n' - len xs))
+		| len xs < n' = drop (n' - len xs)
 		| otherwise   = yield () (Chunks (L.genericDrop n' xs))
 	loop _ EOF = yield () EOF
 :
