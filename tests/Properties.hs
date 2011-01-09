@@ -455,6 +455,7 @@ test_ListAnalogues = F.testGroup "list analogues"
 	, test_ListTake
 	-- , test_ListPeek
 	, test_ListRequire
+	, test_ListIsolate
 	]
 
 test_ListConsume :: F.Test
@@ -529,6 +530,22 @@ test_ListRequire = testProperty "List.require" prop where
 		iter = E.enumList 1 xs $$ do
 			EL.require n
 			EL.consume
+
+test_ListIsolate :: F.Test
+test_ListIsolate = testProperty "List.isolate" prop where
+	prop :: Positive Integer -> [A] -> Bool
+	prop (Positive n) xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = case xs of
+			[] -> (Nothing, [])
+			(x:[]) -> (Just x, [])
+			(x:_:xs') -> (Just x, xs')
+		
+		iter = E.enumList 1 xs $$ do
+			x <- E.joinI (EL.isolate 2 $$ EL.head)
+			extra <- E.consume
+			return (x, extra)
+
 -- }}}
 
 -- Specific functions

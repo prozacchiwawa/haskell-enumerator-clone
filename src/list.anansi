@@ -107,6 +107,30 @@ require n = continue (loop id n) where
 	loop _ _ EOF = throwError (ErrorCall "require: Unexpected EOF")
 :
 
+Note: {\tt isolate} has some odd behavior regarding extra input in the
+inner iteratee. Depending on how large the chunks are, extra input might
+be returned in the {\tt Step}, or dropped.
+
+This doesn't matter if {\tt joinI} is used, but might if a user is poking
+around inside the {\tt Step}. Eventually, enumeratees will be modified to
+avoid exposing its internal iteratee state.
+
+:f Data/Enumerator/List.hs
+isolate :: Monad m => Integer -> Enumeratee a a m b
+isolate 0 step = return step
+isolate n (Continue k) = continue loop where
+	len = L.genericLength
+	
+	loop (Chunks []) = continue loop
+	loop (Chunks xs)
+		| len xs <= n = k (Chunks xs) >>== isolate (n - len xs)
+		| otherwise = let
+			(s1, s2) = L.genericSplitAt n xs
+			in k (Chunks s1) >>== (\step -> yield step (Chunks s2))
+	loop EOF = k EOF >>== (\step -> yield step EOF)
+isolate n step = drop n >> return step
+:
+
 :d Data.Enumerator.List exports
   head
 , drop
@@ -115,4 +139,6 @@ require n = continue (loop id n) where
 , takeWhile
 , consume
 , require
+, isolate
 :
+
