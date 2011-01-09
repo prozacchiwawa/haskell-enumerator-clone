@@ -6,6 +6,7 @@ module Main (tests, main) where
 import Data.Enumerator (($$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.Text as ET
+import qualified Data.Enumerator.List as EL
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
@@ -31,6 +32,7 @@ tests =
 	[ test_StreamInstances
 	, test_Primitives
 	, test_Text
+	, test_ListAnalogues
 	, test_Functions
 	]
 
@@ -441,6 +443,92 @@ test_Decode_UTF32_LE = F.testGroup "UTF-32-LE" props where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0xFF, 0xFF, 0xFF, 0xFF]]
 
+-- }}}
+
+-- List analogues {{{
+
+test_ListAnalogues :: F.Test
+test_ListAnalogues = F.testGroup "list analogues"
+	[ test_ListConsume
+	, test_ListHead
+	, test_ListDrop
+	, test_ListTake
+	-- , test_ListPeek
+	, test_ListRequire
+	]
+
+test_ListConsume :: F.Test
+test_ListConsume = testProperty "List.consume" prop where
+	prop :: [A] -> Bool
+	prop xs = result == xs where
+		result = runIdentity (E.run_ iter)
+		iter = E.enumList 1 xs $$ EL.consume
+
+test_ListHead :: F.Test
+test_ListHead = testProperty "List.head" prop where
+	prop :: [A] -> Bool
+	prop xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = case xs of
+			[] -> (Nothing, [])
+			(x:xs') -> (Just x, xs')
+		
+		iter = E.enumList 1 xs $$ do
+			x <- EL.head
+			extra <- EL.consume
+			return (x, extra)
+
+test_ListDrop :: F.Test
+test_ListDrop = testProperty "List.drop" prop where
+	prop :: Positive Integer -> [A] -> Bool
+	prop (Positive n) xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = drop (fromInteger n) xs
+		
+		iter = E.enumList 1 xs $$ do
+			EL.drop n
+			EL.consume
+
+test_ListTake :: F.Test
+test_ListTake = testProperty "List.take" prop where
+	prop :: Positive Integer -> [A] -> Bool
+	prop (Positive n) xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = splitAt (fromInteger n) xs
+		
+		iter = E.enumList 1 xs $$ do
+			xs <- EL.take n
+			extra <- EL.consume
+			return (xs, extra)
+
+{-
+test_ListPeek :: F.Test
+test_ListPeek = testProperty "List.peek" prop where
+	prop :: Positive Integer -> [A] -> Bool
+	prop (Positive n) xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = (take (fromInteger n) xs, xs)
+		
+		iter = E.enumList 1 xs $$ do
+			xs <- EL.peek n
+			extra <- EL.consume
+			return (xs, extra)
+-}
+
+test_ListRequire :: F.Test
+test_ListRequire = testProperty "List.require" prop where
+	prop :: Positive Integer -> [A] -> Bool
+	prop (Positive n) xs = result == expected where
+		result = case runIdentity (E.run iter) of
+			Left exc -> Left (show exc)
+			Right x -> Right x
+		expected = if n > toInteger (length xs)
+			then Left "require: Unexpected EOF"
+			else Right xs
+		
+		iter = E.enumList 1 xs $$ do
+			EL.require n
+			EL.consume
 -- }}}
 
 -- Specific functions

@@ -265,3 +265,28 @@ filterM p = concatMapM (\x -> CM.filterM p [x])
 , concatMapM
 , Data.Enumerator.filterM
 :
+
+\subsection{Debugging}
+
+Debugging enumerator-based code is mostly a question of what inputs are
+being passed around. {\tt printChunks} prints out exactly what chunks are
+being sent from an enumerator.
+
+:f Data/Enumerator.hs
+|apidoc printChunks|
+printChunks :: (MonadIO m, Show a) => Bool
+            -> Iteratee a m ()
+printChunks printEmpty = continue loop where
+	loop (Chunks xs) = do
+		let hide = null xs && not printEmpty
+		CM.unless hide (liftIO (print xs))
+		continue loop
+	
+	loop EOF = do
+		liftIO (putStrLn "EOF")
+		yield () EOF
+:
+
+:d Data.Enumerator exports
+, printChunks
+:

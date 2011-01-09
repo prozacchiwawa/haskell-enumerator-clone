@@ -335,6 +335,27 @@ API docs for these are still TODO
 :d apidoc decode
 :
 
+:d Data.Enumerator.List module header
+-----------------------------------------------------------------------------
+-- |
+-- Module: Data.Enumerator.List
+-- Copyright: 2010 John Millikin
+-- License: MIT
+--
+-- Maintainer: jmillikin@gmail.com
+-- Portability: portable
+--
+-- docs TODO
+--
+-----------------------------------------------------------------------------
+:
+
+:d apidoc take
+:
+
+:d apidoc takeWhile
+:
+
 :d Data.Enumerator.IO module header
 -----------------------------------------------------------------------------
 -- |

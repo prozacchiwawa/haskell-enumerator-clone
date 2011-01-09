@@ -1,0 +1,123 @@
+\section{Compatibility}
+
+\subsection{Obsolete functions}
+
+:f Data/Enumerator.hs
+|apidoc liftTrans|
+liftTrans :: (Monad m, MonadTrans t, Monad (t m)) =>
+             Iteratee a m b -> Iteratee a (t m) b
+liftTrans iter = Iteratee $ do
+	step <- lift (runIteratee iter)
+	return $ case step of
+		Yield x cs -> Yield x cs
+		Error err -> Error err
+		Continue k -> Continue (liftTrans . k)
+:
+
+:f Data/Enumerator.hs
+|apidoc liftI|
+liftI :: Monad m => (Stream a -> Step a m b) -> Iteratee a m b
+liftI k = continue (\stream -> returnI (k stream))
+:
+
+:f Data/Enumerator.hs
+|apidoc peek|
+peek :: Monad m => Iteratee a m (Maybe a)
+peek = continue loop where
+	loop (Chunks []) = continue loop
+	loop chunk@(Chunks (x:_)) = yield (Just x) chunk
+	loop EOF = yield Nothing EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc last|
+last :: Monad m => Iteratee a m (Maybe a)
+last = continue (loop Nothing) where
+	loop ret (Chunks xs) = continue . loop $ case xs of
+		[] -> ret
+		_ -> Just (Prelude.last xs)
+	loop ret EOF = yield ret EOF
+:
+
+:d Data.Enumerator imports
+import Data.List (genericLength)
+:
+
+:f Data/Enumerator.hs
+|apidoc length|
+length :: Monad m => Iteratee a m Integer
+length = continue (loop 0) where
+	len = genericLength
+	loop n (Chunks xs) = continue (loop (n + len xs))
+	loop n EOF = yield n EOF
+:
+
+:d Data.Enumerator exports
+, liftTrans
+, liftI
+, peek
+, Data.Enumerator.last
+, Data.Enumerator.length
+:
+
+\subsection{Aliases}
+
+:f Data/Enumerator.hs
+span = takeWhile
+
+break p = takeWhile (not . p)
+:
+
+:f Data/Enumerator.hs
+liftFoldL :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+liftFoldL = Data.Enumerator.foldl
+
+liftFoldL' :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+liftFoldL' = Data.Enumerator.foldl'
+
+liftFoldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
+liftFoldM = Data.Enumerator.foldM
+:
+
+:d Data.Enumerator exports
+, Data.Enumerator.span
+, Data.Enumerator.break
+, liftFoldL
+, liftFoldL'
+, liftFoldM
+:
+
+:f Data/Enumerator.hs
+|apidoc consume|
+consume :: Monad m => Iteratee a m [a]
+consume = continue (loop id) where
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (acc . (xs ++)))
+		EOF -> yield (acc []) EOF
+:
+
+:f Data/Enumerator.hs
+|apidoc head|
+head :: Monad m => Iteratee a m (Maybe a)
+head = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
+	loop EOF = yield Nothing EOF
+:
+
+:d Data.Enumerator exports
+, consume
+, Data.Enumerator.head
+:
+
+:f Data/Enumerator/IO.hs
+|Data.Enumerator.IO module header|
+module Data.Enumerator.IO
+	{-# DEPRECATED "use Data.Enumerator.Binary instead" #-}
+	( enumHandle
+	, enumFile
+	, iterHandle
+	) where
+import Data.Enumerator.Binary
+:

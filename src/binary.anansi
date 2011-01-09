@@ -82,19 +82,3 @@ iterHandle h = continue step where
 , enumFile
 , iterHandle
 :
-
-\subsection{Compatibility}
-
-For compatibility with older versions of this library, some functions in
-{\tt Data.Enumerator.Binary} are re-exported from {\tt Data.Enumerator.IO}.
-
-:f Data/Enumerator/IO.hs
-|Data.Enumerator.IO module header|
-module Data.Enumerator.IO
-	{-# DEPRECATED "use Data.Enumerator.Binary instead" #-}
-	( enumHandle
-	, enumFile
-	, iterHandle
-	) where
-import Data.Enumerator.Binary
-:

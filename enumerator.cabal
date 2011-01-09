@@ -42,10 +42,11 @@ extra-source-files:
   --
   src/api-docs.anansi
   src/binary.anansi
+  src/compat.anansi
   src/enumerator.anansi
+  src/list.anansi
   src/primitives.anansi
   src/text.anansi
-  src/title-todo.anansi
   src/types.anansi
   src/util.anansi
   --
@@ -83,6 +84,7 @@ library
     Data.Enumerator
     Data.Enumerator.Binary
     Data.Enumerator.Text
+    Data.Enumerator.List
     Data.Enumerator.IO
 
   other-modules:

@@ -1,0 +1,118 @@
+\section{Lists}
+
+:f Data/Enumerator/List.hs
+|Data.Enumerator.List module header|
+module Data.Enumerator.List (
+	|Data.Enumerator.List exports|
+	) where
+import Data.Enumerator hiding (consume, head, peek)
+import Control.Exception (ErrorCall(..))
+import Prelude hiding (head, drop, dropWhile, take, takeWhile)
+import qualified Data.List as L
+:
+
+:f Data/Enumerator/List.hs
+|apidoc head|
+head :: Monad m => Iteratee a m (Maybe a)
+head = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
+	loop EOF = yield Nothing EOF
+:
+
+:f Data/Enumerator/List.hs
+|apidoc drop|
+drop :: Monad m => Integer -> Iteratee a m ()
+drop 0 = return ()
+drop n = continue (loop n) where
+	len = L.genericLength
+	loop n' (Chunks xs)
+		| len xs < n' = continue (loop (n' - len xs))
+		| otherwise   = yield () (Chunks (L.genericDrop n' xs))
+	loop _ EOF = yield () EOF
+:
+
+:f Data/Enumerator/List.hs
+|apidoc dropWhile|
+dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
+dropWhile p = continue loop where
+	loop (Chunks xs) = case L.dropWhile p xs of
+		[] -> continue loop
+		xs' -> yield () (Chunks xs')
+	loop EOF = yield () EOF
+:
+
+:f Data/Enumerator/List.hs
+|apidoc take|
+take :: Monad m => Integer -> Iteratee a m [a]
+take 0 = return []
+take n = continue (loop id n) where
+	len = L.genericLength
+	loop acc n' (Chunks xs)
+		| len xs < n' = continue (loop (acc . (xs ++)) (n' - len xs))
+		| otherwise   = let
+			(xs', extra) = L.genericSplitAt n' xs
+			in yield (acc xs') (Chunks extra)
+	loop acc _ EOF = yield (acc []) EOF
+:
+
+:f Data/Enumerator/List.hs
+|apidoc takeWhile|
+takeWhile :: Monad m => (a -> Bool) -> Iteratee a m [a]
+takeWhile p = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = case Prelude.span p xs of
+		(_, []) -> continue (loop (acc . (xs ++)))
+		(xs', extra) -> yield (acc xs') (Chunks extra)
+	loop acc EOF = yield (acc []) EOF
+:
+
+:d Data/Enumerator/List.hs (disabled)
+peek :: Monad m => Integer -> Iteratee a m [a]
+peek 0 = return []
+peek n = continue (loop id n) where
+	len = L.genericLength
+	loop acc n' (Chunks xs)
+		| len xs < n' = continue (loop (acc . (xs ++)) (n' - len xs))
+		| otherwise   = let
+			xs' = L.genericTake n' xs
+			in yield (acc xs') (Chunks (acc xs))
+	loop acc _ EOF = yield (acc []) EOF
+:
+
+:d Data/Enumerator/List.hs (disabled)
+peekWhile :: Monad m => (a -> Bool) -> Iteratee a m [a]
+peekWhile p = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = case Prelude.span p xs of
+		(_, []) -> continue (loop (acc . (xs ++)))
+		(xs', _) -> yield (acc xs') (Chunks (acc xs))
+	loop acc EOF = yield (acc []) EOF
+:
+
+:f Data/Enumerator/List.hs
+|apidoc consume|
+consume :: Monad m => Iteratee a m [a]
+consume = Data.Enumerator.List.takeWhile (const True)
+:
+
+:f Data/Enumerator/List.hs
+require :: Monad m => Integer -> Iteratee a m ()
+require 0 = return ()
+require n = continue (loop id n) where
+	len = L.genericLength
+	loop acc n' (Chunks xs)
+		| len xs < n' = continue (loop (acc . (xs ++)) (n' - len xs))
+		| otherwise   = yield () (Chunks (acc xs))
+	loop _ _ EOF = throwError (ErrorCall "require: Unexpected EOF")
+:
+
+:d Data.Enumerator.List exports
+  head
+, drop
+, dropWhile
+, take
+, takeWhile
+, consume
+, require
+:

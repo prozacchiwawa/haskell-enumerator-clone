@@ -4,6 +4,75 @@ A few special-case utilities that are used by similar libraries, or were
 present in previous versions of {\tt enumerator}, or otherwise don't have a
 good place to go.
 
+\subsection{Enumeratees}
+
+Sequencing a fixed set of enumerators is easy, but for more complex
+cases, it's useful to have a small utility wrapper.
+
+:f Data/Enumerator.hs
+|apidoc concatEnums|
+concatEnums :: Monad m => [Enumerator a m b]
+            -> Enumerator a m b
+concatEnums = Prelude.foldl (>==>) returnI
+:
+
+:d Data.Enumerator exports
+, concatEnums
+:
+
+{\tt joinI} is used to ``flatten'' enumeratees, to transform them into an
+{\tt Iteratee}.
+
+:f Data/Enumerator.hs
+|apidoc joinI|
+joinI :: Monad m => Iteratee a m (Step a' m b)
+      -> Iteratee a m b
+joinI outer = outer >>= check where
+	check (Continue k) = k EOF >>== \s -> case s of
+		Continue _ -> error "joinI: divergent iteratee"
+		_ -> check s
+	check (Yield x _) = return x
+	check (Error e) = throwError e
+:
+
+{\tt sequence} repeatedly runs its parameter to transform the stream.
+
+:f Data/Enumerator.hs
+|apidoc sequence|
+sequence :: Monad m => Iteratee ao m ai
+         -> Enumeratee ao ai m b
+sequence i = loop where
+	loop = checkDone check
+	check k = isEOF >>= \f -> if f
+		then yield (Continue k) EOF
+		else step k
+	step k = i >>= \v -> k (Chunks [v]) >>== loop
+:
+
+Another small, useful enumerator separates an input list into chunks, and
+sends them to the iteratee. This is useful for testing iteratees in pure
+code.
+
+:d Data.Enumerator imports
+import Data.List (genericSplitAt)
+:
+
+:f Data/Enumerator.hs
+|apidoc enumList|
+enumList :: Monad m => Integer -> [a] -> Enumerator a m b
+enumList n = loop where
+	loop xs (Continue k) | not (null xs) = let
+		(s1, s2) = genericSplitAt n xs
+		in k (Chunks s1) >>== loop s2
+	loop _ step = returnI step
+:
+
+:d Data.Enumerator exports
+, joinI
+, Data.Enumerator.sequence
+, enumList
+:
+
 \subsection{Running iteratees}
 
 To simplify running iteratees, {\tt run} sends {\tt EOF} and then examines
@@ -74,43 +143,9 @@ checkDone :: Monad m =>
 checkDone = checkDoneEx (Chunks [])
 :
 
-:f Data/Enumerator.hs
-|apidoc liftTrans|
-liftTrans :: (Monad m, MonadTrans t, Monad (t m)) =>
-             Iteratee a m b -> Iteratee a (t m) b
-liftTrans iter = Iteratee $ do
-	step <- lift (runIteratee iter)
-	return $ case step of
-		Yield x cs -> Yield x cs
-		Error err -> Error err
-		Continue k -> Continue (liftTrans . k)
-:
-
-:f Data/Enumerator.hs
-|apidoc liftI|
-liftI :: Monad m => (Stream a -> Step a m b) -> Iteratee a m b
-liftI k = continue (\stream -> returnI (k stream))
-:
-
-:f Data/Enumerator.hs
-liftFoldL :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
-liftFoldL = Data.Enumerator.foldl
-
-liftFoldL' :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
-liftFoldL' = Data.Enumerator.foldl'
-
-liftFoldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
-liftFoldM = Data.Enumerator.foldM
-:
-
 :d Data.Enumerator exports
 , checkDone
 , checkDoneEx
-, liftTrans
-, liftI
-, liftFoldL
-, liftFoldL'
-, liftFoldM
 :
 
 :f Data/Enumerator.hs
@@ -186,4 +221,3 @@ textSpanBy = T.span
 textSpanBy = T.spanBy
 #endif
 :
-
