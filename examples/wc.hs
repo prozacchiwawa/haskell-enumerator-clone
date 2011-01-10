@@ -8,8 +8,8 @@
 --
 -----------------------------------------------------------------------------
 module Main (main) where
-import Data.Enumerator
-import qualified Data.Enumerator.IO as EIO
+import Data.Enumerator as E
+import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.Text as ET
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
@@ -41,7 +41,7 @@ iterBytes = continue (step 0) where
 -- the 'liftFoldL\'' helper function.
 
 iterLines :: Monad m => Iteratee B.ByteString m Integer
-iterLines = liftFoldL' step 0 where
+iterLines = E.foldl' step 0 where
 	step acc bytes = acc + countChar '\n' bytes
 	countChar c = B8.foldl (\acc c' -> if c' == c then acc + 1 else acc) 0
 
@@ -55,7 +55,7 @@ iterLines = liftFoldL' step 0 where
 
 iterChars :: Monad m => Iteratee B.ByteString m Integer
 iterChars = joinI (ET.decode ET.utf8 $$ count) where
-	count = liftFoldL' (\acc t -> acc + toInteger (T.length t)) 0
+	count = E.foldl' (\acc t -> acc + toInteger (T.length t)) 0
 
 main :: IO ()
 main = do
@@ -73,7 +73,7 @@ main = do
 		putStr $ filename ++ ": "
 		
 		-- see cat.hs for commented implementation of 'Data.Enumerator.IO.enumFile'
-		eitherStat <- run (EIO.enumFile filename $$ iter)
+		eitherStat <- run (EB.enumFile filename $$ iter)
 		putStrLn $ case eitherStat of
 			Left err -> "ERROR: " ++ show err
 			Right stat -> show stat

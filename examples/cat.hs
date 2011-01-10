@@ -10,6 +10,7 @@
 module Main (main) where
 import Prelude as Prelude
 import Control.Exception as E
+import Control.Monad.IO.Class (liftIO)
 import Data.Enumerator
 import qualified Data.ByteString as B
 import qualified Foreign as F
@@ -18,13 +19,13 @@ import System.IO.Error (isEOFError)
 import System.Environment (getArgs)
 
 -- The following definitions of 'enumHandle', 'enumFile', and 'iterHandle' are
--- copied from "Data.Enumerator.IO", with additional comments so they're easier
--- to understand.
+-- copied from "Data.Enumerator.Binary", with additional comments so they're
+-- easier to understand.
 
 enumHandle :: Integer -- ^ Buffer size
            -> Handle
            -> Enumerator B.ByteString IO b
-enumHandle bufferSize h = Iteratee . loop where
+enumHandle bufferSize h = loop where
 	intSize = fromInteger bufferSize
 	
 	-- If more input is required before the enumerator's iteratee can
@@ -33,7 +34,7 @@ enumHandle bufferSize h = Iteratee . loop where
 		-- While not strictly necessary to proper operation, catching
 		-- exceptions here allows more unified exception handling when
 		-- the enumerator/iteratee is run.
-		eitherBytes <- E.try $ do
+		eitherBytes <- liftIO $ E.try $ do
 			
 			-- The enumerator must function normally when the
 			-- handle is something like a slow file, or network
@@ -53,29 +54,29 @@ enumHandle bufferSize h = Iteratee . loop where
 		case eitherBytes of
 			-- Interacting with the socket threw an IO error of
 			-- some sort
-			Left err -> return $ Error err
+			Left err -> throwError (err :: E.SomeException)
 			
 			-- The socket has reached EOF; pass control to the
 			-- next enumerator
-			Right bytes | B.null bytes -> return (Continue k)
+			Right bytes | B.null bytes -> continue k
 			
 			-- Bytes were read successfully; feed them to the
 			-- iteratee and continue looping
-			Right bytes -> runIteratee (k (Chunks [bytes])) >>= loop
+			Right bytes -> k (Chunks [bytes]) >>== loop
 	
 	-- If a different step is received ('Error' or 'Yield'), just pass
 	-- it through.
-	loop step = return step
+	loop step = returnI step
 
 enumFile :: FilePath -> Enumerator B.ByteString IO b
-enumFile path s = Iteratee $ do
+enumFile path s = do
 	-- Opening the file can be performed either inside or outside of the
 	-- Iteratee. Inside allows exceptions to be caught and propagated
 	-- through the 'Error' step constructor.
-	eitherH <- E.try $ openBinaryFile path ReadMode
+	eitherH <- liftIO (E.try (openBinaryFile path ReadMode))
 	case eitherH of
-		Left err -> return $ Error err
-		Right h -> finally
+		Left err -> throwError (err :: E.SomeException)
+		Right h -> Iteratee $ finally
 			(runIteratee (enumHandle 4096 h s))
 			(hClose h)
 
@@ -95,11 +96,11 @@ iterHandle h = continue step where
 	-- When some chunks are received from the Enumeratee, they're written
 	-- to the handle. Any exceptions are caught and reported, as in
 	-- 'enumHandle'.
-	step (Chunks bytes) = Iteratee $ do
-		eitherErr <- E.try $ mapM_ (B.hPut h) bytes
-		return $ case eitherErr of
-			Left err -> Error err
-			_ -> Continue step
+	step (Chunks bytes) = do
+		eitherErr <- liftIO (E.try (mapM_ (B.hPut h) bytes))
+		case eitherErr of
+			Left err -> throwError (err :: E.SomeException)
+			_ -> continue step
 
 main :: IO ()
 main = do
