@@ -147,7 +147,7 @@ takeWhile p = continue (loop id) where
 	loop acc (Chunks []) = continue (loop acc)
 	loop acc (Chunks xs) = iter where
 		lazy = TL.fromChunks xs
-		(xs', extra) = TL.span p lazy
+		(xs', extra) = tlSpanBy p lazy
 		iter = if TL.null extra
 			then continue (loop (acc . (TL.append lazy)))
 			else yield (acc xs') (toChunks extra)
@@ -224,7 +224,7 @@ if the input stream contains invalid data.
 
 :d Data.Enumerator.Text imports
 import qualified Data.ByteString as B
-import Data.Enumerator.Util (textSpanBy, reprWord, reprChar)
+import Data.Enumerator.Util (tSpanBy, tlSpanBy, reprWord, reprChar)
 :
 
 :d Data.Enumerator.Text exports
@@ -532,7 +532,7 @@ ascii :: Codec
 ascii = Codec name enc dec where
 	name = T.pack "ASCII"
 	enc text = (bytes, extra) where
-		(safe, unsafe) = textSpanBy (\c -> ord c <= 0x7F) text
+		(safe, unsafe) = tSpanBy (\c -> ord c <= 0x7F) text
 		bytes = B8.pack (T.unpack safe)
 		extra = if T.null unsafe
 			then Nothing
@@ -557,7 +557,7 @@ iso8859_1 :: Codec
 iso8859_1 = Codec name enc dec where
 	name = T.pack "ISO-8859-1"
 	enc text = (bytes, extra) where
-		(safe, unsafe) = textSpanBy (\c -> ord c <= 0xFF) text
+		(safe, unsafe) = tSpanBy (\c -> ord c <= 0xFF) text
 		bytes = B8.pack (T.unpack safe)
 		extra = if T.null unsafe
 			then Nothing

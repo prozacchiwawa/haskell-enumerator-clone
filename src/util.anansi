@@ -176,6 +176,7 @@ import Data.Enumerator
 import Data.Char (toUpper, intToDigit, ord)
 import Data.Word (Word8)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Control.Exception as Exc
@@ -219,10 +220,13 @@ handle multiple source directories selected by flags, so the preprocessor
 is used for now.
 
 :f Data/Enumerator/Util.hs
-textSpanBy :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
+tSpanBy  :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
+tlSpanBy :: (Char -> Bool) -> TL.Text -> (TL.Text, TL.Text)
 #if MIN_VERSION_text(0,11,0)
-textSpanBy = T.span
+tSpanBy = T.span
+tlSpanBy = TL.span
 #else
-textSpanBy = T.spanBy
+tSpanBy = T.spanBy
+tlSpanBy = TL.spanBy
 #endif
 :
