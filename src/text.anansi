@@ -5,7 +5,9 @@
 module Data.Enumerator.Text (
 	|Data.Enumerator.Text exports|
 	) where
-import Data.Enumerator
+import qualified Prelude
+import Prelude hiding (head, drop, takeWhile)
+import Data.Enumerator hiding (head, drop)
 import qualified Data.Text as T
 |Data.Enumerator.Text imports|
 :
@@ -72,6 +74,134 @@ iterHandle h = continue step where
   enumHandle
 , enumFile
 , iterHandle
+:
+
+\subsection{Char processing}
+
+:d Data.Enumerator.Text imports
+import qualified Data.Text.Lazy as TL
+:
+
+:f Data/Enumerator/Text.hs
+toChunks :: TL.Text -> Stream T.Text
+toChunks = Chunks . TL.toChunks
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc head|
+head :: Monad m => Iteratee T.Text m (Maybe Char)
+head = continue loop where
+	loop (Chunks xs) = case TL.uncons (TL.fromChunks xs) of
+		Just (char, extra) -> yield (Just char) (toChunks extra)
+		Nothing -> head
+	loop EOF = yield Nothing EOF
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc drop|
+drop :: Monad m => Integer -> Iteratee T.Text m ()
+drop n | n <= 0 = return ()
+drop n = continue (loop n) where
+	loop n' (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		len = toInteger (TL.length lazy)
+		iter = if len < n'
+			then drop (n' - len)
+			else yield () (toChunks (TL.drop (fromInteger n') lazy))
+	loop _ EOF = yield () EOF
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc dropWhile|
+dropWhile :: Monad m => (Char -> Bool) -> Iteratee T.Text m ()
+dropWhile p = continue loop where
+	loop (Chunks xs) = iter where
+		lazy = TL.dropWhile p (TL.fromChunks xs)
+		iter = if TL.null lazy
+			then continue loop
+			else yield () (toChunks lazy)
+	loop EOF = yield () EOF
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc take|
+take :: Monad m => Integer -> Iteratee T.Text m TL.Text
+take n | n <= 0 = return TL.empty
+take n = continue (loop id n) where
+	loop acc n' (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		len = toInteger (TL.length lazy)
+		
+		iter = if len < n'
+			then continue (loop (acc . (TL.append lazy)) (n' - len))
+			else let
+				(xs', extra) = TL.splitAt (fromInteger n') lazy
+				in yield (acc xs') (toChunks extra)
+	loop acc _ EOF = yield (acc TL.empty) EOF
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc takeWhile|
+takeWhile :: Monad m => (Char -> Bool) -> Iteratee T.Text m TL.Text
+takeWhile p = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		(xs', extra) = TL.span p lazy
+		iter = if TL.null extra
+			then continue (loop (acc . (TL.append lazy)))
+			else yield (acc xs') (toChunks extra)
+	loop acc EOF = yield (acc TL.empty) EOF
+:
+
+:f Data/Enumerator/Text.hs
+|apidoc consume|
+consume :: Monad m => Iteratee T.Text m TL.Text
+consume = takeWhile (const True)
+:
+
+:f Data/Enumerator/Text.hs
+require :: Monad m => Integer -> Iteratee T.Text m ()
+require n | n <= 0 = return ()
+require n = continue (loop id n) where
+	loop acc n' (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		len = toInteger (TL.length lazy)
+		iter = if len < n'
+			then continue (loop (acc . (TL.append lazy)) (n' - len))
+			else yield () (toChunks (acc lazy))
+	loop _ _ EOF = throwError (Exc.ErrorCall "require: Unexpected EOF")
+:
+
+Same caveats as {\tt Data.Enumerator.List.isolate}
+
+:f Data/Enumerator/Text.hs
+isolate :: Monad m => Integer -> Enumeratee T.Text T.Text m b
+isolate n step | n <= 0 = return step
+isolate n (Continue k) = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		len = toInteger (TL.length lazy)
+		
+		iter = if len <= n
+			then k (Chunks xs) >>== isolate (n - len)
+			else let
+				(s1, s2) = TL.splitAt (fromInteger n) lazy
+				in k (toChunks s1) >>== (\step -> yield step (toChunks s2))
+	loop EOF = k EOF >>== (\step -> yield step EOF)
+isolate n step = drop n >> return step
+:
+
+:d Data.Enumerator.Text exports
+, Data.Enumerator.Text.head
+, Data.Enumerator.Text.drop
+, Data.Enumerator.Text.dropWhile
+, Data.Enumerator.Text.take
+, Data.Enumerator.Text.takeWhile
+, Data.Enumerator.Text.consume
+, require
+, isolate
 :
 
 \subsection{Codecs}

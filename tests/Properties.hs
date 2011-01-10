@@ -5,12 +5,15 @@ module Main (tests, main) where
 
 import Data.Enumerator (($$))
 import qualified Data.Enumerator as E
+import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.Text as ET
 import qualified Data.Enumerator.List as EL
 
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as TE
 
 import Test.QuickCheck hiding ((.&.))
@@ -456,6 +459,20 @@ test_ListAnalogues = F.testGroup "list analogues"
 	-- , test_ListPeek
 	, test_ListRequire
 	, test_ListIsolate
+	
+	, test_BinaryConsume
+	, test_BinaryHead
+	, test_BinaryDrop
+	, test_BinaryTake
+	, test_BinaryRequire
+	, test_BinaryIsolate
+	
+	, test_TextConsume
+	, test_TextHead
+	, test_TextDrop
+	, test_TextTake
+	, test_TextRequire
+	, test_TextIsolate
 	]
 
 test_ListConsume :: F.Test
@@ -546,20 +563,160 @@ test_ListIsolate = testProperty "List.isolate" prop where
 			extra <- EL.consume
 			return (x, extra)
 
+test_BinaryConsume :: F.Test
+test_BinaryConsume = testProperty "Binary.consume" prop where
+	prop ts = result == BL.fromChunks ts where
+		result = runIdentity (E.run_ iter)
+		iter = E.enumList 1 ts $$ EB.consume
+
+test_BinaryHead :: F.Test
+test_BinaryHead = testProperty "Binary.head" prop where
+	prop ts = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = case BL.uncons (BL.fromChunks ts) of
+			Nothing -> (Nothing, BL.empty)
+			Just (x, extra) -> (Just x, extra)
+		
+		iter = E.enumList 1 ts $$ do
+			x <- EB.head
+			extra <- EB.consume
+			return (x, extra)
+
+test_BinaryDrop :: F.Test
+test_BinaryDrop = testProperty "Binary.drop" prop where
+	prop :: Positive Integer -> [B.ByteString] -> Bool
+	prop (Positive n) ts = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = BL.drop (fromInteger n) (BL.fromChunks ts)
+		
+		iter = E.enumList 1 ts $$ do
+			EB.drop n
+			EB.consume
+
+test_BinaryTake :: F.Test
+test_BinaryTake = testProperty "Binary.take" prop where
+	prop :: Positive Integer -> [B.ByteString] -> Bool
+	prop (Positive n) ts = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = BL.splitAt (fromInteger n) (BL.fromChunks ts)
+		
+		iter = E.enumList 1 ts $$ do
+			xs <- EB.take n
+			extra <- EB.consume
+			return (xs, extra)
+
+test_BinaryRequire :: F.Test
+test_BinaryRequire = testProperty "Binary.require" prop where
+	prop :: Positive Integer -> [B.ByteString] -> Bool
+	prop (Positive n) ts = result == expected where
+		result = case runIdentity (E.run iter) of
+			Left exc -> Left (show exc)
+			Right x -> Right x
+		lazy = BL.fromChunks ts
+		expected = if n > toInteger (BL.length lazy)
+			then Left "require: Unexpected EOF"
+			else Right lazy
+		
+		iter = E.enumList 1 ts $$ do
+			EB.require n
+			EB.consume
+
+test_BinaryIsolate :: F.Test
+test_BinaryIsolate = testProperty "Binary.isolate" prop where
+	prop :: Positive Integer -> [B.ByteString] -> Bool
+	prop (Positive n) ts = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = case BL.unpack (BL.fromChunks ts) of
+			[] -> (Nothing, BL.empty)
+			(x:[]) -> (Just x, BL.empty)
+			(x:_:xs') -> (Just x, BL.pack xs')
+		
+		iter = E.enumList 1 ts $$ do
+			x <- E.joinI (EB.isolate 2 $$ EB.head)
+			extra <- EB.consume
+			return (x, extra)
+
+test_TextConsume :: F.Test
+test_TextConsume = testProperty "Text.consume" prop where
+	prop ts = result == TL.fromChunks ts where
+		result = runIdentity (E.run_ iter)
+		iter = E.enumList 1 ts $$ ET.consume
+
+test_TextHead :: F.Test
+test_TextHead = testProperty "Text.head" prop where
+	prop ts = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = case TL.uncons (TL.fromChunks ts) of
+			Nothing -> (Nothing, TL.empty)
+			Just (x, extra) -> (Just x, extra)
+		
+		iter = E.enumList 1 ts $$ do
+			x <- ET.head
+			extra <- ET.consume
+			return (x, extra)
+
+test_TextDrop :: F.Test
+test_TextDrop = testProperty "Text.drop" prop where
+	prop :: Positive Integer -> [T.Text] -> Bool
+	prop (Positive n) ts = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = TL.drop (fromInteger n) (TL.fromChunks ts)
+		
+		iter = E.enumList 1 ts $$ do
+			ET.drop n
+			ET.consume
+
+test_TextTake :: F.Test
+test_TextTake = testProperty "Text.take" prop where
+	prop :: Positive Integer -> [T.Text] -> Bool
+	prop (Positive n) ts = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = TL.splitAt (fromInteger n) (TL.fromChunks ts)
+		
+		iter = E.enumList 1 ts $$ do
+			xs <- ET.take n
+			extra <- ET.consume
+			return (xs, extra)
+
+test_TextRequire :: F.Test
+test_TextRequire = testProperty "Text.require" prop where
+	prop :: Positive Integer -> [T.Text] -> Bool
+	prop (Positive n) ts = result == expected where
+		result = case runIdentity (E.run iter) of
+			Left exc -> Left (show exc)
+			Right x -> Right x
+		lazy = TL.fromChunks ts
+		expected = if n > toInteger (TL.length lazy)
+			then Left "require: Unexpected EOF"
+			else Right lazy
+		
+		iter = E.enumList 1 ts $$ do
+			ET.require n
+			ET.consume
+
+test_TextIsolate :: F.Test
+test_TextIsolate = testProperty "Text.isolate" prop where
+	prop :: Positive Integer -> [T.Text] -> Bool
+	prop (Positive n) ts = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = case TL.unpack (TL.fromChunks ts) of
+			[] -> (Nothing, TL.empty)
+			(x:[]) -> (Just x, TL.empty)
+			(x:_:xs') -> (Just x, TL.pack xs')
+		
+		iter = E.enumList 1 ts $$ do
+			x <- E.joinI (ET.isolate 2 $$ ET.head)
+			extra <- ET.consume
+			return (x, extra)
+
 -- }}}
 
 -- Specific functions
 
 test_Functions :: F.Test
 test_Functions = F.testGroup "Functions"
-	[ testProperty "consume" prop_Consume
-	, testProperty "sequence" prop_Sequence
+	[ testProperty "sequence" prop_Sequence
 	]
-
-prop_Consume :: Property
-prop_Consume = property (\n xs -> runIdentity (E.run_ (iter n xs)) == xs) where
-	iter :: Positive Integer -> [A] -> E.Iteratee A Identity [A]
-	iter (Positive n) xs = E.enumList n xs $$ EL.consume
 
 prop_Sequence :: Property
 prop_Sequence = property (\n xs -> runIdentity (E.run_ (iter n xs)) == map Just xs) where
@@ -639,4 +796,7 @@ instance Arbitrary a => Arbitrary (E.Stream a) where
 		]
 
 instance Arbitrary T.Text where
+	arbitrary = genUnicode
+
+instance Arbitrary B.ByteString where
 	arbitrary = genUnicode
