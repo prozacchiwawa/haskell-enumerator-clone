@@ -205,6 +205,7 @@ isolate n step = drop n >> return step
 :
 
 :d Data.Enumerator.Binary exports
+-- * List analogues
 , Data.Enumerator.Binary.head
 , Data.Enumerator.Binary.drop
 , Data.Enumerator.Binary.dropWhile

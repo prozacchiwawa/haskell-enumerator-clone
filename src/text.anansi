@@ -196,6 +196,7 @@ isolate n step = drop n >> return step
 :
 
 :d Data.Enumerator.Text exports
+-- * List analogues
 , Data.Enumerator.Text.head
 , Data.Enumerator.Text.drop
 , Data.Enumerator.Text.dropWhile

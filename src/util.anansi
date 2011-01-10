@@ -4,6 +4,10 @@ A few special-case utilities that are used by similar libraries, or were
 present in previous versions of {\tt enumerator}, or otherwise don't have a
 good place to go.
 
+:d Data.Enumerator exports
+-- * Misc. utilities
+:
+
 \subsection{Enumeratees}
 
 Sequencing a fixed set of enumerators is easy, but for more complex

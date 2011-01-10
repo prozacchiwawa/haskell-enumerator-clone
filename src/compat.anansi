@@ -4,6 +4,10 @@ Version 0.4.5 of this library introduced some substantial reorganization
 and renamings; this section implements compatibility shims, so the API
 remains stable.
 
+:d Data.Enumerator exports
+-- * Compatibility
+:
+
 \subsection{Obsolete functions}
 
 These are functions which seemed like good ideas, or were defined by other
@@ -64,6 +68,7 @@ length = continue (loop 0) where
 :
 
 :d Data.Enumerator exports
+-- ** Obsolete functions
 , liftTrans
 , liftI
 , peek
@@ -147,6 +152,7 @@ consume = EL.consume
 :
 
 :d Data.Enumerator exports
+-- ** Deprecated aliases
 , Data.Enumerator.head
 , Data.Enumerator.drop
 , Data.Enumerator.dropWhile
@@ -195,10 +201,36 @@ related to binary and {\tt ByteString} processing.
 |Data.Enumerator.IO module header|
 module Data.Enumerator.IO
 	{-# DEPRECATED
-	     "use Data.Enumerator.Binary instead" #-}
+	     "Use 'Data.Enumerator.Binary' instead" #-}
 	( enumHandle
 	, enumFile
 	, iterHandle
 	) where
-import Data.Enumerator.Binary
+import qualified Data.Enumerator as E
+import qualified Data.Enumerator.Binary as EB
+import Control.Monad.IO.Class (MonadIO)
+import qualified Data.ByteString as B
+import qualified System.IO as IO
+
+{-# DEPRECATED enumHandle
+     "Use 'Data.Enumerator.Binary.enumHandle' instead" #-}
+|apidoc Data.Enumerator.IO.enumHandle|
+enumHandle :: MonadIO m
+           => Integer
+           -> IO.Handle
+           -> E.Enumerator B.ByteString m b
+enumHandle = EB.enumHandle
+
+{-# DEPRECATED enumFile
+     "Use 'Data.Enumerator.Binary.enumFile' instead" #-}
+|apidoc Data.Enumerator.IO.enumFile|
+enumFile :: FilePath -> E.Enumerator B.ByteString IO b
+enumFile = EB.enumFile
+
+{-# DEPRECATED iterHandle
+     "Use 'Data.Enumerator.Binary.iterHandle' instead" #-}
+|apidoc Data.Enumerator.IO.iterHandle|
+iterHandle :: MonadIO m => IO.Handle
+           -> E.Iteratee B.ByteString m ()
+iterHandle = EB.iterHandle
 :

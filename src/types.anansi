@@ -42,7 +42,8 @@ import Prelude hiding (
 \section{Type definitions}
 
 :d Data.Enumerator exports
-  -- * Types
+-- * Core
+-- ** Types
   Stream (..)
 , Iteratee (..)
 , Step (..)
@@ -289,6 +290,7 @@ infixr 1 <==<
 :
 
 :d Data.Enumerator exports
+-- ** Operators
 , (>>==)
 , (==<<)
 , ($$)

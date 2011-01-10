@@ -1,5 +1,9 @@
 \section{Primitives}
 
+:d Data.Enumerator exports
+-- * Primitives
+:
+
 \subsection{Error handling}
 
 Most real-world applications have to deal with error conditions; however,
@@ -38,6 +42,7 @@ catchError iter h = iter >>== step where
 :
 
 :d Data.Enumerator exports
+-- ** Error handling
 , throwError
 , catchError
 :
@@ -95,6 +100,7 @@ foldM step = continue . loop where
 :
 
 :d Data.Enumerator exports
+-- ** Iteratees
 , Data.Enumerator.foldl
 , Data.Enumerator.foldl'
 , Data.Enumerator.foldM
@@ -194,6 +200,7 @@ generateM getNext = loop where
 :
 
 :d Data.Enumerator exports
+-- ** Enumerators
 , Data.Enumerator.iterate
 , iterateM
 , Data.Enumerator.repeat
@@ -272,6 +279,7 @@ filterM p = concatMapM (\x -> CM.filterM p [x])
 :
 
 :d Data.Enumerator exports
+-- ** Enumeratees
 , Data.Enumerator.map
 , Data.Enumerator.concatMap
 , Data.Enumerator.filter
@@ -288,7 +296,8 @@ being sent from an enumerator.
 
 :f Data/Enumerator.hs
 |apidoc Data.Enumerator.printChunks|
-printChunks :: (MonadIO m, Show a) => Bool
+printChunks :: (MonadIO m, Show a)
+            => Bool -- ^ Print empty chunks
             -> Iteratee a m ()
 printChunks printEmpty = continue loop where
 	loop (Chunks xs) = do
@@ -302,5 +311,6 @@ printChunks printEmpty = continue loop where
 :
 
 :d Data.Enumerator exports
+-- ** Debugging
 , printChunks
 :
