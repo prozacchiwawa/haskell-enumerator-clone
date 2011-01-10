@@ -23,12 +23,13 @@ head = continue loop where
 :f Data/Enumerator/List.hs
 |apidoc drop|
 drop :: Monad m => Integer -> Iteratee a m ()
-drop 0 = return ()
+drop n | n <= 0 = return ()
 drop n = continue (loop n) where
-	len = L.genericLength
-	loop n' (Chunks xs)
-		| len xs < n' = drop (n' - len xs)
-		| otherwise   = yield () (Chunks (L.genericDrop n' xs))
+	loop n' (Chunks xs) = iter where
+		len = L.genericLength xs
+		iter = if len < n'
+			then drop (n' - len)
+			else yield () (Chunks (L.genericDrop n' xs))
 	loop _ EOF = yield () EOF
 :
 
@@ -45,7 +46,7 @@ dropWhile p = continue loop where
 :f Data/Enumerator/List.hs
 |apidoc take|
 take :: Monad m => Integer -> Iteratee a m [a]
-take 0 = return []
+take n | n <= 0 = return []
 take n = continue (loop id n) where
 	len = L.genericLength
 	loop acc n' (Chunks xs)
@@ -69,7 +70,7 @@ takeWhile p = continue (loop id) where
 
 :d Data/Enumerator/List.hs (disabled)
 peek :: Monad m => Integer -> Iteratee a m [a]
-peek 0 = return []
+peek n | n <= 0 = return []
 peek n = continue (loop id n) where
 	len = L.genericLength
 	loop acc n' (Chunks xs)
@@ -93,12 +94,12 @@ peekWhile p = continue (loop id) where
 :f Data/Enumerator/List.hs
 |apidoc consume|
 consume :: Monad m => Iteratee a m [a]
-consume = Data.Enumerator.List.takeWhile (const True)
+consume = takeWhile (const True)
 :
 
 :f Data/Enumerator/List.hs
 require :: Monad m => Integer -> Iteratee a m ()
-require 0 = return ()
+require n | n <= 0 = return ()
 require n = continue (loop id n) where
 	len = L.genericLength
 	loop acc n' (Chunks xs)
@@ -117,7 +118,7 @@ avoid exposing its internal iteratee state.
 
 :f Data/Enumerator/List.hs
 isolate :: Monad m => Integer -> Enumeratee a a m b
-isolate 0 step = return step
+isolate n step | n <= 0 = return step
 isolate n (Continue k) = continue loop where
 	len = L.genericLength
 	
@@ -141,4 +142,3 @@ isolate n step = drop n >> return step
 , require
 , isolate
 :
-
