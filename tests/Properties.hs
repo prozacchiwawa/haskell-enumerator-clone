@@ -136,8 +136,8 @@ test_Enumeratee name enee = F.testGroup name props where
 		expected = (Just (head xs), tail xs)
 		
 		iter = E.enumList n xs $$ do
-			a <- E.joinI (enee $$ E.head)
-			b <- E.consume
+			a <- E.joinI (enee $$ EL.head)
+			b <- EL.consume
 			return (a, b)
 		
 		in result == expected
@@ -147,7 +147,7 @@ test_Enumeratee name enee = F.testGroup name props where
 		
 		iter = E.enumList n xs $$ do
 			a <- enee $$ E.throwError (ErrorCall "")
-			E.consume
+			EL.consume
 		
 		in result == xs
 
@@ -212,17 +212,17 @@ test_Encode_ASCII = F.testGroup "ASCII" props where
 		E.joinI (ET.encode ET.ascii $$ iter)
 	
 	prop_works bytes = result == map B.singleton words where
-		Right result = encode E.consume (map T.singleton chars)
+		Right result = encode EL.consume (map T.singleton chars)
 		
 		chars = B8.unpack bytes
 		words = B.unpack bytes
 	
-	prop_error = isLeft (encode E.consume input)  where
+	prop_error = isLeft (encode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [T.pack "\x61\xFF"]
 	
 	prop_lazy = either (const False) (== expected) result where
-		result = encode E.head input
+		result = encode EL.head input
 		input = [T.pack "\x61\xFF"]
 		expected = Just (B.singleton 0x61)
 
@@ -239,17 +239,17 @@ test_Encode_ISO8859 = F.testGroup "ISO-8859-1" props where
 		E.joinI (ET.encode ET.iso8859_1 $$ iter)
 	
 	prop_works bytes = result == map B.singleton words where
-		Right result = encode E.consume (map T.singleton chars)
+		Right result = encode EL.consume (map T.singleton chars)
 		
 		chars = B8.unpack bytes
 		words = B.unpack bytes
 	
-	prop_error = isLeft (encode E.consume input)  where
+	prop_error = isLeft (encode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [T.pack "\x61\xFF5E"]
 	
 	prop_lazy = either (const False) (== expected) result where
-		result = encode E.head input
+		result = encode EL.head input
 		input = [T.pack "\x61\xFF5E"]
 		expected = Just (B.singleton 0x61)
 
@@ -276,17 +276,17 @@ test_Decode_ASCII = F.testGroup "ASCII" props where
 		E.joinI (ET.decode ET.ascii $$ iter)
 	
 	prop_works text = result == map T.singleton chars where
-		Right result = decode E.consume (map B.singleton bytes)
+		Right result = decode EL.consume (map B.singleton bytes)
 		
 		bytes = B.unpack (TE.encodeUtf8 text)
 		chars = T.unpack text
 	
-	prop_error = isLeft (decode E.consume input)  where
+	prop_error = isLeft (decode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0xFF]]
 	
 	prop_lazy = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x61, 0xFF]]
 		expected = Just (T.pack "a")
 
@@ -304,22 +304,22 @@ test_Decode_UTF8 = F.testGroup "UTF-8" props where
 		E.joinI (ET.decode ET.utf8 $$ iter)
 	
 	prop_works text = result == map T.singleton chars where
-		Right result = decode E.consume (map B.singleton bytes)
+		Right result = decode EL.consume (map B.singleton bytes)
 		
 		bytes = B.unpack (TE.encodeUtf8 text)
 		chars = T.unpack text
 	
-	prop_error = isLeft (decode E.consume input)  where
+	prop_error = isLeft (decode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0x61, 0x80]]
 	
 	prop_lazy = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x61, 0x80]]
 		expected = Just (T.pack "a")
 	
 	prop_incremental = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x61, 0xC2, 0xC2]]
 		expected = Just (T.pack "a")
 
@@ -337,22 +337,22 @@ test_Decode_UTF16_BE = F.testGroup "UTF-16-BE" props where
 		E.joinI (ET.decode ET.utf16_be $$ iter)
 	
 	prop_works text = result == map T.singleton chars where
-		Right result = decode E.consume (map B.singleton bytes)
+		Right result = decode EL.consume (map B.singleton bytes)
 		
 		bytes = B.unpack (TE.encodeUtf16BE text)
 		chars = T.unpack text
 	
 	prop_lazy = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x00, 0x61, 0xDD, 0x1E]]
 		expected = Just (T.pack "a")
 	
-	prop_error = isLeft (decode E.consume input)  where
+	prop_error = isLeft (decode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0x00, 0x61, 0xDD, 0x1E]]
 	
 	prop_incremental = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x00, 0x61, 0xD8, 0x34, 0xD8, 0xD8]]
 		expected = Just (T.pack "a")
 
@@ -370,22 +370,22 @@ test_Decode_UTF16_LE = F.testGroup "UTF-16-LE" props where
 		E.joinI (ET.decode ET.utf16_le $$ iter)
 	
 	prop_works text = result == map T.singleton chars where
-		Right result = decode E.consume (map B.singleton bytes)
+		Right result = decode EL.consume (map B.singleton bytes)
 		
 		bytes = B.unpack (TE.encodeUtf16LE text)
 		chars = T.unpack text
 	
 	prop_lazy = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x61, 0x00, 0x1E, 0xDD]]
 		expected = Just (T.pack "a")
 	
-	prop_error = isLeft (decode E.consume input)  where
+	prop_error = isLeft (decode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0x61, 0x00, 0x1E, 0xDD]]
 	
 	prop_incremental = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x61, 0x00, 0x34, 0xD8, 0xD8, 0xD8]]
 		expected = Just (T.pack "a")
 
@@ -402,17 +402,17 @@ test_Decode_UTF32_BE = F.testGroup "UTF-32-BE" props where
 		E.joinI (ET.decode ET.utf32_be $$ iter)
 	
 	prop_works text = result == map T.singleton chars where
-		Right result = decode E.consume (map B.singleton bytes)
+		Right result = decode EL.consume (map B.singleton bytes)
 		
 		bytes = B.unpack (TE.encodeUtf32BE text)
 		chars = T.unpack text
 	
 	prop_lazy = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x00, 0x00, 0x00, 0x61, 0xFF, 0xFF]]
 		expected = Just (T.pack "a")
 	
-	prop_error = isLeft (decode E.consume input)  where
+	prop_error = isLeft (decode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0xFF, 0xFF, 0xFF, 0xFF]]
 
@@ -429,17 +429,17 @@ test_Decode_UTF32_LE = F.testGroup "UTF-32-LE" props where
 		E.joinI (ET.decode ET.utf32_le $$ iter)
 	
 	prop_works text = result == map T.singleton chars where
-		Right result = decode E.consume (map B.singleton bytes)
+		Right result = decode EL.consume (map B.singleton bytes)
 		
 		bytes = B.unpack (TE.encodeUtf32LE text)
 		chars = T.unpack text
 	
 	prop_lazy = either (const False) (== expected) result where
-		result = decode E.head input
+		result = decode EL.head input
 		input = [B.pack [0x61, 0x00, 0x00, 0x00, 0xFF, 0xFF]]
 		expected = Just (T.pack "a")
 	
-	prop_error = isLeft (decode E.consume input)  where
+	prop_error = isLeft (decode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0xFF, 0xFF, 0xFF, 0xFF]]
 
@@ -543,7 +543,7 @@ test_ListIsolate = testProperty "List.isolate" prop where
 		
 		iter = E.enumList 1 xs $$ do
 			x <- E.joinI (EL.isolate 2 $$ EL.head)
-			extra <- E.consume
+			extra <- EL.consume
 			return (x, extra)
 
 -- }}}
@@ -559,12 +559,12 @@ test_Functions = F.testGroup "Functions"
 prop_Consume :: Property
 prop_Consume = property (\n xs -> runIdentity (E.run_ (iter n xs)) == xs) where
 	iter :: Positive Integer -> [A] -> E.Iteratee A Identity [A]
-	iter (Positive n) xs = E.enumList n xs $$ E.consume
+	iter (Positive n) xs = E.enumList n xs $$ EL.consume
 
 prop_Sequence :: Property
 prop_Sequence = property (\n xs -> runIdentity (E.run_ (iter n xs)) == map Just xs) where
 	iter :: Positive Integer -> [A] -> E.Iteratee A Identity [Maybe A]
-	iter (Positive n) xs = E.enumList n xs $$ E.joinI (E.sequence E.head $$ E.consume)
+	iter (Positive n) xs = E.enumList n xs $$ E.joinI (E.sequence EL.head $$ EL.consume)
 
 -- misc
 

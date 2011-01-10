@@ -1,6 +1,14 @@
 \section{Compatibility}
 
+Version 0.4.5 of this library introduced some substantial reorganization
+and renamings; this section implements compatibility shims, so the API
+remains stable.
+
 \subsection{Obsolete functions}
+
+These are functions which seemed like good ideas, or were defined by other
+enumerator/iteratee libraries, but turned out to be basically useless. At
+least, I've never figured out what they're good for.
 
 :f Data/Enumerator.hs
 |apidoc liftTrans|
@@ -15,9 +23,12 @@ liftTrans iter = Iteratee $ do
 :
 
 :f Data/Enumerator.hs
+{-# DEPRECATED liftI
+     "Use 'Data.Enumerator.continue' instead" #-}
 |apidoc liftI|
-liftI :: Monad m => (Stream a -> Step a m b) -> Iteratee a m b
-liftI k = continue (\stream -> returnI (k stream))
+liftI :: Monad m => (Stream a -> Step a m b)
+      -> Iteratee a m b
+liftI k = continue (returnI . k)
 :
 
 :f Data/Enumerator.hs
@@ -62,59 +73,120 @@ length = continue (loop 0) where
 
 \subsection{Aliases}
 
-:f Data/Enumerator.hs
-span = takeWhile
+In previous library versions, several list-based iteratees were defined in
+{\tt Data.Enumerator}. They are now defined in {\tt Data.Enumerator.List};
+because these functions use core enumerator types, a bit of module
+gymnastics is required to get everything compiling properly.
 
-break p = takeWhile (not . p)
+:f Data/Enumerator.hs-boot
+module Data.Enumerator where
+import qualified Control.Exception as Exc
+data Stream a
+data Step a m b
+	= Continue (Stream a -> Iteratee a m b)
+	| Yield b (Stream a)
+	| Error Exc.SomeException
+newtype Iteratee a m b = Iteratee
+	{ runIteratee :: m (Step a m b)
+	}
 :
 
+:f Data/Enumerator/List.hs-boot
+module Data.Enumerator.List where
+import {-# SOURCE #-} Data.Enumerator
+head :: Monad m => Iteratee a m (Maybe a)
+drop :: Monad m => Integer -> Iteratee a m ()
+dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
+takeWhile :: Monad m => (a -> Bool) -> Iteratee a m [a]
+consume :: Monad m => Iteratee a m [a]
+:
+
+:d Data.Enumerator imports
+import {-# SOURCE #-} qualified Data.Enumerator.List as EL
+:
+
+These {\tt .hs-boot} files are enough for {\tt Data.Enumerator} to re-export
+the list functions under old names, with appropriate deprecation warnings.
+
 :f Data/Enumerator.hs
-liftFoldL :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+{-# DEPRECATED head
+     "Use 'Data.Enumerator.List.head' instead" #-}
+head :: Monad m => Iteratee a m (Maybe a)
+head = EL.head
+
+{-# DEPRECATED drop
+     "Use 'Data.Enumerator.List.drop' instead" #-}
+drop :: Monad m => Integer -> Iteratee a m ()
+drop = EL.drop
+
+{-# DEPRECATED dropWhile
+     "Use 'Data.Enumerator.List.dropWhile' instead" #-}
+dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
+dropWhile = EL.dropWhile
+
+{-# DEPRECATED span
+     "Use 'Data.Enumerator.List.takeWhile' instead" #-}
+span :: Monad m => (a -> Bool) -> Iteratee a m [a]
+span = EL.takeWhile
+
+{-# DEPRECATED break
+     "Use 'Data.Enumerator.List.takeWhile' instead" #-}
+break :: Monad m => (a -> Bool) -> Iteratee a m [a]
+break p = EL.takeWhile (not . p)
+
+{-# DEPRECATED consume
+     "Use 'Data.Enumerator.List.consume' instead" #-}
+consume :: Monad m => Iteratee a m [a]
+consume = EL.consume
+:
+
+:d Data.Enumerator exports
+, Data.Enumerator.head
+, Data.Enumerator.drop
+, Data.Enumerator.dropWhile
+, Data.Enumerator.span
+, Data.Enumerator.break
+, Data.Enumerator.consume
+:
+
+0.4.5 also saw the pure-fold enumerators renamed, to match other functions
+based on {\tt Prelude} names.
+
+:f Data/Enumerator.hs
+{-# DEPRECATED liftFoldL
+     "Use 'Data.Enumerator.foldl' instead" #-}
+liftFoldL :: Monad m => (b -> a -> b) -> b
+          -> Iteratee a m b
 liftFoldL = Data.Enumerator.foldl
 
-liftFoldL' :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+{-# DEPRECATED liftFoldL'
+     "Use 'Data.Enumerator.foldl' ' instead" #-}
+liftFoldL' :: Monad m => (b -> a -> b) -> b
+           -> Iteratee a m b
 liftFoldL' = Data.Enumerator.foldl'
 
-liftFoldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
+{-# DEPRECATED liftFoldM
+     "Use 'Data.Enumerator.foldM' instead" #-}
+liftFoldM :: Monad m => (b -> a -> m b) -> b
+          -> Iteratee a m b
 liftFoldM = Data.Enumerator.foldM
 :
 
 :d Data.Enumerator exports
-, Data.Enumerator.span
-, Data.Enumerator.break
 , liftFoldL
 , liftFoldL'
 , liftFoldM
 :
 
-:f Data/Enumerator.hs
-|apidoc consume|
-consume :: Monad m => Iteratee a m [a]
-consume = continue (loop id) where
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (acc . (xs ++)))
-		EOF -> yield (acc []) EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc head|
-head :: Monad m => Iteratee a m (Maybe a)
-head = continue loop where
-	loop (Chunks []) = continue loop
-	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
-	loop EOF = yield Nothing EOF
-:
-
-:d Data.Enumerator exports
-, consume
-, Data.Enumerator.head
-:
+Finally, the {\tt Data.Enumerator.IO} module was moved to
+{\tt Data.Enumerator.Binary}, and altered to include many more functions
+related to binary and {\tt ByteString} processing.
 
 :f Data/Enumerator/IO.hs
 |Data.Enumerator.IO module header|
 module Data.Enumerator.IO
-	{-# DEPRECATED "use Data.Enumerator.Binary instead" #-}
+	{-# DEPRECATED
+	     "use Data.Enumerator.Binary instead" #-}
 	( enumHandle
 	, enumFile
 	, iterHandle

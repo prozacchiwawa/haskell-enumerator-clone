@@ -5,7 +5,7 @@
 module Data.Enumerator.List (
 	|Data.Enumerator.List exports|
 	) where
-import Data.Enumerator hiding (consume, head, peek)
+import Data.Enumerator hiding (consume, head, peek, drop, dropWhile)
 import Control.Exception (ErrorCall(..))
 import Prelude hiding (head, drop, dropWhile, take, takeWhile)
 import qualified Data.List as L
