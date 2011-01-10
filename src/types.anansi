@@ -63,7 +63,7 @@ no data is currently available. Iteratees and enumeratees often special-case
 empty chunks for performance reasons, though they're not required to.
 
 :f Data/Enumerator.hs
-|apidoc Stream|
+|apidoc Data.Enumerator.Stream|
 data Stream a
 	= Chunks [a]
 	| EOF
@@ -129,16 +129,16 @@ import qualified Control.Exception as Exc
 
 :f Data/Enumerator.hs
 data Step a m b
-	|apidoc Step.Continue|
+	|apidoc Data.Enumerator.Continue|
 	= Continue (Stream a -> Iteratee a m b)
 	
-	|apidoc Step.Yield|
+	|apidoc Data.Enumerator.Yield|
 	| Yield b (Stream a)
 	
-	|apidoc Step.Error|
+	|apidoc Data.Enumerator.Error|
 	| Error Exc.SomeException
 
-|apidoc Iteratee|
+|apidoc Data.Enumerator.Iteratee|
 newtype Iteratee a m b = Iteratee
 	{ runIteratee :: m (Step a m b)
 	}
@@ -148,15 +148,15 @@ Users often need to construct iteratees which only yield or continue,
 so we define some helper functions to save typing:
 
 :f Data/Enumerator.hs
-|apidoc returnI|
+|apidoc Data.Enumerator.returnI|
 returnI :: Monad m => Step a m b -> Iteratee a m b
 returnI step = Iteratee (return step)
 
-|apidoc yield|
+|apidoc Data.Enumerator.yield|
 yield :: Monad m => b -> Stream a -> Iteratee a m b
 yield x extra = returnI (Yield x extra)
 
-|apidoc continue|
+|apidoc Data.Enumerator.continue|
 continue :: Monad m => (Stream a -> Iteratee a m b)
          -> Iteratee a m b
 continue k = returnI (Continue k)
@@ -180,7 +180,7 @@ also be considered step transformers of type
 {\tt Step a m b -> m (Step a m b)}.
 
 :f Data/Enumerator.hs
-|apidoc Enumerator|
+|apidoc Data.Enumerator.Enumerator|
 type Enumerator a m b = Step a m b -> Iteratee a m b
 :
 
@@ -216,6 +216,7 @@ to an inner iteratee. This model allows a single outer input to generate many
 inner inputs, and vice-versa.
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.Enumeratee|
 type Enumeratee ao ai m b = Step ai m b
           -> Iteratee ao m (Step ai m b)
 :
@@ -233,7 +234,7 @@ For compatibility, {\tt (==<<)} is aliased to {\tt (\$\$)}.
 :f Data/Enumerator.hs
 infixl 1 >>==
 
-|apidoc (>>==)|
+|apidoc Data.Enumerator.(>>==)|
 (>>==) :: Monad m =>
 	Iteratee a m b ->
 	(Step a m b -> Iteratee a' m b') ->
@@ -244,7 +245,7 @@ i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
 :f Data/Enumerator.hs
 infixr 1 ==<<
 
-|apidoc (==<<)|
+|apidoc Data.Enumerator.(==<<)|
 (==<<):: Monad m =>
 	(Step a m b -> Iteratee a' m b') ->
 	Iteratee a m b ->
@@ -255,7 +256,7 @@ infixr 1 ==<<
 :f Data/Enumerator.hs
 infixr 0 $$
 
-|apidoc ($$)|
+|apidoc Data.Enumerator.($$)|
 ($$):: Monad m =>
 	(Step a m b -> Iteratee a' m b') ->
 	Iteratee a m b ->
@@ -266,7 +267,7 @@ infixr 0 $$
 :f Data/Enumerator.hs
 infixr 1 >==>
 
-|apidoc (>==>)|
+|apidoc Data.Enumerator.(>==>)|
 (>==>) :: Monad m =>
 	Enumerator a m b ->
 	(Step a m b -> Iteratee a' m b') ->
@@ -278,7 +279,7 @@ infixr 1 >==>
 :f Data/Enumerator.hs
 infixr 1 <==<
 
-|apidoc (<==<)|
+|apidoc Data.Enumerator.(<==<)|
 (<==<) :: Monad m =>
 	(Step a m b -> Iteratee a' m b') ->
 	Enumerator a m b ->

@@ -10,7 +10,7 @@ Sequencing a fixed set of enumerators is easy, but for more complex
 cases, it's useful to have a small utility wrapper.
 
 :f Data/Enumerator.hs
-|apidoc concatEnums|
+|apidoc Data.Enumerator.concatEnums|
 concatEnums :: Monad m => [Enumerator a m b]
             -> Enumerator a m b
 concatEnums = Prelude.foldl (>==>) returnI
@@ -24,7 +24,7 @@ concatEnums = Prelude.foldl (>==>) returnI
 {\tt Iteratee}.
 
 :f Data/Enumerator.hs
-|apidoc joinI|
+|apidoc Data.Enumerator.joinI|
 joinI :: Monad m => Iteratee a m (Step a' m b)
       -> Iteratee a m b
 joinI outer = outer >>= check where
@@ -38,7 +38,7 @@ joinI outer = outer >>= check where
 {\tt sequence} repeatedly runs its parameter to transform the stream.
 
 :f Data/Enumerator.hs
-|apidoc sequence|
+|apidoc Data.Enumerator.sequence|
 sequence :: Monad m => Iteratee ao m ai
          -> Enumeratee ao ai m b
 sequence i = loop where
@@ -58,7 +58,7 @@ import Data.List (genericSplitAt)
 :
 
 :f Data/Enumerator.hs
-|apidoc enumList|
+|apidoc Data.Enumerator.enumList|
 enumList :: Monad m => Integer -> [a] -> Enumerator a m b
 enumList n = loop where
 	loop xs (Continue k) | not (null xs) = let
@@ -80,7 +80,7 @@ the result. It is not possible for the result to be {\tt Continue}, because
 {\tt enumEOF} calls {\tt error} for divergent iteratees.
 
 :f Data/Enumerator.hs
-|apidoc run|
+|apidoc Data.Enumerator.run|
 run :: Monad m => Iteratee a m b
     -> m (Either Exc.SomeException b)
 run i = do
@@ -92,7 +92,7 @@ run i = do
 :
 
 :f Data/Enumerator.hs
-|apidoc enumEOF|
+|apidoc Data.Enumerator.enumEOF|
 enumEOF :: Monad m => Enumerator a m b
 enumEOF (Yield x _) = yield x EOF
 enumEOF (Error err) = throwError err
@@ -105,6 +105,7 @@ enumEOF (Continue k) = k EOF >>== check where
 user doesn't care about error handling.
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.run_|
 run_ :: Monad m => Iteratee a m b -> m b
 run_ i = run i >>= either Exc.throw return
 :
@@ -128,7 +129,7 @@ it will discard the output buffer. {\tt checkDoneEx} corrects this; for
 backwards compatibility, {\tt checkDone} remains.
 
 :f Data/Enumerator.hs
-|apidoc checkDoneEx|
+|apidoc Data.Enumerator.checkDoneEx|
 checkDoneEx :: Monad m =>
 	Stream a' ->
 	((Stream a -> Iteratee a m b) -> Iteratee a' m (Step a m b)) ->
@@ -136,7 +137,7 @@ checkDoneEx :: Monad m =>
 checkDoneEx _     f (Continue k) = f k
 checkDoneEx extra _ step         = yield step extra
 
-|apidoc checkDone|
+|apidoc Data.Enumerator.checkDone|
 checkDone :: Monad m =>
 	((Stream a -> Iteratee a m b) -> Iteratee a' m (Step a m b)) ->
 	Enumeratee a' a m b
@@ -149,7 +150,7 @@ checkDone = checkDoneEx (Chunks [])
 :
 
 :f Data/Enumerator.hs
-|apidoc isEOF|
+|apidoc Data.Enumerator.isEOF|
 isEOF :: Monad m => Iteratee a m Bool
 isEOF = continue $ \s -> case s of
 	EOF -> yield True s

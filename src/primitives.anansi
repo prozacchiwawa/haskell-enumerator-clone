@@ -13,7 +13,7 @@ Instances for the {\tt MonadError} class are provided in auxiliary
 libraries, to avoid extraneous dependencies.
 
 :f Data/Enumerator.hs
-|apidoc throwError|
+|apidoc Data.Enumerator.throwError|
 throwError :: (Monad m, Exc.Exception e) => e
            -> Iteratee a m b
 throwError exc = returnI (Error (Exc.toException exc))
@@ -27,6 +27,7 @@ This limitation means that {\tt catchError} is mostly only useful for
 transforming or logging errors, not ignoring them.
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.catchError|
 catchError :: Monad m => Iteratee a m b
            -> (Exc.SomeException -> Iteratee a m b)
            -> Iteratee a m b
@@ -57,7 +58,7 @@ import Data.List (foldl')
 :
 
 :f Data/Enumerator.hs
-|apidoc foldl|
+|apidoc Data.Enumerator.foldl|
 foldl :: Monad m => (b -> a -> b) -> b
       -> Iteratee a m b
 foldl step = continue . loop where
@@ -69,7 +70,7 @@ foldl step = continue . loop where
 :
 
 :f Data/Enumerator.hs
-|apidoc foldl'|
+|apidoc Data.Enumerator.foldl'|
 foldl' :: Monad m => (b -> a -> b) -> b
        -> Iteratee a m b
 foldl' step = continue . loop where
@@ -81,7 +82,7 @@ foldl' step = continue . loop where
 :
 
 :f Data/Enumerator.hs
-|apidoc foldM|
+|apidoc Data.Enumerator.foldM|
 foldM :: Monad m => (b -> a -> m b) -> b
       -> Iteratee a m b
 foldM step = continue . loop where
@@ -115,6 +116,7 @@ processing.
 input, passing the results through as a stream.
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.iterate|
 iterate :: Monad m => (a -> a) -> a -> Enumerator a m b
 iterate f = loop where
 	loop a (Continue k) = k (Chunks [a]) >>== loop (f a)
@@ -122,6 +124,7 @@ iterate f = loop where
 :
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.iterateM|
 iterateM :: Monad m => (a -> m a) -> a
          -> Enumerator a m b
 iterateM f base = loop (return base) where
@@ -135,11 +138,13 @@ iterateM f base = loop (return base) where
 is a single value.
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.repeat|
 repeat :: Monad m => a -> Enumerator a m b
 repeat a = Data.Enumerator.iterate (const a) a
 :
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.repeatM|
 repeatM :: Monad m => m a -> Enumerator a m b
 repeatM m_a step = do
 	a <- lift m_a
@@ -150,6 +155,7 @@ repeatM m_a step = do
 quantity of the input value.
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.replicateM|
 replicateM :: Monad m => Integer -> m a
            -> Enumerator a m b
 replicateM maxCount getNext = loop maxCount where
@@ -161,6 +167,7 @@ replicateM maxCount getNext = loop maxCount where
 :
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.replicate|
 replicate :: Monad m => Integer -> a
           -> Enumerator a m b
 replicate maxCount a = replicateM maxCount (return a)
@@ -174,6 +181,7 @@ the iteratee. Instead, it returns a continuation, so additional enumerators
 may add their own input to the stream.
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.generateM|
 generateM :: Monad m => m (Maybe a)
           -> Enumerator a m b
 generateM getNext = loop where
@@ -207,6 +215,7 @@ The {\tt checkDone} and {\tt checkDoneEx} functions referenced here are
 defined later, with other utilities.
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.concatMapM|
 concatMapM :: Monad m => (ao -> m [ai])
            -> Enumeratee ao ai m b
 concatMapM f = checkDone (continue . step) where
@@ -228,30 +237,35 @@ concatMap,
 :
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.concatMap|
 concatMap :: Monad m => (ao -> [ai])
           -> Enumeratee ao ai m b
 concatMap f = concatMapM (return . f)
 :
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.map|
 map :: Monad m => (ao -> ai)
     -> Enumeratee ao ai m b
 map f = concatMap (\x -> Prelude.map f [x])
 :
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.filter|
 filter :: Monad m => (a -> Bool)
        -> Enumeratee a a m b
 filter p = concatMap (\x -> Prelude.filter p [x])
 :
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.mapM|
 mapM :: Monad m => (ao -> m ai)
      -> Enumeratee ao ai m b
 mapM f = concatMapM (\x -> Prelude.mapM f [x])
 :
 
 :f Data/Enumerator.hs
+|apidoc Data.Enumerator.filterM|
 filterM :: Monad m => (a -> m Bool)
         -> Enumeratee a a m b
 filterM p = concatMapM (\x -> CM.filterM p [x])
@@ -273,7 +287,7 @@ being passed around. {\tt printChunks} prints out exactly what chunks are
 being sent from an enumerator.
 
 :f Data/Enumerator.hs
-|apidoc printChunks|
+|apidoc Data.Enumerator.printChunks|
 printChunks :: (MonadIO m, Show a) => Bool
             -> Iteratee a m ()
 printChunks printEmpty = continue loop where

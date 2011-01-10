@@ -30,7 +30,7 @@ import System.IO.Error (isEOFError)
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc enumHandle (text)|
+|apidoc Data.Enumerator.Text.enumHandle|
 enumHandle :: MonadIO m => IO.Handle
            -> Enumerator T.Text m b
 enumHandle h = loop where
@@ -48,7 +48,7 @@ enumHandle h = loop where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc enumFile (text)|
+|apidoc Data.Enumerator.Text.enumFile|
 enumFile :: FilePath -> Enumerator T.Text IO b
 enumFile path = enum where
 	withHandle = tryStep (IO.openFile path IO.ReadMode)
@@ -58,7 +58,7 @@ enumFile path = enum where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc iterHandle (text)|
+|apidoc Data.Enumerator.Text.iterHandle|
 iterHandle :: MonadIO m => IO.Handle
            -> Iteratee T.Text m ()
 iterHandle h = continue step where
@@ -88,7 +88,7 @@ toChunks = Chunks . TL.toChunks
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc head|
+|apidoc Data.Enumerator.Text.head|
 head :: Monad m => Iteratee T.Text m (Maybe Char)
 head = continue loop where
 	loop (Chunks xs) = case TL.uncons (TL.fromChunks xs) of
@@ -98,7 +98,7 @@ head = continue loop where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc drop|
+|apidoc Data.Enumerator.Text.drop|
 drop :: Monad m => Integer -> Iteratee T.Text m ()
 drop n | n <= 0 = return ()
 drop n = continue (loop n) where
@@ -112,7 +112,7 @@ drop n = continue (loop n) where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc dropWhile|
+|apidoc Data.Enumerator.Text.dropWhile|
 dropWhile :: Monad m => (Char -> Bool) -> Iteratee T.Text m ()
 dropWhile p = continue loop where
 	loop (Chunks xs) = iter where
@@ -124,7 +124,7 @@ dropWhile p = continue loop where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc take|
+|apidoc Data.Enumerator.Text.take|
 take :: Monad m => Integer -> Iteratee T.Text m TL.Text
 take n | n <= 0 = return TL.empty
 take n = continue (loop id n) where
@@ -141,7 +141,7 @@ take n = continue (loop id n) where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc takeWhile|
+|apidoc Data.Enumerator.Text.takeWhile|
 takeWhile :: Monad m => (Char -> Bool) -> Iteratee T.Text m TL.Text
 takeWhile p = continue (loop id) where
 	loop acc (Chunks []) = continue (loop acc)
@@ -155,12 +155,13 @@ takeWhile p = continue (loop id) where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc consume|
+|apidoc Data.Enumerator.Text.consume|
 consume :: Monad m => Iteratee T.Text m TL.Text
 consume = takeWhile (const True)
 :
 
 :f Data/Enumerator/Text.hs
+|apidoc Data.Enumerator.Text.require|
 require :: Monad m => Integer -> Iteratee T.Text m ()
 require n | n <= 0 = return ()
 require n = continue (loop id n) where
@@ -176,6 +177,7 @@ require n = continue (loop id n) where
 Same caveats as {\tt Data.Enumerator.List.isolate}
 
 :f Data/Enumerator/Text.hs
+|apidoc Data.Enumerator.Text.isolate|
 isolate :: Monad m => Integer -> Enumeratee T.Text T.Text m b
 isolate n step | n <= 0 = return step
 isolate n (Continue k) = continue loop where
@@ -233,7 +235,6 @@ import Data.Enumerator.Util (textSpanBy, reprWord, reprChar)
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc Codec|
 data Codec = Codec
 	{ codecName :: T.Text
 	, codecEncode
@@ -252,7 +253,7 @@ instance Show Codec where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc encode|
+|apidoc Data.Enumerator.Text.encode|
 encode :: Monad m => Codec
        -> Enumeratee T.Text B.ByteString m b
 encode codec = checkDone (continue . step) where
@@ -277,7 +278,7 @@ encode codec = checkDone (continue . step) where
 :
 
 :f Data/Enumerator/Text.hs
-|apidoc decode|
+|apidoc Data.Enumerator.Text.decode|
 decode :: Monad m => Codec
        -> Enumeratee B.ByteString T.Text m b
 decode codec = checkDone (continue . step B.empty) where
@@ -599,4 +600,3 @@ maybeDecode (a, b) = case tryEvaluate a of
 	Left _ -> Nothing
 	Right _ -> Just (a, b)
 :
-

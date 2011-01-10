@@ -11,7 +11,7 @@ enumerator/iteratee libraries, but turned out to be basically useless. At
 least, I've never figured out what they're good for.
 
 :f Data/Enumerator.hs
-|apidoc liftTrans|
+|apidoc Data.Enumerator.liftTrans|
 liftTrans :: (Monad m, MonadTrans t, Monad (t m)) =>
              Iteratee a m b -> Iteratee a (t m) b
 liftTrans iter = Iteratee $ do
@@ -25,14 +25,14 @@ liftTrans iter = Iteratee $ do
 :f Data/Enumerator.hs
 {-# DEPRECATED liftI
      "Use 'Data.Enumerator.continue' instead" #-}
-|apidoc liftI|
+|apidoc Data.Enumerator.liftI|
 liftI :: Monad m => (Stream a -> Step a m b)
       -> Iteratee a m b
 liftI k = continue (returnI . k)
 :
 
 :f Data/Enumerator.hs
-|apidoc peek|
+|apidoc Data.Enumerator.peek|
 peek :: Monad m => Iteratee a m (Maybe a)
 peek = continue loop where
 	loop (Chunks []) = continue loop
@@ -41,7 +41,7 @@ peek = continue loop where
 :
 
 :f Data/Enumerator.hs
-|apidoc last|
+|apidoc Data.Enumerator.last|
 last :: Monad m => Iteratee a m (Maybe a)
 last = continue (loop Nothing) where
 	loop ret (Chunks xs) = continue . loop $ case xs of
@@ -55,7 +55,7 @@ import Data.List (genericLength)
 :
 
 :f Data/Enumerator.hs
-|apidoc length|
+|apidoc Data.Enumerator.length|
 length :: Monad m => Iteratee a m Integer
 length = continue (loop 0) where
 	len = genericLength
@@ -111,31 +111,37 @@ the list functions under old names, with appropriate deprecation warnings.
 :f Data/Enumerator.hs
 {-# DEPRECATED head
      "Use 'Data.Enumerator.List.head' instead" #-}
+|apidoc Data.Enumerator.head|
 head :: Monad m => Iteratee a m (Maybe a)
 head = EL.head
 
 {-# DEPRECATED drop
      "Use 'Data.Enumerator.List.drop' instead" #-}
+|apidoc Data.Enumerator.drop|
 drop :: Monad m => Integer -> Iteratee a m ()
 drop = EL.drop
 
 {-# DEPRECATED dropWhile
      "Use 'Data.Enumerator.List.dropWhile' instead" #-}
+|apidoc Data.Enumerator.dropWhile|
 dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
 dropWhile = EL.dropWhile
 
 {-# DEPRECATED span
      "Use 'Data.Enumerator.List.takeWhile' instead" #-}
+|apidoc Data.Enumerator.span|
 span :: Monad m => (a -> Bool) -> Iteratee a m [a]
 span = EL.takeWhile
 
 {-# DEPRECATED break
      "Use 'Data.Enumerator.List.takeWhile' instead" #-}
+|apidoc Data.Enumerator.break|
 break :: Monad m => (a -> Bool) -> Iteratee a m [a]
 break p = EL.takeWhile (not . p)
 
 {-# DEPRECATED consume
      "Use 'Data.Enumerator.List.consume' instead" #-}
+|apidoc Data.Enumerator.consume|
 consume :: Monad m => Iteratee a m [a]
 consume = EL.consume
 :
@@ -155,18 +161,21 @@ based on {\tt Prelude} names.
 :f Data/Enumerator.hs
 {-# DEPRECATED liftFoldL
      "Use 'Data.Enumerator.foldl' instead" #-}
+|apidoc Data.Enumerator.liftFoldL|
 liftFoldL :: Monad m => (b -> a -> b) -> b
           -> Iteratee a m b
 liftFoldL = Data.Enumerator.foldl
 
 {-# DEPRECATED liftFoldL'
      "Use 'Data.Enumerator.foldl' ' instead" #-}
+|apidoc Data.Enumerator.liftFoldL'|
 liftFoldL' :: Monad m => (b -> a -> b) -> b
            -> Iteratee a m b
 liftFoldL' = Data.Enumerator.foldl'
 
 {-# DEPRECATED liftFoldM
      "Use 'Data.Enumerator.foldM' instead" #-}
+|apidoc Data.Enumerator.liftFoldM|
 liftFoldM :: Monad m => (b -> a -> m b) -> b
           -> Iteratee a m b
 liftFoldM = Data.Enumerator.foldM

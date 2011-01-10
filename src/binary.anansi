@@ -29,7 +29,7 @@ import System.IO.Error (isEOFError)
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc enumHandle|
+|apidoc Data.Enumerator.Binary.enumHandle|
 enumHandle :: MonadIO m
            => Integer -- ^ Buffer size
            -> IO.Handle
@@ -55,7 +55,7 @@ enumHandle bufferSize h = loop where
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc enumFile|
+|apidoc Data.Enumerator.Binary.enumFile|
 enumFile :: FilePath -> Enumerator B.ByteString IO b
 enumFile path = enum where
 	withHandle = tryStep (IO.openBinaryFile path IO.ReadMode)
@@ -66,7 +66,7 @@ enumFile path = enum where
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc iterHandle|
+|apidoc Data.Enumerator.Binary.iterHandle|
 iterHandle :: MonadIO m => IO.Handle
            -> Iteratee B.ByteString m ()
 iterHandle h = continue step where
@@ -97,7 +97,7 @@ toChunks = Chunks . BL.toChunks
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc head|
+|apidoc Data.Enumerator.Binary.head|
 head :: Monad m => Iteratee B.ByteString m (Maybe Word8)
 head = continue loop where
 	loop (Chunks xs) = case BL.uncons (BL.fromChunks xs) of
@@ -107,7 +107,7 @@ head = continue loop where
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc drop|
+|apidoc Data.Enumerator.Binary.drop|
 drop :: Monad m => Integer -> Iteratee B.ByteString m ()
 drop n | n <= 0 = return ()
 drop n = continue (loop n) where
@@ -121,7 +121,7 @@ drop n = continue (loop n) where
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc dropWhile|
+|apidoc Data.Enumerator.Binary.dropWhile|
 dropWhile :: Monad m => (Word8 -> Bool) -> Iteratee B.ByteString m ()
 dropWhile p = continue loop where
 	loop (Chunks xs) = iter where
@@ -133,7 +133,7 @@ dropWhile p = continue loop where
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc take|
+|apidoc Data.Enumerator.Binary.take|
 take :: Monad m => Integer -> Iteratee B.ByteString m BL.ByteString
 take n | n <= 0 = return BL.empty
 take n = continue (loop id n) where
@@ -150,7 +150,7 @@ take n = continue (loop id n) where
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc takeWhile|
+|apidoc Data.Enumerator.Binary.takeWhile|
 takeWhile :: Monad m => (Word8 -> Bool) -> Iteratee B.ByteString m BL.ByteString
 takeWhile p = continue (loop id) where
 	loop acc (Chunks []) = continue (loop acc)
@@ -164,12 +164,13 @@ takeWhile p = continue (loop id) where
 :
 
 :f Data/Enumerator/Binary.hs
-|apidoc consume|
+|apidoc Data.Enumerator.Binary.consume|
 consume :: Monad m => Iteratee B.ByteString m BL.ByteString
 consume = takeWhile (const True)
 :
 
 :f Data/Enumerator/Binary.hs
+|apidoc Data.Enumerator.Binary.require|
 require :: Monad m => Integer -> Iteratee B.ByteString m ()
 require n | n <= 0 = return ()
 require n = continue (loop id n) where
@@ -185,6 +186,7 @@ require n = continue (loop id n) where
 Same caveats as {\tt Data.Enumerator.List.isolate}
 
 :f Data/Enumerator/Binary.hs
+|apidoc Data.Enumerator.Binary.isolate|
 isolate :: Monad m => Integer -> Enumeratee B.ByteString B.ByteString m b
 isolate n step | n <= 0 = return step
 isolate n (Continue k) = continue loop where
