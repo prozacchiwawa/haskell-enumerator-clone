@@ -1,46 +1,44 @@
 :# Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
 :#
 :# See license.txt for details
+
 :option tab-size 2
 
-\documentclass[10pt,twocolumn]{article}
+\documentclass{article}
 
 \usepackage{color}
 \usepackage{hyperref}
 \usepackage{noweb}
 \usepackage{indentfirst}
-\usepackage[compact]{titlesec}
 \usepackage{amsmath}
+\usepackage{multicol}
 
 \noweboptions{smallcode}
 
-:# Smaller margins
-\usepackage[left=1cm,top=1cm,right=1cm,nohead,nofoot]{geometry}
+% Smaller margins
+\usepackage[left=1cm,top=1cm,right=1cm]{geometry}
 
-:# Remove boxes from hyperlinks
+% Remove boxes from hyperlinks
 \hypersetup{
     colorlinks,
     linkcolor=blue,
+    urlcolor=blue,
 }
-
-\setlength{\parindent}{0.5cm}
-\setlength{\parskip}{0.15cm}
-
-\titlespacing{\section}{0pt}{*0}{*0}
-\titlespacing{\subsection}{0pt}{*0}{*0}
-
-\pagestyle{empty}
 
 \newcommand{\io}{{\sc i/o}}
 
 \title{enumerator\_0.4.5}
-\author{John Millikin}
-\date{2010-12-24}
+\author{John Millikin\\
+        \href{mailto:"John Millikin" <jmillikin@gmail.com>}{\tt jmillikin@gmail.com}}
+\date{January 10, 2011}
 
 \begin{document}
 
 \maketitle
 
+\setlength{\parskip}{5pt plus 1pt}
+
+\begin{multicols}{2}
 \section*{Abstract}
 
 Typical buffer-based incremental \io{} is based around a single loop, which
@@ -61,15 +59,61 @@ in near-constant space by pure code. Although somewhat more complex to write,
 using enumerators instead of lazy \io{} produces more correct programs.
 
 This library contains an enumerator implementation for Haskell, designed to
-be both simple and efficient.
+be both simple and efficient. Three core types are defined, along with
+numerous helper functions:
 
+\begin{itemize}
+
+\item {\it Iteratee\/}: Data sinks, analogous to left folds. Iteratees consume
+a sequence of \emph{input} values, and generate a single \emph{output} value.
+Many iteratees are designed to perform side effects (such as printing to
+{\tt stdout}), so they can also be used as monad transformers.
+
+\item {\it Enumerator\/}: Data sources, which generate input sequences. Typical
+enumerators read from a file handle, socket, random number generator, or
+other external stream. To operate, enumerators are passed an iteratee, and
+provide that iteratee with input until either the iteratee has completed its
+computation, or {\sc eof}.
+
+\item {\it Enumeratee\/}: Data transformers, which operate as both enumerators and
+iteratees. Enumeratees read from an \emph{outer} enumerator, and provide the
+transformed data to an \emph{inner} iteratee.
+
+\end{itemize}
+
+\noindent Homepage: \href{http://john-millikin.com/software/enumerator/}
+                         {\small \tt http://john-millikin.com/software/enumerator/}
+
+\setlength{\parskip}{0pt plus 1pt}
+\tableofcontents
+\setlength{\parskip}{4pt plus 1pt}
+\end{multicols}
+
+\newpage
+\begin{multicols*}{2}
 :include types.anansi
+
+\newpage
 :include primitives.anansi
+\end{multicols*}
+
+\newpage
 :include list.anansi
+
+\newpage
 :include binary.anansi
+
+\newpage
 :include text.anansi
+
+\newpage
 :include util.anansi
+
+\newpage
+\begin{multicols*}{2}
 :include compat.anansi
+\end{multicols*}
+
 :include api-docs.anansi
 
 \end{document}

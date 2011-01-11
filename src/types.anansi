@@ -1,22 +1,4 @@
-\section{Overview}
-
-This library defines three core types, and numerous helper functions to
-work with them. The types are:
-
-{\it Iteratee\/}: Data sinks, analogous to {\tt foldl}. Iteratees consume
-a sequence of \emph{input} values, and generate a single \emph{output} value.
-Many iteratees are designed to perform side effects (such as printing to
-{\tt stdout}), so they can also be used as monad transformers.
-
-{\it Enumerator\/}: Data sources, which generate input sequences. Typical
-enumerators read from a file handle, socket, random number generator, or
-other external stream. To operate, enumerators are passed an iteratee, and
-provide that iteratee with input until either the iteratee has completed its
-computation, or {\sc eof}.
-
-{\it Enumeratee\/}: Data transformers, which operate as both enumerators and
-iteratees. Enumeratees read from an \emph{outer} enumerator, and provide the
-transformed data to an \emph{inner} iteratee.
+\section{Core types}
 
 Most of this library's types and functions are exported from the
 {\tt Data.Enumerator} module.
@@ -29,7 +11,7 @@ module Data.Enumerator (
 |Data.Enumerator imports|
 :
 
-A few utility functions share names with functions from the Prelude, so
+\noindent A few utility functions share names with functions from the Prelude, so
 those are removed from the default namespace.
 
 :d Data.Enumerator imports
@@ -38,8 +20,6 @@ import Prelude hiding (
 	|excluded Prelude imports|
 	)
 :
-
-\section{Type definitions}
 
 :d Data.Enumerator exports
 -- * Core
@@ -236,10 +216,10 @@ For compatibility, {\tt (==<<)} is aliased to {\tt (\$\$)}.
 infixl 1 >>==
 
 |apidoc Data.Enumerator.(>>==)|
-(>>==) :: Monad m =>
-	Iteratee a m b ->
-	(Step a m b -> Iteratee a' m b') ->
-	Iteratee a' m b'
+(>>==) :: Monad m
+       => Iteratee a m b
+       -> (Step a m b -> Iteratee a' m b')
+       -> Iteratee a' m b'
 i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
 :
 
@@ -247,10 +227,10 @@ i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
 infixr 1 ==<<
 
 |apidoc Data.Enumerator.(==<<)|
-(==<<):: Monad m =>
-	(Step a m b -> Iteratee a' m b') ->
-	Iteratee a m b ->
-	Iteratee a' m b'
+(==<<) :: Monad m
+       => (Step a m b -> Iteratee a' m b')
+       -> Iteratee a m b
+       -> Iteratee a' m b'
 (==<<) = flip (>>==)
 :
 
@@ -258,10 +238,10 @@ infixr 1 ==<<
 infixr 0 $$
 
 |apidoc Data.Enumerator.($$)|
-($$):: Monad m =>
-	(Step a m b -> Iteratee a' m b') ->
-	Iteratee a m b ->
-	Iteratee a' m b'
+($$) :: Monad m
+     => (Step a m b -> Iteratee a' m b')
+     -> Iteratee a m b
+     -> Iteratee a' m b'
 ($$) = (==<<)
 :
 
@@ -269,11 +249,11 @@ infixr 0 $$
 infixr 1 >==>
 
 |apidoc Data.Enumerator.(>==>)|
-(>==>) :: Monad m =>
-	Enumerator a m b ->
-	(Step a m b -> Iteratee a' m b') ->
-	Step a m b ->
-	Iteratee a' m b'
+(>==>) :: Monad m
+       => Enumerator a m b
+       -> (Step a m b -> Iteratee a' m b')
+       -> Step a m b
+       -> Iteratee a' m b'
 (>==>) e1 e2 s = e1 s >>== e2
 :
 
@@ -281,11 +261,11 @@ infixr 1 >==>
 infixr 1 <==<
 
 |apidoc Data.Enumerator.(<==<)|
-(<==<) :: Monad m =>
-	(Step a m b -> Iteratee a' m b') ->
-	Enumerator a m b ->
-	Step a m b ->
-	Iteratee a' m b'
+(<==<) :: Monad m
+       => (Step a m b -> Iteratee a' m b')
+       -> Enumerator a m b
+       -> Step a m b
+       -> Iteratee a' m b'
 (<==<) = flip (>==>)
 :
 

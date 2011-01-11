@@ -193,6 +193,7 @@ liftFoldM = Data.Enumerator.foldM
 , liftFoldM
 :
 
+\clearpage
 Finally, the {\tt Data.Enumerator.IO} module was moved to
 {\tt Data.Enumerator.Binary}, and altered to include many more functions
 related to binary and {\tt ByteString} processing.
