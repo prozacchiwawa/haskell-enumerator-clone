@@ -35,7 +35,23 @@ description:
   programs.
   .
   This library contains an enumerator implementation for Haskell, designed to
-  be both simple and efficient.
+  be both simple and efficient. Three core types are defined, along with
+  numerous helper functions:
+  .
+  * /Iteratee/: Data sinks, analogous to left folds. Iteratees consume
+  a sequence of /input/ values, and generate a single /output/ value.
+  Many iteratees are designed to perform side effects (such as printing to
+  @stdout@), so they can also be used as monad transformers.
+  .
+  * /Enumerator/: Data sources, which generate input sequences. Typical
+  enumerators read from a file handle, socket, random number generator, or
+  other external stream. To operate, enumerators are passed an iteratee, and
+  provide that iteratee with input until either the iteratee has completed its
+  computation, or EOF.
+  .
+  * /Enumeratee/: Data transformers, which operate as both enumerators and
+  iteratees. Enumeratees read from an /outer/ enumerator, and provide the
+  transformed data to an /inner/ iteratee.
 
 extra-source-files:
   readme.txt
