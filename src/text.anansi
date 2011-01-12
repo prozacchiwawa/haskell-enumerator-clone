@@ -76,7 +76,7 @@ iterHandle h = continue step where
 , iterHandle
 :
 
-\subsection{Char processing}
+\subsection{List analogues}
 
 :d Data.Enumerator.Text imports
 import qualified Data.Text.Lazy as TL
@@ -157,7 +157,12 @@ takeWhile p = continue (loop id) where
 :f Data/Enumerator/Text.hs
 |apidoc Data.Enumerator.Text.consume|
 consume :: Monad m => Iteratee T.Text m TL.Text
-consume = takeWhile (const True)
+consume = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		iter = continue (loop (acc . (TL.append lazy)))
+	loop acc EOF = yield (acc TL.empty) EOF
 :
 
 :f Data/Enumerator/Text.hs

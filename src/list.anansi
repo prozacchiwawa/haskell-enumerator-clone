@@ -100,7 +100,10 @@ takeWhile p = continue (loop id) where
 :f Data/Enumerator/List.hs
 |apidoc Data.Enumerator.List.consume|
 consume :: Monad m => Iteratee a m [a]
-consume = takeWhile (const True)
+consume = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = continue (loop (acc . (xs ++)))
+	loop acc EOF = yield (acc []) EOF
 :
 
 :f Data/Enumerator/List.hs
