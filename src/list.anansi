@@ -68,30 +68,34 @@ takeWhile p = continue (loop id) where
 	loop acc EOF = yield (acc []) EOF
 :
 
-:d Data/Enumerator/List.hs (disabled)
-|apidoc Data.Enumerator.List.peek|
-peek :: Monad m => Integer -> Iteratee a m [a]
-peek n | n <= 0 = return []
-peek n = continue (loop id n) where
-	len = L.genericLength
-	loop acc n' (Chunks xs)
-		| len xs < n' = continue (loop (acc . (xs ++)) (n' - len xs))
-		| otherwise   = let
-			xs' = L.genericTake n' xs
-			in yield (acc xs') (Chunks (acc xs))
-	loop acc _ EOF = yield (acc []) EOF
-:
-
-:d Data/Enumerator/List.hs (disabled)
-|apidoc Data.Enumerator.List.peekWhile|
-peekWhile :: Monad m => (a -> Bool) -> Iteratee a m [a]
-peekWhile p = continue (loop id) where
-	loop acc (Chunks []) = continue (loop acc)
-	loop acc (Chunks xs) = case Prelude.span p xs of
-		(_, []) -> continue (loop (acc . (xs ++)))
-		(xs', _) -> yield (acc xs') (Chunks (acc xs))
-	loop acc EOF = yield (acc []) EOF
-:
+:# NOTE: peeking properly is currently impossible with the current design of
+:# 'Stream'. Once it's updated to support EOF with "final data", peek can be
+:# re-enabled
+:#
+:# :d Data/Enumerator/List.hs
+:# |apidoc Data.Enumerator.List.peek|
+:# peek :: Monad m => Integer -> Iteratee a m [a]
+:# peek n | n <= 0 = return []
+:# peek n = continue (loop id n) where
+:# 	len = L.genericLength
+:# 	loop acc n' (Chunks xs)
+:# 		| len xs < n' = continue (loop (acc . (xs ++)) (n' - len xs))
+:# 		| otherwise   = let
+:# 			xs' = L.genericTake n' xs
+:# 			in yield (acc xs') (Chunks (acc xs))
+:# 	loop acc _ EOF = yield (acc []) EOF
+:# :
+:# 
+:# :d Data/Enumerator/List.hs (disabled)
+:# |apidoc Data.Enumerator.List.peekWhile|
+:# peekWhile :: Monad m => (a -> Bool) -> Iteratee a m [a]
+:# peekWhile p = continue (loop id) where
+:# 	loop acc (Chunks []) = continue (loop acc)
+:# 	loop acc (Chunks xs) = case Prelude.span p xs of
+:# 		(_, []) -> continue (loop (acc . (xs ++)))
+:# 		(xs', _) -> yield (acc xs') (Chunks (acc xs))
+:# 	loop acc EOF = yield (acc []) EOF
+:# :
 
 :f Data/Enumerator/List.hs
 |apidoc Data.Enumerator.List.consume|
