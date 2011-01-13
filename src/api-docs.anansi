@@ -321,6 +321,10 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.5
 :
 
+:d apidoc Data.Enumerator.joinE
+-- | Flatten an enumerator/enumeratee pair into a single enumerator.
+:
+
 :d apidoc Data.Enumerator.joinI
 -- | 'joinI' is used to &#x201C;flatten&#x201D; 'Enumeratee's into an
 -- 'Iteratee'.

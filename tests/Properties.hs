@@ -36,7 +36,7 @@ tests =
 	, test_Primitives
 	, test_Text
 	, test_ListAnalogues
-	, test_Functions
+	, test_Other
 	]
 
 main :: IO ()
@@ -713,15 +713,29 @@ test_TextIsolate = testProperty "Text.isolate" prop where
 
 -- Specific functions
 
-test_Functions :: F.Test
-test_Functions = F.testGroup "Functions"
-	[ testProperty "sequence" prop_Sequence
+test_Other :: F.Test
+test_Other = F.testGroup "Other"
+	[ test_Sequence
+	, test_joinE
 	]
 
-prop_Sequence :: Property
-prop_Sequence = property (\n xs -> runIdentity (E.run_ (iter n xs)) == map Just xs) where
-	iter :: Positive Integer -> [A] -> E.Iteratee A Identity [Maybe A]
-	iter (Positive n) xs = E.enumList n xs $$ E.joinI (E.sequence EL.head $$ EL.consume)
+test_Sequence :: F.Test
+test_Sequence = testProperty "sequence" prop where
+	prop :: Positive Integer -> [A] -> Bool
+	prop (Positive n) xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = map Just xs
+		
+		iter = E.enumList n xs $$ E.joinI (E.sequence EL.head $$ EL.consume)
+
+test_joinE :: F.Test
+test_joinE = testProperty "joinE" prop where
+	prop :: [Integer] -> Bool
+	prop xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		expected = map (* 10) xs
+		
+		iter = (E.joinE (E.enumList 1 xs) (E.map (* 10))) $$ EL.consume
 
 -- misc
 

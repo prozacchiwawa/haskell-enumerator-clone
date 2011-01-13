@@ -39,6 +39,23 @@ joinI outer = outer >>= check where
 	check (Error e) = throwError e
 :
 
+{\tt joinE} is similar, except it flattens an enumerator/enumeratee pair
+into a single enumerator.
+
+:f Data/Enumerator.hs
+|apidoc Data.Enumerator.joinE|
+joinE :: Monad m
+      => Enumerator ao m (Step ai m b)
+      -> Enumeratee ao ai m b
+      -> Enumerator ai m b
+joinE enum enee s = Iteratee $ do
+	step <- runIteratee (enumEOF $$ enum $$ enee s)
+	case step of
+		Error err -> return (Error err)
+		Yield x _ -> return x
+		Continue _ -> error "joinE: divergent iteratee"
+:
+
 {\tt sequence} repeatedly runs its parameter to transform the stream.
 
 :f Data/Enumerator.hs
@@ -73,6 +90,7 @@ enumList n = loop where
 
 :d Data.Enumerator exports
 , joinI
+, joinE
 , Data.Enumerator.sequence
 , enumList
 :
