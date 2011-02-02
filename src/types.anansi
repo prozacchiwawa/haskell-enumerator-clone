@@ -335,3 +335,19 @@ instance Monad m => A.Applicative (Iteratee a m) where
 	pure = return
 	(<*>) = CM.ap
 :
+
+:d Data.Enumerator imports
+import Data.Typeable ( Typeable, typeOf
+                     , Typeable1, typeOf1
+                     , mkTyConApp, mkTyCon)
+:
+
+:f Data/Enumerator.hs
+instance (Typeable a, Typeable1 m) => Typeable1 (Iteratee a m) where
+	typeOf1 i = mkTyConApp tyCon [typeOf a, typeOf1 m] where
+		tyCon = mkTyCon "Data.Enumerator.Iteratee"
+		(a, m) = peel i
+		
+		peel :: Iteratee a m b -> (a, m ())
+		peel = undefined
+:
