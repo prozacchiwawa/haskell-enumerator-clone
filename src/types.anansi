@@ -59,6 +59,7 @@ instance Functor Stream where
 	fmap f (Chunks xs) = Chunks (fmap f xs)
 	fmap _ EOF = EOF
 
+-- | Since: 0.4.5
 instance A.Applicative Stream where
 	pure = return
 	(<*>) = CM.ap
@@ -343,6 +344,7 @@ import Data.Typeable ( Typeable, typeOf
 :
 
 :f Data/Enumerator.hs
+-- | Since: 0.4.6
 instance (Typeable a, Typeable1 m) => Typeable1 (Iteratee a m) where
 	typeOf1 i = mkTyConApp tyCon [typeOf a, typeOf1 m] where
 		tyCon = mkTyCon "Data.Enumerator.Iteratee"
