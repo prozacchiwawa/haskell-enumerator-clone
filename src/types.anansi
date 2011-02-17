@@ -285,13 +285,17 @@ Iteratees are monads; by sequencing iteratees, very complex processing may
 be applied to arbitrary input streams. Iteratees are also applicative
 functors and monad transformers.
 
+:d Data.Enumerator imports
+import Data.Function (fix)
+:
+
 :f Data/Enumerator.hs
 instance Monad m => Monad (Iteratee a m) where
 	return x = yield x (Chunks [])
 	
-	m >>= f = Iteratee $ runIteratee m >>=
+	m0 >>= f = ($ m0) $ fix $ \bind m -> Iteratee $ runIteratee m >>=
 		\r1 -> case r1 of
-			Continue k -> return (Continue ((>>= f) . k))
+			Continue k -> return (Continue (bind . k))
 			Error err -> return (Error err)
 			Yield x (Chunks []) -> runIteratee (f x)
 			Yield x extra -> runIteratee (f x) >>=
