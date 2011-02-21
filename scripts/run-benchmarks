@@ -29,4 +29,4 @@ rm -rf dist
 $CABAL -s ../cabal-dev install || exit 1
 popd
 
-cabal-dev/bin/enumerator_tests
+cabal-dev/bin/enumerator_benchmarks $@
