@@ -202,11 +202,11 @@ import Numeric (showIntAtBase)
 :
 
 :f Data/Enumerator/Util.hs
-tryStep :: MonadIO m => IO t -> (t -> Iteratee a m b) -> Iteratee a m b
-tryStep get io = do
-	tried <- liftIO (Exc.try get)
+tryIO :: MonadIO m => IO b -> Iteratee a m b
+tryIO io = do
+	tried <- liftIO (Exc.try io)
 	case tried of
-		Right t -> io t
+		Right b -> return b
 		Left err -> throwError (err :: Exc.SomeException)
 :
 

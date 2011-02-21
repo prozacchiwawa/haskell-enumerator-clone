@@ -20,7 +20,7 @@ text enumerators read in lines. This matches similar text-based {\sc api}s,
 such as Python's {\tt xreadlines()}.
 
 :d Data.Enumerator.Text imports
-import Data.Enumerator.Util (tryStep)
+import Data.Enumerator.Util (tryIO)
 import qualified Data.Text.IO as TIO
 
 import qualified Control.Exception as Exc
@@ -34,13 +34,14 @@ import System.IO.Error (isEOFError)
 enumHandle :: MonadIO m => IO.Handle
            -> Enumerator T.Text m b
 enumHandle h = loop where
-	loop (Continue k) = withText $ \maybeText ->
+	loop (Continue k) = do
+		maybeText <- tryIO getText
 		case maybeText of
 			Nothing -> continue k
 			Just text -> k (Chunks [text]) >>== loop
 	
 	loop step = returnI step
-	withText = tryStep $ Exc.catch
+	getText = Exc.catch
 		(Just `fmap` TIO.hGetLine h)
 		(\err -> if isEOFError err
 			then return Nothing
@@ -50,9 +51,9 @@ enumHandle h = loop where
 :f Data/Enumerator/Text.hs
 |apidoc Data.Enumerator.Text.enumFile|
 enumFile :: FilePath -> Enumerator T.Text IO b
-enumFile path = enum where
-	withHandle = tryStep (IO.openFile path IO.ReadMode)
-	enum step = withHandle $ \h -> Iteratee $ Exc.finally
+enumFile path step = do
+	h <- tryIO (IO.openFile path IO.ReadMode)
+	Iteratee $ Exc.finally
 		(runIteratee (enumHandle h step))
 		(IO.hClose h)
 :
@@ -64,9 +65,9 @@ iterHandle :: MonadIO m => IO.Handle
 iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
-	step (Chunks chunks) = let
-		put = mapM_ (TIO.hPutStr h) chunks
-		in tryStep put (\_ -> continue step)
+	step (Chunks chunks) = do
+		tryIO (mapM_ (TIO.hPutStr h) chunks)
+		continue step
 :
 
 :d Data.Enumerator.Text exports

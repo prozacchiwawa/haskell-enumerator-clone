@@ -21,7 +21,7 @@ Any exceptions thrown while reading or writing data are caught and reported
 using {\tt throwError}, so errors can be handled in pure iteratees.
 
 :d Data.Enumerator.Binary imports
-import Data.Enumerator.Util (tryStep)
+import Data.Enumerator.Util (tryIO)
 import qualified Control.Exception as Exc
 import Control.Monad.IO.Class (MonadIO)
 import qualified System.IO as IO
@@ -35,7 +35,8 @@ enumHandle :: MonadIO m
            -> IO.Handle
            -> Enumerator B.ByteString m b
 enumHandle bufferSize h = loop where
-	loop (Continue k) = withBytes $ \bytes ->
+	loop (Continue k) = do
+		bytes <- tryIO getBytes
 		if B.null bytes
 			then continue k
 			else k (Chunks [bytes]) >>== loop
@@ -43,7 +44,7 @@ enumHandle bufferSize h = loop where
 	loop step = returnI step
 	
 	intSize = fromInteger bufferSize
-	withBytes = tryStep $ do
+	getBytes = do
 		hasInput <- Exc.catch
 			(IO.hWaitForInput h (-1))
 			(\err -> if isEOFError err
@@ -57,12 +58,11 @@ enumHandle bufferSize h = loop where
 :f Data/Enumerator/Binary.hs
 |apidoc Data.Enumerator.Binary.enumFile|
 enumFile :: FilePath -> Enumerator B.ByteString IO b
-enumFile path = enum where
-	withHandle = tryStep (IO.openBinaryFile path IO.ReadMode)
-	enum step = withHandle $ \h -> do
-		Iteratee $ Exc.finally
-			(runIteratee (enumHandle 4096 h step))
-			(IO.hClose h)
+enumFile path step = do
+	h <- tryIO (IO.openBinaryFile path IO.ReadMode)
+	Iteratee $ Exc.finally
+		(runIteratee (enumHandle 4096 h step))
+		(IO.hClose h)
 :
 
 :f Data/Enumerator/Binary.hs
@@ -72,9 +72,9 @@ iterHandle :: MonadIO m => IO.Handle
 iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
-	step (Chunks bytes) = let
-		put = mapM_ (B.hPut h) bytes
-		in tryStep put (\_ -> continue step)
+	step (Chunks bytes) = do
+		tryIO (mapM_ (B.hPut h) bytes)
+		continue step
 :
 
 :d Data.Enumerator.Binary exports
