@@ -203,11 +203,11 @@ import Numeric (showIntAtBase)
 
 :f Data/Enumerator/Util.hs
 tryIO :: MonadIO m => IO b -> Iteratee a m b
-tryIO io = do
+tryIO io = Iteratee $ do
 	tried <- liftIO (Exc.try io)
-	case tried of
-		Right b -> return b
-		Left err -> throwError (err :: Exc.SomeException)
+	return $ case tried of
+		Right b -> Yield b (Chunks [])
+		Left err -> Error err
 :
 
 :f Data/Enumerator/Util.hs
