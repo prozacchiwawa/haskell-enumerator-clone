@@ -456,8 +456,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.consume
--- | Read all remaining input from the stream, and return as a lazy
--- ByteString.
+-- | @consume = 'takeWhile' (const True)@
 --
 -- Since: 0.4.5
 :
@@ -552,7 +551,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.consume
--- | Read all remaining input elements from the stream, and return as a list.
+-- | @consume = 'takeWhile' (const True)@
 --
 -- Since: 0.4.5
 :
@@ -612,8 +611,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.consume
--- | Read all remaining input from the stream, and return as a lazy
--- Text.
+-- | @consume = 'takeWhile' (const True)@
 --
 -- Since: 0.4.5
 :
