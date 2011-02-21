@@ -475,11 +475,22 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.enumFile
--- | Opens a file path in binary mode, and passes the handle to 'enumHandle'.
--- The file will be closed when the 'Iteratee' finishes.
+-- | @enumFile path = 'enumFileRange' path Nothing Nothing@
+:
+
+:d apidoc Data.Enumerator.Binary.enumFileRange
+-- | Opens a file path in binary mode, and passes the handle to
+-- 'enumHandleRange'. The file will be closed when the 'Iteratee'
+-- finishes.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.enumHandle
+-- | @enumHandle size h = 'enumHandleRange' size Nothing Nothing h@
+:
+
+:d apidoc Data.Enumerator.Binary.enumHandleRange
 -- | Read bytes (in chunks of the given buffer size) from the handle, and
 -- stream them to an 'Iteratee'. If an exception occurs during file IO,
 -- enumeration will stop and 'Error' will be returned. Exceptions from the
@@ -491,6 +502,15 @@ This section just repeats literate documentation in Haddock syntax.
 --
 -- The handle should be opened with no encoding, and in 'IO.ReadMode' or
 -- 'IO.ReadWriteMode'.
+--
+-- If an offset is specified, the handle will be seeked to that offset
+-- before reading. If the handle cannot be seeked, an error will be
+-- thrown.
+--
+-- If a maximum count is specified, the number of bytes read will not
+-- exceed that count.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.head
