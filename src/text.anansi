@@ -218,6 +218,11 @@ splitWhen p = loop where
 				else k (Chunks [text]) >>== loop
 :
 
+:f Data/Enumerator/Text.hs
+lines :: Monad m => Enumeratee T.Text T.Text m b
+lines = splitWhen (== '\n')
+:
+
 :d Data.Enumerator.Text exports
 -- * List analogues
 , Data.Enumerator.Text.head
@@ -229,6 +234,7 @@ splitWhen p = loop where
 , require
 , isolate
 , splitWhen
+, Data.Enumerator.Text.lines
 :
 
 \subsection{Codecs}
