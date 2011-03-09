@@ -9,6 +9,7 @@ import Data.Enumerator hiding (consume, head, peek, drop, dropWhile)
 import Control.Exception (ErrorCall(..))
 import Prelude hiding (head, drop, dropWhile, take, takeWhile, sequence)
 import qualified Data.List as L
+|Data.Enumerator.List imports|
 :
 
 :f Data/Enumerator/List.hs
@@ -151,6 +152,57 @@ splitWhen p = sequence $ do
 	return as
 :
 
+Since iteratees are semantically a left-fold, there are many existing
+folds that can be lifted to iteratees. The {\tt foldl}, {\tt foldl'}, and
+{\tt foldM} functions work like their standard library namesakes, but
+construct iteratees instead. These iteratees are not as complex as what can
+be created using {\tt Yield} and {\tt Continue}, but cover many common cases.
+
+Each fold consumes input from the stream until {\sc eof}, when it yields its
+current accumulator.
+
+:f Data/Enumerator/List.hs
+|apidoc Data.Enumerator.List.foldl|
+foldl :: Monad m => (b -> a -> b) -> b
+      -> Iteratee a m b
+foldl step = continue . loop where
+	fold = Prelude.foldl step
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (fold acc xs))
+		EOF -> yield acc EOF
+:
+
+:f Data/Enumerator/List.hs
+|apidoc Data.Enumerator.List.foldl'|
+foldl' :: Monad m => (b -> a -> b) -> b
+       -> Iteratee a m b
+foldl' step = continue . loop where
+	fold = L.foldl' step
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (fold acc xs))
+		EOF -> yield acc EOF
+:
+
+:d Data.Enumerator.List imports
+import qualified Control.Monad as CM
+import Control.Monad.Trans.Class (lift)
+:
+
+:f Data/Enumerator/List.hs
+|apidoc Data.Enumerator.List.foldM|
+foldM :: Monad m => (b -> a -> m b) -> b
+      -> Iteratee a m b
+foldM step = continue . loop where
+	fold acc = lift . CM.foldM step acc
+	
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> fold acc xs >>= continue . loop
+		EOF -> yield acc EOF
+:
+
 :d Data.Enumerator.List exports
   head
 , drop
@@ -161,4 +213,7 @@ splitWhen p = sequence $ do
 , require
 , isolate
 , splitWhen
+, Data.Enumerator.List.foldl
+, Data.Enumerator.List.foldl'
+, Data.Enumerator.List.foldM
 :

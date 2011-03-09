@@ -47,65 +47,6 @@ catchError iter h = iter >>== step where
 , catchError
 :
 
-\subsection{Iteratees}
-
-Since iteratees are semantically a left-fold, there are many existing
-folds that can be lifted to iteratees. The {\tt foldl}, {\tt foldl'}, and
-{\tt foldM} functions work like their standard library namesakes, but
-construct iteratees instead. These iteratees are not as complex as what can
-be created using {\tt Yield} and {\tt Continue}, but cover many common cases.
-
-Each fold consumes input from the stream until {\sc eof}, when it yields its
-current accumulator.
-
-:d Data.Enumerator imports
-import Data.List (foldl')
-:
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.foldl|
-foldl :: Monad m => (b -> a -> b) -> b
-      -> Iteratee a m b
-foldl step = continue . loop where
-	fold = Prelude.foldl step
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (fold acc xs))
-		EOF -> yield acc EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.foldl'|
-foldl' :: Monad m => (b -> a -> b) -> b
-       -> Iteratee a m b
-foldl' step = continue . loop where
-	fold = Data.List.foldl' step
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (fold acc xs))
-		EOF -> yield acc EOF
-:
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.foldM|
-foldM :: Monad m => (b -> a -> m b) -> b
-      -> Iteratee a m b
-foldM step = continue . loop where
-	fold acc = lift . CM.foldM step acc
-	
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> fold acc xs >>= continue . loop
-		EOF -> yield acc EOF
-:
-
-:d Data.Enumerator exports
--- ** Iteratees
-, Data.Enumerator.foldl
-, Data.Enumerator.foldl'
-, Data.Enumerator.foldM
-:
-
 \subsection{Enumerators}
 
 At their simplest, enumerators just check to see whether their received step

@@ -104,6 +104,9 @@ drop :: Monad m => Integer -> Iteratee a m ()
 dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
 takeWhile :: Monad m => (a -> Bool) -> Iteratee a m [a]
 consume :: Monad m => Iteratee a m [a]
+foldl :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+foldl' :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+foldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
 :
 
 :d Data.Enumerator imports
@@ -149,6 +152,24 @@ break p = EL.takeWhile (not . p)
 |apidoc Data.Enumerator.consume|
 consume :: Monad m => Iteratee a m [a]
 consume = EL.consume
+
+{-# DEPRECATED foldl
+     "Use Data.Enumerator.List.foldl instead" #-}
+|apidoc Data.Enumerator.foldl|
+foldl :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+foldl = EL.foldl
+
+{-# DEPRECATED foldl'
+     "Use Data.Enumerator.List.foldl' instead" #-}
+|apidoc Data.Enumerator.foldl'|
+foldl' :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
+foldl' = EL.foldl'
+
+{-# DEPRECATED foldM
+     "Use Data.Enumerator.List.foldM instead" #-}
+|apidoc Data.Enumerator.foldM|
+foldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
+foldM = EL.foldM
 :
 
 :d Data.Enumerator exports
@@ -159,6 +180,9 @@ consume = EL.consume
 , Data.Enumerator.span
 , Data.Enumerator.break
 , Data.Enumerator.consume
+, Data.Enumerator.foldl
+, Data.Enumerator.foldl'
+, Data.Enumerator.foldM
 :
 
 0.4.5 also saw the pure-fold enumerators renamed, to match other functions
@@ -166,25 +190,25 @@ based on {\tt Prelude} names.
 
 :f Data/Enumerator.hs
 {-# DEPRECATED liftFoldL
-     "Use 'Data.Enumerator.foldl' instead" #-}
+     "Use Data.Enumerator.List.foldl instead" #-}
 |apidoc Data.Enumerator.liftFoldL|
 liftFoldL :: Monad m => (b -> a -> b) -> b
           -> Iteratee a m b
-liftFoldL = Data.Enumerator.foldl
+liftFoldL = EL.foldl
 
 {-# DEPRECATED liftFoldL'
-     "Use 'Data.Enumerator.foldl' ' instead" #-}
+     "Use Data.Enumerator.List.foldl' instead" #-}
 |apidoc Data.Enumerator.liftFoldL'|
 liftFoldL' :: Monad m => (b -> a -> b) -> b
            -> Iteratee a m b
-liftFoldL' = Data.Enumerator.foldl'
+liftFoldL' = EL.foldl'
 
 {-# DEPRECATED liftFoldM
-     "Use 'Data.Enumerator.foldM' instead" #-}
+     "Use Data.Enumerator.List.foldM instead" #-}
 |apidoc Data.Enumerator.liftFoldM|
 liftFoldM :: Monad m => (b -> a -> m b) -> b
           -> Iteratee a m b
-liftFoldM = Data.Enumerator.foldM
+liftFoldM = EL.foldM
 :
 
 :d Data.Enumerator exports

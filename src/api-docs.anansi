@@ -271,22 +271,19 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.foldl
--- | Run the entire input stream through a pure left fold, yielding when
--- there is no more input.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.foldl' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.foldl'
--- | Run the entire input stream through a pure strict left fold, yielding
--- when there is no more input.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.foldl'' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.foldM
--- | Run the entire input stream through a monadic left fold, yielding
--- when there is no more input.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.foldlM' instead
 --
 -- Since: 0.4.5
 :
@@ -344,19 +341,19 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.liftFoldL
--- | Deprecated in 0.4.5: use 'Data.Enumerator.foldl' instead
+-- | Deprecated in 0.4.5: use 'Data.Enumerator.List.foldl' instead
 --
 -- Since: 0.1.1
 :
 
 :d apidoc Data.Enumerator.liftFoldL'
--- | Deprecated in 0.4.5: use 'Data.Enumerator.foldl'' instead
+-- | Deprecated in 0.4.5: use 'Data.Enumerator.List.foldl'' instead
 --
 -- Since: 0.1.1
 :
 
 :d apidoc Data.Enumerator.liftFoldM
--- | Deprecated in 0.4.5: use 'Data.Enumerator.foldM' instead
+-- | Deprecated in 0.4.5: use 'Data.Enumerator.List.foldM' instead
 --
 -- Since: 0.1.1
 :
@@ -587,6 +584,27 @@ This section just repeats literate documentation in Haddock syntax.
 -- which does not match the predicate.
 --
 -- Since: 0.4.5
+:
+
+:d apidoc Data.Enumerator.List.foldl
+-- | Run the entire input stream through a pure left fold, yielding when
+-- there is no more input.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.foldl'
+-- | Run the entire input stream through a pure strict left fold, yielding
+-- when there is no more input.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.foldM
+-- | Run the entire input stream through a monadic left fold, yielding
+-- when there is no more input.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.List.head
