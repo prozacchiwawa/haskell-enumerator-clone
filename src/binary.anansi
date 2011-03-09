@@ -253,6 +253,22 @@ isolate n (Continue k) = continue loop where
 isolate n step = drop n >> return step
 :
 
+:f Data/Enumerator/Binary.hs
+splitWhen :: Monad m => (Word8 -> Bool) -> Enumeratee B.ByteString B.ByteString m b
+splitWhen p = loop where
+	loop = checkDone step
+	step k = isEOF >>= \eof -> if eof
+		then yield (Continue k) EOF
+		else do
+			lazy <- takeWhile (not . p)
+			let bytes = B.concat (BL.toChunks lazy)
+			eof <- isEOF
+			drop 1
+			if BL.null lazy && eof
+				then yield (Continue k) EOF
+				else k (Chunks [bytes]) >>== loop
+:
+
 :d Data.Enumerator.Binary exports
 -- * List analogues
 , Data.Enumerator.Binary.head
@@ -263,4 +279,5 @@ isolate n step = drop n >> return step
 , Data.Enumerator.Binary.consume
 , require
 , isolate
+, splitWhen
 :

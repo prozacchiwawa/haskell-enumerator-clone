@@ -8,6 +8,7 @@ module Data.Enumerator.Text (
 import qualified Prelude
 import Prelude hiding (head, drop, takeWhile)
 import Data.Enumerator hiding (head, drop)
+import Data.Enumerator.Util (textToStrict)
 import qualified Data.Text as T
 |Data.Enumerator.Text imports|
 :
@@ -201,6 +202,22 @@ isolate n (Continue k) = continue loop where
 isolate n step = drop n >> return step
 :
 
+:f Data/Enumerator/Text.hs
+splitWhen :: Monad m => (Char -> Bool) -> Enumeratee T.Text T.Text m b
+splitWhen p = loop where
+	loop = checkDone step
+	step k = isEOF >>= \eof -> if eof
+		then yield (Continue k) EOF
+		else do
+			lazy <- takeWhile (not . p)
+			let text = textToStrict lazy
+			eof <- isEOF
+			drop 1
+			if TL.null lazy && eof
+				then yield (Continue k) EOF
+				else k (Chunks [text]) >>== loop
+:
+
 :d Data.Enumerator.Text exports
 -- * List analogues
 , Data.Enumerator.Text.head
@@ -211,6 +228,7 @@ isolate n step = drop n >> return step
 , Data.Enumerator.Text.consume
 , require
 , isolate
+, splitWhen
 :
 
 \subsection{Codecs}

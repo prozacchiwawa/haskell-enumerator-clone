@@ -7,7 +7,7 @@ module Data.Enumerator.List (
 	) where
 import Data.Enumerator hiding (consume, head, peek, drop, dropWhile)
 import Control.Exception (ErrorCall(..))
-import Prelude hiding (head, drop, dropWhile, take, takeWhile)
+import Prelude hiding (head, drop, dropWhile, take, takeWhile, sequence)
 import qualified Data.List as L
 :
 
@@ -143,6 +143,14 @@ isolate n (Continue k) = continue loop where
 isolate n step = drop n >> return step
 :
 
+:f Data/Enumerator/List.hs
+splitWhen :: Monad m => (a -> Bool) -> Enumeratee a [a] m b
+splitWhen p = sequence $ do
+	as <- takeWhile (not . p)
+	drop 1
+	return as
+:
+
 :d Data.Enumerator.List exports
   head
 , drop
@@ -152,4 +160,5 @@ isolate n step = drop n >> return step
 , consume
 , require
 , isolate
+, splitWhen
 :

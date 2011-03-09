@@ -248,3 +248,15 @@ tSpanBy = T.spanBy
 tlSpanBy = TL.spanBy
 #endif
 :
+
+{\tt text-0.8} added the useful {\tt toStrict} function; this wrapper
+lets {\tt enumerator} work with {\tt text-0.7}.
+
+:f Data/Enumerator/Util.hs
+textToStrict :: TL.Text -> T.Text
+#if MIN_VERSION_text(0,8,0)
+textToStrict = TL.toStrict
+#else
+textToStrict = T.concat . TL.toChunks
+#endif
+:

@@ -26,9 +26,11 @@ import Control.Exception
 import Control.Monad
 import Data.Bits
 import Data.Char (chr)
+import qualified Data.List.Split as LS
 import Data.Monoid
 import Data.Functor.Identity
 import Data.String
+import Data.Word
 
 tests :: [F.Test]
 tests =
@@ -459,6 +461,7 @@ test_ListAnalogues = F.testGroup "list analogues"
 	-- , test_ListPeek
 	, test_ListRequire
 	, test_ListIsolate
+	, test_ListSplitWhen
 	
 	, test_BinaryConsume
 	, test_BinaryHead
@@ -466,6 +469,7 @@ test_ListAnalogues = F.testGroup "list analogues"
 	, test_BinaryTake
 	, test_BinaryRequire
 	, test_BinaryIsolate
+	, test_BinarySplitWhen
 	
 	, test_TextConsume
 	, test_TextHead
@@ -473,6 +477,7 @@ test_ListAnalogues = F.testGroup "list analogues"
 	, test_TextTake
 	, test_TextRequire
 	, test_TextIsolate
+	, test_TextSplitWhen
 	]
 
 test_ListConsume :: F.Test
@@ -563,6 +568,20 @@ test_ListIsolate = testProperty "List.isolate" prop where
 			extra <- EL.consume
 			return (x, extra)
 
+test_ListSplitWhen :: F.Test
+test_ListSplitWhen = testProperty "List.splitWhen" prop where
+	prop :: A -> [A] -> Bool
+	prop x xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		split = LS.split . LS.dropFinalBlank . LS.dropDelims . LS.whenElt
+		
+		expected = (split (== x) xs, [])
+		
+		iter = E.enumList 1 xs $$ do
+			xs' <- E.joinI (EL.splitWhen (== x) $$ EL.consume)
+			extra <- EL.consume
+			return (xs', extra)
+
 test_BinaryConsume :: F.Test
 test_BinaryConsume = testProperty "Binary.consume" prop where
 	prop ts = result == BL.fromChunks ts where
@@ -636,6 +655,21 @@ test_BinaryIsolate = testProperty "Binary.isolate" prop where
 			extra <- EB.consume
 			return (x, extra)
 
+test_BinarySplitWhen :: F.Test
+test_BinarySplitWhen = testProperty "Binary.splitWhen" prop where
+	prop :: Word8 -> [B.ByteString] -> Bool
+	prop x xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		split = LS.split . LS.dropFinalBlank . LS.dropDelims . LS.whenElt
+		
+		bytes = BL.unpack (BL.fromChunks xs)
+		expected = (map B.pack (split (== x) bytes), [] :: [B.ByteString])
+		
+		iter = E.enumList 1 xs $$ do
+			xs' <- E.joinI (EB.splitWhen (== x) $$ EL.consume)
+			extra <- EL.consume
+			return (xs', extra)
+
 test_TextConsume :: F.Test
 test_TextConsume = testProperty "Text.consume" prop where
 	prop ts = result == TL.fromChunks ts where
@@ -708,6 +742,21 @@ test_TextIsolate = testProperty "Text.isolate" prop where
 			x <- E.joinI (ET.isolate 2 $$ ET.head)
 			extra <- ET.consume
 			return (x, extra)
+
+test_TextSplitWhen :: F.Test
+test_TextSplitWhen = testProperty "Text.splitWhen" prop where
+	prop :: Char -> [T.Text] -> Bool
+	prop x xs = result == expected where
+		result = runIdentity (E.run_ iter)
+		split = LS.split . LS.dropFinalBlank . LS.dropDelims . LS.whenElt
+		
+		chars = TL.unpack (TL.fromChunks xs)
+		expected = (map T.pack (split (== x) chars), [] :: [T.Text])
+		
+		iter = E.enumList 1 xs $$ do
+			xs' <- E.joinI (ET.splitWhen (== x) $$ EL.consume)
+			extra <- EL.consume
+			return (xs', extra)
 
 -- }}}
 
