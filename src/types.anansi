@@ -126,30 +126,6 @@ newtype Iteratee a m b = Iteratee
 	}
 :
 
-Users often need to construct iteratees which only yield or continue,
-so we define some helper functions to save typing:
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.returnI|
-returnI :: Monad m => Step a m b -> Iteratee a m b
-returnI step = Iteratee (return step)
-
-|apidoc Data.Enumerator.yield|
-yield :: Monad m => b -> Stream a -> Iteratee a m b
-yield x extra = returnI (Yield x extra)
-
-|apidoc Data.Enumerator.continue|
-continue :: Monad m => (Stream a -> Iteratee a m b)
-         -> Iteratee a m b
-continue k = returnI (Continue k)
-:
-
-:d Data.Enumerator exports
-, returnI
-, yield
-, continue
-:
-
 \subsection{Enumerators}
 
 Enumerators typically read from an external source (parser, handle, random
@@ -203,107 +179,54 @@ type Enumeratee ao ai m b = Step ai m b
           -> Iteratee ao m (Step ai m b)
 :
 
-\subsection{Operators}
-
-Because {\tt Iteratee a m b} is semantically equivalent to
-{\tt m (Step a m b)}, several of the monadic combinators ({\tt (>>=)},
-{\tt (>=>)}, etc) are useful to save typing when constructing enumerators
-and enumeratees. {\tt (>>==)} corresponds to {\tt (>>=)}, {\tt (>==>)} to
-{\tt (>=>)}, and so on.
-
-For compatibility, {\tt (==<<)} is aliased to {\tt (\$\$)}.
-
-:f Data/Enumerator.hs
-infixl 1 >>==
-
-|apidoc Data.Enumerator.(>>==)|
-(>>==) :: Monad m
-       => Iteratee a m b
-       -> (Step a m b -> Iteratee a' m b')
-       -> Iteratee a' m b'
-i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
-:
-
-:f Data/Enumerator.hs
-infixr 1 ==<<
-
-|apidoc Data.Enumerator.(==<<)|
-(==<<) :: Monad m
-       => (Step a m b -> Iteratee a' m b')
-       -> Iteratee a m b
-       -> Iteratee a' m b'
-(==<<) = flip (>>==)
-:
-
-:f Data/Enumerator.hs
-infixr 0 $$
-
-|apidoc Data.Enumerator.($$)|
-($$) :: Monad m
-     => (Step a m b -> Iteratee a' m b')
-     -> Iteratee a m b
-     -> Iteratee a' m b'
-($$) = (==<<)
-:
-
-:f Data/Enumerator.hs
-infixr 1 >==>
-
-|apidoc Data.Enumerator.(>==>)|
-(>==>) :: Monad m
-       => Enumerator a m b
-       -> (Step a m b -> Iteratee a' m b')
-       -> Step a m b
-       -> Iteratee a' m b'
-(>==>) e1 e2 s = e1 s >>== e2
-:
-
-:f Data/Enumerator.hs
-infixr 1 <==<
-
-|apidoc Data.Enumerator.(<==<)|
-(<==<) :: Monad m
-       => (Step a m b -> Iteratee a' m b')
-       -> Enumerator a m b
-       -> Step a m b
-       -> Iteratee a' m b'
-(<==<) = flip (>==>)
-:
-
-:d Data.Enumerator exports
--- ** Operators
-, (>>==)
-, (==<<)
-, ($$)
-, (>==>)
-, (<==<)
-:
-
 \subsection{Iteratees as Monads}
 
 Iteratees are monads; by sequencing iteratees, very complex processing may
 be applied to arbitrary input streams. Iteratees are also applicative
 functors and monad transformers.
 
+:f Data/Enumerator.hs
+instance Monad m => Monad (Iteratee a m) where
+	return x = Iteratee (return (Yield x (Chunks [])))
+	|optimized iteratee bind|
+:
+
+Because iteratees are often used for high-performance software, it is
+important that the {\tt (>>=)} method be very efficient. We use a couple
+magic-ish features here:
+
+\begin{itemize}
+\item First, the whole {\tt (>>=)} is worker-wrapper transformed so {\tt f}
+can be cached when working with {\tt Continue}. This prevents a potential
+space leak when working with infinite streams.
+
+\item Second, the worker is rendered anonymous with {\tt fix}, so it doesn't
+incur any additional time overhead.
+\end{itemize}
+
+The end result is a bind implementation with time performance equivalent to
+the standard definition, but with significantly reduced memory allocation
+rates.
+
 :d Data.Enumerator imports
 import Data.Function (fix)
 :
 
-:f Data/Enumerator.hs
-instance Monad m => Monad (Iteratee a m) where
-	return x = yield x (Chunks [])
-	
-	m0 >>= f = ($ m0) $ fix $ \bind m -> Iteratee $ runIteratee m >>=
-		\r1 -> case r1 of
+:d optimized iteratee bind
+m0 >>= f = ($ m0) $ fix $
+	\bind m -> Iteratee $ runIteratee m >>= \r1 ->
+		case r1 of
 			Continue k -> return (Continue (bind . k))
 			Error err -> return (Error err)
 			Yield x (Chunks []) -> runIteratee (f x)
-			Yield x extra -> runIteratee (f x) >>=
-				\r2 -> case r2 of
+			Yield x extra -> runIteratee (f x) >>= \r2 ->
+				case r2 of
 					Continue k -> runIteratee (k extra)
 					Error err -> return (Error err)
 					Yield x' _ -> return (Yield x' extra)
 :
+
+\subsection{Iteratees as Monad transformers}
 
 Most iteratees are used to wrap \io{} operations, so it's sensible to define
 instances for typeclasses from {\tt transformers}.
@@ -341,6 +264,17 @@ instance Monad m => A.Applicative (Iteratee a m) where
 	(<*>) = CM.ap
 :
 
+\subsection{Other instances}
+
+It can be pretty useful to define {\tt Typeable} instances for iteratees
+and streams. For example, they allow iteratee-based libraries to be loaded
+dynamically as plugins.
+
+Normally I'd use the {\tt DeriveDataTypeable} language extension, but
+many users have said they find {\tt enumerator} useful in large part
+because it doesn't rely on extensions. So instead, the instances are
+derived manually.
+
 :d Data.Enumerator imports
 import Data.Typeable ( Typeable, typeOf
                      , Typeable1, typeOf1
@@ -348,12 +282,36 @@ import Data.Typeable ( Typeable, typeOf
 :
 
 :f Data/Enumerator.hs
+-- | Since: 0.4.8
+instance Typeable1 Stream where
+	typeOf1 _ = mkTyConApp tyCon [] where
+		tyCon = mkTyCon "Data.Enumerator.Stream"
+:
+
+:f Data/Enumerator.hs
 -- | Since: 0.4.6
-instance (Typeable a, Typeable1 m) => Typeable1 (Iteratee a m) where
-	typeOf1 i = mkTyConApp tyCon [typeOf a, typeOf1 m] where
-		tyCon = mkTyCon "Data.Enumerator.Iteratee"
-		(a, m) = peel i
-		
-		peel :: Iteratee a m b -> (a, m ())
-		peel = undefined
+instance (Typeable a, Typeable1 m) =>
+	Typeable1 (Iteratee a m) where
+		typeOf1 i = let
+			tyCon = mkTyCon "Data.Enumerator.Iteratee"
+			(a, m) = peel i
+			
+			peel :: Iteratee a m b -> (a, m ())
+			peel = undefined
+			
+			in mkTyConApp tyCon [typeOf a, typeOf1 m]
+:
+
+:f Data/Enumerator.hs
+-- | Since: 0.4.8
+instance (Typeable a, Typeable1 m) =>
+	Typeable1 (Step a m) where
+		typeOf1 s = let
+			tyCon = mkTyCon "Data.Enumerator.Step"
+			(a, m) = peel s
+			
+			peel :: Step a m b -> (a, m ())
+			peel = undefined
+			
+			in mkTyConApp tyCon [typeOf a, typeOf1 m]
 :

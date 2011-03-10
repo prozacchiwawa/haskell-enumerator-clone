@@ -4,6 +4,106 @@
 -- * Primitives
 :
 
+Users often need to construct iteratees which only yield or continue,
+so we define some helper functions to save typing:
+
+:f Data/Enumerator.hs
+|apidoc Data.Enumerator.returnI|
+returnI :: Monad m => Step a m b -> Iteratee a m b
+returnI step = Iteratee (return step)
+
+|apidoc Data.Enumerator.yield|
+yield :: Monad m => b -> Stream a -> Iteratee a m b
+yield x extra = returnI (Yield x extra)
+
+|apidoc Data.Enumerator.continue|
+continue :: Monad m => (Stream a -> Iteratee a m b)
+         -> Iteratee a m b
+continue k = returnI (Continue k)
+:
+
+:d Data.Enumerator exports
+, returnI
+, yield
+, continue
+:
+
+\subsection{Operators}
+
+Because {\tt Iteratee a m b} is semantically equivalent to
+{\tt m (Step a m b)}, several of the monadic combinators ({\tt (>>=)},
+{\tt (>=>)}, etc) are useful to save typing when constructing enumerators
+and enumeratees. {\tt (>>==)} corresponds to {\tt (>>=)}, {\tt (>==>)} to
+{\tt (>=>)}, and so on.
+
+For compatibility, {\tt (==<<)} is aliased to {\tt (\$\$)}.
+
+:f Data/Enumerator.hs
+infixl 1 >>==
+
+|apidoc Data.Enumerator.(>>==)|
+(>>==) :: Monad m
+       => Iteratee a m b
+       -> (Step a m b -> Iteratee a' m b')
+       -> Iteratee a' m b'
+i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
+:
+
+:f Data/Enumerator.hs
+infixr 1 ==<<
+
+|apidoc Data.Enumerator.(==<<)|
+(==<<) :: Monad m
+       => (Step a m b -> Iteratee a' m b')
+       -> Iteratee a m b
+       -> Iteratee a' m b'
+(==<<) = flip (>>==)
+:
+
+:f Data/Enumerator.hs
+infixr 0 $$
+
+|apidoc Data.Enumerator.($$)|
+($$) :: Monad m
+     => (Step a m b -> Iteratee a' m b')
+     -> Iteratee a m b
+     -> Iteratee a' m b'
+($$) = (==<<)
+:
+
+:f Data/Enumerator.hs
+infixr 1 >==>
+
+|apidoc Data.Enumerator.(>==>)|
+(>==>) :: Monad m
+       => Enumerator a m b
+       -> (Step a m b -> Iteratee a' m b')
+       -> Step a m b
+       -> Iteratee a' m b'
+(>==>) e1 e2 s = e1 s >>== e2
+:
+
+:f Data/Enumerator.hs
+infixr 1 <==<
+
+|apidoc Data.Enumerator.(<==<)|
+(<==<) :: Monad m
+       => (Step a m b -> Iteratee a' m b')
+       -> Enumerator a m b
+       -> Step a m b
+       -> Iteratee a' m b'
+(<==<) = flip (>==>)
+:
+
+:d Data.Enumerator exports
+-- ** Operators
+, (>>==)
+, (==<<)
+, ($$)
+, (>==>)
+, (<==<)
+:
+
 \subsection{Error handling}
 
 Most real-world applications have to deal with error conditions; however,
