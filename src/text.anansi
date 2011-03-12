@@ -223,31 +223,21 @@ lines :: Monad m => Enumeratee T.Text T.Text m b
 lines = splitWhen (== '\n')
 :
 
+:d Data.Enumerator.Text imports
+import qualified Data.Enumerator.List as EL
+import qualified Control.Monad as CM
+:
+
 :f Data/Enumerator/Text.hs
 fold :: Monad m => (b -> Char -> b) -> b
      -> Iteratee T.Text m b
-fold step = continue . loop where
-	f = TL.foldl' step
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (f acc (TL.fromChunks xs)))
-		EOF -> yield acc EOF
-:
-
-:d Data.Enumerator.Text imports
-import qualified Control.Monad as CM
-import Control.Monad.Trans.Class (lift)
+fold step = EL.fold (T.foldl' step)
 :
 
 :f Data/Enumerator/Text.hs
 foldM :: Monad m => (b -> Char -> m b) -> b
       -> Iteratee T.Text m b
-foldM step = continue . loop where
-	f acc xs = CM.foldM step acc (TL.unpack (TL.fromChunks xs))
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> lift (f acc xs) >>= continue . loop
-		EOF -> yield acc EOF
+foldM step = EL.foldM (\b txt -> CM.foldM step b (T.unpack txt))
 :
 
 :d Data.Enumerator.Text exports

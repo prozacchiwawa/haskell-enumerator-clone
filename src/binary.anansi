@@ -269,31 +269,21 @@ splitWhen p = loop where
 				else k (Chunks [bytes]) >>== loop
 :
 
+:d Data.Enumerator.Binary imports
+import qualified Data.Enumerator.List as EL
+import qualified Control.Monad as CM
+:
+
 :f Data/Enumerator/Binary.hs
 fold :: Monad m => (b -> Word8 -> b) -> b
      -> Iteratee B.ByteString m b
-fold step = continue . loop where
-	f = BL.foldl' step
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (f acc (BL.fromChunks xs)))
-		EOF -> yield acc EOF
-:
-
-:d Data.Enumerator.Binary imports
-import qualified Control.Monad as CM
-import Control.Monad.Trans.Class (lift)
+fold step = EL.fold (B.foldl' step)
 :
 
 :f Data/Enumerator/Binary.hs
 foldM :: Monad m => (b -> Word8 -> m b) -> b
       -> Iteratee B.ByteString m b
-foldM step = continue . loop where
-	f acc xs = CM.foldM step acc (BL.unpack (BL.fromChunks xs))
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> lift (f acc xs) >>= continue . loop
-		EOF -> yield acc EOF
+foldM step = EL.foldM (\b bytes -> CM.foldM step b (B.unpack bytes))
 :
 
 :d Data.Enumerator.Binary exports
