@@ -280,6 +280,22 @@ fold step = continue . loop where
 		EOF -> yield acc EOF
 :
 
+:d Data.Enumerator.Binary imports
+import qualified Control.Monad as CM
+import Control.Monad.Trans.Class (lift)
+:
+
+:f Data/Enumerator/Binary.hs
+foldM :: Monad m => (b -> Word8 -> m b) -> b
+      -> Iteratee B.ByteString m b
+foldM step = continue . loop where
+	f acc xs = CM.foldM step acc (BL.unpack (BL.fromChunks xs))
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> lift (f acc xs) >>= continue . loop
+		EOF -> yield acc EOF
+:
+
 :d Data.Enumerator.Binary exports
 -- * List analogues
 , Data.Enumerator.Binary.head
@@ -292,4 +308,5 @@ fold step = continue . loop where
 , isolate
 , splitWhen
 , fold
+, Data.Enumerator.Binary.foldM
 :
