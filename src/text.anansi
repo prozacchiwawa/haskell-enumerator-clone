@@ -223,6 +223,17 @@ lines :: Monad m => Enumeratee T.Text T.Text m b
 lines = splitWhen (== '\n')
 :
 
+:f Data/Enumerator/Text.hs
+fold :: Monad m => (b -> Char -> b) -> b
+     -> Iteratee T.Text m b
+fold step = continue . loop where
+	f = TL.foldl' step
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (f acc (TL.fromChunks xs)))
+		EOF -> yield acc EOF
+:
+
 :d Data.Enumerator.Text exports
 -- * List analogues
 , Data.Enumerator.Text.head
@@ -235,6 +246,7 @@ lines = splitWhen (== '\n')
 , isolate
 , splitWhen
 , Data.Enumerator.Text.lines
+, fold
 :
 
 \subsection{Codecs}

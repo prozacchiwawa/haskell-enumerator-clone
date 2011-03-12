@@ -269,6 +269,17 @@ splitWhen p = loop where
 				else k (Chunks [bytes]) >>== loop
 :
 
+:f Data/Enumerator/Binary.hs
+fold :: Monad m => (b -> Word8 -> b) -> b
+     -> Iteratee B.ByteString m b
+fold step = continue . loop where
+	f = BL.foldl' step
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (f acc (BL.fromChunks xs)))
+		EOF -> yield acc EOF
+:
+
 :d Data.Enumerator.Binary exports
 -- * List analogues
 , Data.Enumerator.Binary.head
@@ -280,4 +291,5 @@ splitWhen p = loop where
 , require
 , isolate
 , splitWhen
+, fold
 :
