@@ -587,7 +587,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.fold
--- | Run the entire input stream through a pure strict left fold, yielding
+-- | Run the entire input stream through a strict left fold, yielding
 -- when there is no more input.
 --
 -- Since: 0.4.8

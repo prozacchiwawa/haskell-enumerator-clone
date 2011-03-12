@@ -183,11 +183,11 @@ import Control.Monad.Trans.Class (lift)
 foldM :: Monad m => (b -> a -> m b) -> b
       -> Iteratee a m b
 foldM step = continue . loop where
-	fold acc = lift . CM.foldM step acc
+	f = CM.foldM step
 	
 	loop acc stream = case stream of
 		Chunks [] -> continue (loop acc)
-		Chunks xs -> fold acc xs >>= continue . loop
+		Chunks xs -> lift (f acc xs) >>= continue . loop
 		EOF -> yield acc EOF
 :
 
