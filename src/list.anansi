@@ -162,26 +162,14 @@ Each fold consumes input from the stream until {\sc eof}, when it yields its
 current accumulator.
 
 :f Data/Enumerator/List.hs
-|apidoc Data.Enumerator.List.foldl|
-foldl :: Monad m => (b -> a -> b) -> b
-      -> Iteratee a m b
-foldl step = continue . loop where
-	fold = Prelude.foldl step
-	loop acc stream = case stream of
-		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (fold acc xs))
-		EOF -> yield acc EOF
-:
-
-:f Data/Enumerator/List.hs
-|apidoc Data.Enumerator.List.foldl'|
-foldl' :: Monad m => (b -> a -> b) -> b
+|apidoc Data.Enumerator.List.fold|
+fold :: Monad m => (b -> a -> b) -> b
        -> Iteratee a m b
-foldl' step = continue . loop where
-	fold = L.foldl' step
+fold step = continue . loop where
+	f = L.foldl' step
 	loop acc stream = case stream of
 		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (fold acc xs))
+		Chunks xs -> continue (loop (f acc xs))
 		EOF -> yield acc EOF
 :
 
@@ -213,7 +201,6 @@ foldM step = continue . loop where
 , require
 , isolate
 , splitWhen
-, Data.Enumerator.List.foldl
-, Data.Enumerator.List.foldl'
+, fold
 , Data.Enumerator.List.foldM
 :

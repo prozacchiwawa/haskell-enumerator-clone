@@ -271,19 +271,19 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.foldl
--- | Deprecated in 0.4.8: use 'Data.Enumerator.List.foldl' instead
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.fold' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.foldl'
--- | Deprecated in 0.4.8: use 'Data.Enumerator.List.foldl'' instead
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.fold' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.foldM
--- | Deprecated in 0.4.8: use 'Data.Enumerator.List.foldlM' instead
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.foldM' instead
 --
 -- Since: 0.4.5
 :
@@ -341,13 +341,13 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.liftFoldL
--- | Deprecated in 0.4.5: use 'Data.Enumerator.List.foldl' instead
+-- | Deprecated in 0.4.5: use 'Data.Enumerator.List.fold' instead
 --
 -- Since: 0.1.1
 :
 
 :d apidoc Data.Enumerator.liftFoldL'
--- | Deprecated in 0.4.5: use 'Data.Enumerator.List.foldl'' instead
+-- | Deprecated in 0.4.5: use 'Data.Enumerator.List.fold' instead
 --
 -- Since: 0.1.1
 :
@@ -586,14 +586,7 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.5
 :
 
-:d apidoc Data.Enumerator.List.foldl
--- | Run the entire input stream through a pure left fold, yielding when
--- there is no more input.
---
--- Since: 0.4.8
-:
-
-:d apidoc Data.Enumerator.List.foldl'
+:d apidoc Data.Enumerator.List.fold
 -- | Run the entire input stream through a pure strict left fold, yielding
 -- when there is no more input.
 --
