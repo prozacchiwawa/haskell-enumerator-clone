@@ -94,6 +94,8 @@ data Step a m b
 newtype Iteratee a m b = Iteratee
 	{ runIteratee :: m (Step a m b)
 	}
+type Enumerator a m b = Step a m b -> Iteratee a m b
+type Enumeratee ao ai m b = Step ai m b -> Iteratee ao m (Step ai m b)
 :
 
 :f Data/Enumerator/List.hs-boot
@@ -106,6 +108,19 @@ takeWhile :: Monad m => (a -> Bool) -> Iteratee a m [a]
 consume :: Monad m => Iteratee a m [a]
 fold :: Monad m => (b -> a -> b) -> b -> Iteratee a m b
 foldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
+iterate :: Monad m => (a -> a) -> a -> Enumerator a m b
+iterateM :: Monad m => (a -> m a) -> a -> Enumerator a m b
+repeat :: Monad m => a -> Enumerator a m b
+repeatM :: Monad m => m a -> Enumerator a m b
+replicateM :: Monad m => Integer -> m a -> Enumerator a m b
+replicate :: Monad m => Integer -> a -> Enumerator a m b
+generateM :: Monad m => m (Maybe a) -> Enumerator a m b
+map :: Monad m => (ao -> ai) -> Enumeratee ao ai m b
+mapM :: Monad m => (ao -> m ai) -> Enumeratee ao ai m b
+concatMap :: Monad m => (ao -> [ai]) -> Enumeratee ao ai m b
+concatMapM :: Monad m => (ao -> m [ai]) -> Enumeratee ao ai m b
+filter :: Monad m => (a -> Bool) -> Enumeratee a a m b
+filterM :: Monad m => (a -> m Bool) -> Enumeratee a a m b
 :
 
 :d Data.Enumerator imports
@@ -174,6 +189,84 @@ foldl' = EL.fold
 |apidoc Data.Enumerator.foldM|
 foldM :: Monad m => (b -> a -> m b) -> b -> Iteratee a m b
 foldM = EL.foldM
+
+{-# DEPRECATED iterate
+     "Use Data.Enumerator.List.iterate instead" #-}
+|apidoc Data.Enumerator.iterate|
+iterate :: Monad m => (a -> a) -> a -> Enumerator a m b
+iterate = EL.iterate
+
+{-# DEPRECATED iterateM
+     "Use Data.Enumerator.List.iterateM instead" #-}
+|apidoc Data.Enumerator.iterateM|
+iterateM :: Monad m => (a -> m a) -> a -> Enumerator a m b
+iterateM = EL.iterateM
+
+{-# DEPRECATED repeat
+     "Use Data.Enumerator.List.repeat instead" #-}
+|apidoc Data.Enumerator.repeat|
+repeat :: Monad m => a -> Enumerator a m b
+repeat = EL.repeat
+
+{-# DEPRECATED repeatM
+     "Use Data.Enumerator.List.repeatM instead" #-}
+|apidoc Data.Enumerator.repeatM|
+repeatM :: Monad m => m a -> Enumerator a m b
+repeatM = EL.repeatM
+
+{-# DEPRECATED replicate
+     "Use Data.Enumerator.List.replicate instead" #-}
+|apidoc Data.Enumerator.replicate|
+replicate :: Monad m => Integer -> a -> Enumerator a m b
+replicate = EL.replicate
+
+{-# DEPRECATED replicateM
+     "Use Data.Enumerator.List.replicateM instead" #-}
+|apidoc Data.Enumerator.replicateM|
+replicateM :: Monad m => Integer -> m a -> Enumerator a m b
+replicateM = EL.replicateM
+
+{-# DEPRECATED generateM
+     "Use Data.Enumerator.List.generateM instead" #-}
+|apidoc Data.Enumerator.generateM|
+generateM :: Monad m => m (Maybe a) -> Enumerator a m b
+generateM = EL.generateM
+
+{-# DEPRECATED map
+     "Use Data.Enumerator.List.map instead" #-}
+|apidoc Data.Enumerator.map|
+map :: Monad m => (ao -> ai) -> Enumeratee ao ai m b
+map = EL.map
+
+{-# DEPRECATED mapM
+     "Use Data.Enumerator.List.mapM instead" #-}
+|apidoc Data.Enumerator.mapM|
+mapM :: Monad m => (ao -> m ai) -> Enumeratee ao ai m b
+mapM = EL.mapM
+
+{-# DEPRECATED concatMap
+     "Use Data.Enumerator.List.concatMap instead" #-}
+|apidoc Data.Enumerator.concatMap|
+concatMap :: Monad m => (ao -> [ai]) -> Enumeratee ao ai m b
+concatMap = EL.concatMap
+
+{-# DEPRECATED concatMapM
+     "Use Data.Enumerator.List.concatMapM instead" #-}
+|apidoc Data.Enumerator.concatMapM|
+concatMapM :: Monad m => (ao -> m [ai]) -> Enumeratee ao ai m b
+concatMapM = EL.concatMapM
+
+{-# DEPRECATED filter
+     "Use Data.Enumerator.List.filter instead" #-}
+|apidoc Data.Enumerator.filter|
+filter :: Monad m => (a -> Bool) -> Enumeratee a a m b
+filter = EL.filter
+
+{-# DEPRECATED filterM
+     "Use Data.Enumerator.List.filterM instead" #-}
+|apidoc Data.Enumerator.filterM|
+filterM :: Monad m => (a -> m Bool) -> Enumeratee a a m b
+filterM = EL.filterM
 :
 
 :d Data.Enumerator exports
@@ -187,6 +280,19 @@ foldM = EL.foldM
 , Data.Enumerator.foldl
 , Data.Enumerator.foldl'
 , Data.Enumerator.foldM
+, Data.Enumerator.iterate
+, Data.Enumerator.iterateM
+, Data.Enumerator.repeat
+, Data.Enumerator.repeatM
+, Data.Enumerator.replicate
+, Data.Enumerator.replicateM
+, Data.Enumerator.generateM
+, Data.Enumerator.map
+, Data.Enumerator.mapM
+, Data.Enumerator.concatMap
+, Data.Enumerator.concatMapM
+, Data.Enumerator.filter
+, Data.Enumerator.filterM
 :
 
 0.4.5 also saw the pure-fold enumerators renamed, to match other functions
