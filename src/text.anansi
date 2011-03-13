@@ -240,6 +240,40 @@ foldM :: Monad m => (b -> Char -> m b) -> b
 foldM step = EL.foldM (\b txt -> CM.foldM step b (T.unpack txt))
 :
 
+:d Data.Enumerator.Text imports
+import Control.Monad (liftM)
+import Control.Monad.Trans.Class (lift)
+:
+
+:f Data/Enumerator/Text.hs
+iterate :: Monad m => (Char -> Char) -> Char -> Enumerator T.Text m b
+iterate f = loop where
+	loop char (Continue k) = k (Chunks [T.singleton char]) >>== loop (f char)
+	loop _ step = returnI step
+
+iterateM :: Monad m => (Char -> m Char) -> Char -> Enumerator T.Text m b
+iterateM f base = loop (return base) where
+	loop m_char (Continue k) = do
+		char <- lift m_char
+		k (Chunks [T.singleton char]) >>== loop (f char)
+	loop _ step = returnI step
+
+repeat :: Monad m => Char -> Enumerator T.Text m b
+repeat char = EL.repeat (T.singleton char)
+
+repeatM :: Monad m => m Char -> Enumerator T.Text m b
+repeatM next = EL.repeatM (liftM T.singleton next)
+
+replicate :: Monad m => Integer -> Char -> Enumerator T.Text m b
+replicate n byte = EL.replicate n (T.singleton byte)
+
+replicateM :: Monad m => Integer -> m Char -> Enumerator T.Text m b
+replicateM n next = EL.replicateM n (liftM T.singleton next)
+
+generateM :: Monad m => m (Maybe Char) -> Enumerator T.Text m b
+generateM next = EL.generateM (liftM (liftM T.singleton) next)
+:
+
 :d Data.Enumerator.Text exports
 -- * List analogues
 , Data.Enumerator.Text.head
@@ -254,6 +288,13 @@ foldM step = EL.foldM (\b txt -> CM.foldM step b (T.unpack txt))
 , Data.Enumerator.Text.lines
 , fold
 , Data.Enumerator.Text.foldM
+, Data.Enumerator.Text.iterate
+, Data.Enumerator.Text.iterateM
+, Data.Enumerator.Text.repeat
+, Data.Enumerator.Text.repeatM
+, Data.Enumerator.Text.replicate
+, Data.Enumerator.Text.replicateM
+, Data.Enumerator.Text.generateM
 :
 
 \subsection{Codecs}

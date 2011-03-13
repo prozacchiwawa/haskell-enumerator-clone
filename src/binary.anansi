@@ -286,6 +286,40 @@ foldM :: Monad m => (b -> Word8 -> m b) -> b
 foldM step = EL.foldM (\b bytes -> CM.foldM step b (B.unpack bytes))
 :
 
+:d Data.Enumerator.Binary imports
+import Control.Monad (liftM)
+import Control.Monad.Trans.Class (lift)
+:
+
+:f Data/Enumerator/Binary.hs
+iterate :: Monad m => (Word8 -> Word8) -> Word8 -> Enumerator B.ByteString m b
+iterate f = loop where
+	loop byte (Continue k) = k (Chunks [B.singleton byte]) >>== loop (f byte)
+	loop _ step = returnI step
+
+iterateM :: Monad m => (Word8 -> m Word8) -> Word8 -> Enumerator B.ByteString m b
+iterateM f base = loop (return base) where
+	loop m_byte (Continue k) = do
+		byte <- lift m_byte
+		k (Chunks [B.singleton byte]) >>== loop (f byte)
+	loop _ step = returnI step
+
+repeat :: Monad m => Word8 -> Enumerator B.ByteString m b
+repeat byte = EL.repeat (B.singleton byte)
+
+repeatM :: Monad m => m Word8 -> Enumerator B.ByteString m b
+repeatM next = EL.repeatM (liftM B.singleton next)
+
+replicate :: Monad m => Integer -> Word8 -> Enumerator B.ByteString m b
+replicate n byte = EL.replicate n (B.singleton byte)
+
+replicateM :: Monad m => Integer -> m Word8 -> Enumerator B.ByteString m b
+replicateM n next = EL.replicateM n (liftM B.singleton next)
+
+generateM :: Monad m => m (Maybe Word8) -> Enumerator B.ByteString m b
+generateM next = EL.generateM (liftM (liftM B.singleton) next)
+:
+
 :d Data.Enumerator.Binary exports
 -- * List analogues
 , Data.Enumerator.Binary.head
@@ -299,4 +333,11 @@ foldM step = EL.foldM (\b bytes -> CM.foldM step b (B.unpack bytes))
 , splitWhen
 , fold
 , Data.Enumerator.Binary.foldM
+, Data.Enumerator.Binary.iterate
+, Data.Enumerator.Binary.iterateM
+, Data.Enumerator.Binary.repeat
+, Data.Enumerator.Binary.repeatM
+, Data.Enumerator.Binary.replicate
+, Data.Enumerator.Binary.replicateM
+, Data.Enumerator.Binary.generateM
 :
