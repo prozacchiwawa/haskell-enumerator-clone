@@ -302,6 +302,15 @@ filterM :: Monad m => (Char -> m Bool) -> Enumeratee T.Text T.Text m b
 filterM p = Data.Enumerator.Text.concatMapM (\x -> liftM T.pack (CM.filterM p [x]))
 :
 
+:f Data/Enumerator/Text.hs
+unfold :: Monad m => (s -> Maybe (Char, s)) -> s -> Enumerator T.Text m b
+unfold f = loop where
+	loop s (Continue k) = case f s of
+		Nothing -> continue k
+		Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
+	loop _ step = returnI step
+:
+
 :d Data.Enumerator.Text exports
 -- * List analogues
 , Data.Enumerator.Text.head
@@ -329,6 +338,7 @@ filterM p = Data.Enumerator.Text.concatMapM (\x -> liftM T.pack (CM.filterM p [x
 , Data.Enumerator.Text.concatMapM
 , Data.Enumerator.Text.filter
 , Data.Enumerator.Text.filterM
+, unfold
 :
 
 \subsection{Codecs}

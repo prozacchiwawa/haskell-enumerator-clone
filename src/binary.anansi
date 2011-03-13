@@ -348,6 +348,15 @@ filterM :: Monad m => (Word8 -> m Bool) -> Enumeratee B.ByteString B.ByteString 
 filterM p = Data.Enumerator.Binary.concatMapM (\x -> liftM B.pack (CM.filterM p [x]))
 :
 
+:f Data/Enumerator/Binary.hs
+unfold :: Monad m => (s -> Maybe (Word8, s)) -> s -> Enumerator B.ByteString m b
+unfold f = loop where
+	loop s (Continue k) = case f s of
+		Nothing -> continue k
+		Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
+	loop _ step = returnI step
+:
+
 :d Data.Enumerator.Binary exports
 -- * List analogues
 , Data.Enumerator.Binary.head
@@ -374,4 +383,5 @@ filterM p = Data.Enumerator.Binary.concatMapM (\x -> liftM B.pack (CM.filterM p 
 , Data.Enumerator.Binary.concatMapM
 , Data.Enumerator.Binary.filter
 , Data.Enumerator.Binary.filterM
+, unfold
 :
