@@ -274,6 +274,34 @@ generateM :: Monad m => m (Maybe Char) -> Enumerator T.Text m b
 generateM next = EL.generateM (liftM (liftM T.singleton) next)
 :
 
+:f Data/Enumerator/Text.hs
+map :: Monad m => (Char -> Char) -> Enumeratee T.Text T.Text m b
+map f = Data.Enumerator.Text.concatMap (\x -> T.singleton (f x))
+
+mapM :: Monad m => (Char -> m Char) -> Enumeratee T.Text T.Text m b
+mapM f = Data.Enumerator.Text.concatMapM (\x -> liftM T.singleton (f x))
+
+concatMap :: Monad m => (Char -> T.Text) -> Enumeratee T.Text T.Text m b
+concatMap f = Data.Enumerator.Text.concatMapM (return . f)
+
+concatMapM :: Monad m => (Char -> m T.Text) -> Enumeratee T.Text T.Text m b
+concatMapM f = checkDone (continue . step) where
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks xs) = loop k (TL.unpack (TL.fromChunks xs))
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = do
+		fx <- lift (f x)
+		k (Chunks [fx]) >>==
+			checkDoneEx (Chunks [T.pack xs]) (\k' -> loop k' xs)
+
+filter :: Monad m => (Char -> Bool) -> Enumeratee T.Text T.Text m b
+filter p = Data.Enumerator.Text.concatMap (\x -> T.pack [x | p x])
+
+filterM :: Monad m => (Char -> m Bool) -> Enumeratee T.Text T.Text m b
+filterM p = Data.Enumerator.Text.concatMapM (\x -> liftM T.pack (CM.filterM p [x]))
+:
+
 :d Data.Enumerator.Text exports
 -- * List analogues
 , Data.Enumerator.Text.head
@@ -295,6 +323,12 @@ generateM next = EL.generateM (liftM (liftM T.singleton) next)
 , Data.Enumerator.Text.replicate
 , Data.Enumerator.Text.replicateM
 , Data.Enumerator.Text.generateM
+, Data.Enumerator.Text.map
+, Data.Enumerator.Text.mapM
+, Data.Enumerator.Text.concatMap
+, Data.Enumerator.Text.concatMapM
+, Data.Enumerator.Text.filter
+, Data.Enumerator.Text.filterM
 :
 
 \subsection{Codecs}

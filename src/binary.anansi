@@ -320,6 +320,34 @@ generateM :: Monad m => m (Maybe Word8) -> Enumerator B.ByteString m b
 generateM next = EL.generateM (liftM (liftM B.singleton) next)
 :
 
+:f Data/Enumerator/Binary.hs
+map :: Monad m => (Word8 -> Word8) -> Enumeratee B.ByteString B.ByteString m b
+map f = Data.Enumerator.Binary.concatMap (\x -> B.singleton (f x))
+
+mapM :: Monad m => (Word8 -> m Word8) -> Enumeratee B.ByteString B.ByteString m b
+mapM f = Data.Enumerator.Binary.concatMapM (\x -> liftM B.singleton (f x))
+
+concatMap :: Monad m => (Word8 -> B.ByteString) -> Enumeratee B.ByteString B.ByteString m b
+concatMap f = Data.Enumerator.Binary.concatMapM (return . f)
+
+concatMapM :: Monad m => (Word8 -> m B.ByteString) -> Enumeratee B.ByteString B.ByteString m b
+concatMapM f = checkDone (continue . step) where
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks xs) = loop k (BL.unpack (BL.fromChunks xs))
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = do
+		fx <- lift (f x)
+		k (Chunks [fx]) >>==
+			checkDoneEx (Chunks [B.pack xs]) (\k' -> loop k' xs)
+
+filter :: Monad m => (Word8 -> Bool) -> Enumeratee B.ByteString B.ByteString m b
+filter p = Data.Enumerator.Binary.concatMap (\x -> B.pack [x | p x])
+
+filterM :: Monad m => (Word8 -> m Bool) -> Enumeratee B.ByteString B.ByteString m b
+filterM p = Data.Enumerator.Binary.concatMapM (\x -> liftM B.pack (CM.filterM p [x]))
+:
+
 :d Data.Enumerator.Binary exports
 -- * List analogues
 , Data.Enumerator.Binary.head
@@ -340,4 +368,10 @@ generateM next = EL.generateM (liftM (liftM B.singleton) next)
 , Data.Enumerator.Binary.replicate
 , Data.Enumerator.Binary.replicateM
 , Data.Enumerator.Binary.generateM
+, Data.Enumerator.Binary.map
+, Data.Enumerator.Binary.mapM
+, Data.Enumerator.Binary.concatMap
+, Data.Enumerator.Binary.concatMapM
+, Data.Enumerator.Binary.filter
+, Data.Enumerator.Binary.filterM
 :
