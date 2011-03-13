@@ -355,14 +355,14 @@ concatMap f = concatMapM (return . f)
 |apidoc Data.Enumerator.List.map|
 map :: Monad m => (ao -> ai)
     -> Enumeratee ao ai m b
-map f = Data.Enumerator.List.concatMap (\x -> Prelude.map f [x])
+map f = Data.Enumerator.List.concatMap (\x -> [f x])
 :
 
 :f Data/Enumerator/List.hs
 |apidoc Data.Enumerator.List.filter|
 filter :: Monad m => (a -> Bool)
        -> Enumeratee a a m b
-filter p = Data.Enumerator.List.concatMap (\x -> Prelude.filter p [x])
+filter p = Data.Enumerator.List.concatMap (\x -> [x | p x])
 :
 
 :f Data/Enumerator/List.hs

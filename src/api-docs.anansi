@@ -588,7 +588,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.filter
--- | @filter p = 'concatMap' (\x -> 'Prelude.filter' p [x])@
+-- | @filter p = 'concatMap' (\x -> [x | p x])@
 --
 -- Since: 0.4.8
 :
@@ -651,7 +651,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.map
--- | @map f = 'concatMap' (\x -> 'Prelude.map' f [x])@
+-- | @map f = 'concatMap' (\x -> [f x])@
 --
 -- Since: 0.4.8
 :
