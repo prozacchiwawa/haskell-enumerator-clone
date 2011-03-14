@@ -187,7 +187,7 @@ foldM :: Monad m => (b -> a -> m b) -> b
 foldM step = continue . loop where
 	f = CM.foldM step
 	
-	loop acc stream = case stream of
+	loop acc stream = acc `seq` case stream of
 		Chunks [] -> continue (loop acc)
 		Chunks xs -> lift (f acc xs) >>= continue . loop
 		EOF -> yield acc EOF
