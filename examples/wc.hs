@@ -12,12 +12,8 @@ import Data.Enumerator as E
 import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.Text as ET
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.Text as T
 
 -- support imports
-import Control.Exception as E
-import Data.List
 import Control.Monad (unless, forM_)
 import System.IO
 import System.Console.GetOpt
@@ -27,23 +23,17 @@ import System.Exit
 -- support wc modes -c (bytes), -m (characters), and -l (lines)
 
 -- iterBytes simply counts how many bytes are in each chunk, accumulates this
--- count, and returns it when EOF is received
+-- count, and returns it when EOF is received.
 
 iterBytes :: Monad m => Iteratee B.ByteString m Integer
-iterBytes = continue (step 0) where
-	step acc EOF = yield acc EOF
-	step acc (Chunks xs) = continue $ step $! Data.List.foldl' foldStep acc xs
-	foldStep acc bytes = acc + toInteger (B.length bytes)
+iterBytes = EB.fold (\acc _ -> acc + 1) 0
 
 -- iterLines is similar, except it only counts newlines ('\n')
---
--- Because it's basically the same as 'iterBytes', we use it to demonstrate
--- the 'liftFoldL\'' helper function.
 
 iterLines :: Monad m => Iteratee B.ByteString m Integer
-iterLines = E.foldl' step 0 where
-	step acc bytes = acc + countChar '\n' bytes
-	countChar c = B8.foldl (\acc c' -> if c' == c then acc + 1 else acc) 0
+iterLines = EB.fold step 0 where
+	step acc 0xA = acc + 1
+	step acc _ = acc
 
 -- iterChars is a bit more complicated. It has to decode the input (for now,
 -- assuming UTF-8) before performing any counting. Leftover bytes, not part
@@ -55,7 +45,7 @@ iterLines = E.foldl' step 0 where
 
 iterChars :: Monad m => Iteratee B.ByteString m Integer
 iterChars = joinI (ET.decode ET.utf8 $$ count) where
-	count = E.foldl' (\acc t -> acc + toInteger (T.length t)) 0
+	count = ET.fold (\acc _ -> acc + 1) 0
 
 main :: IO ()
 main = do
@@ -72,7 +62,6 @@ main = do
 	forM_ files $ \filename -> do
 		putStr $ filename ++ ": "
 		
-		-- see cat.hs for commented implementation of 'Data.Enumerator.IO.enumFile'
 		eitherStat <- run (EB.enumFile filename $$ iter)
 		putStrLn $ case eitherStat of
 			Left err -> "ERROR: " ++ show err
