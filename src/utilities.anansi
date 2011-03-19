@@ -1,33 +1,23 @@
-\section{Misc. utilities}
+\section{Miscellaneous}
 
 A few special-case utilities that are used by similar libraries, or were
 present in previous versions of {\tt enumerator}, or otherwise don't have a
 good place to go.
 
-:d Data.Enumerator exports
--- * Misc. utilities
-:
-
-\subsection{Enumeratees}
-
 Sequencing a fixed set of enumerators is easy, but for more complex
 cases, it's useful to have a small utility wrapper.
 
-:f Data/Enumerator.hs
+:d unsorted utilities
 |apidoc Data.Enumerator.concatEnums|
 concatEnums :: Monad m => [Enumerator a m b]
             -> Enumerator a m b
 concatEnums = Prelude.foldl (>==>) returnI
 :
 
-:d Data.Enumerator exports
-, concatEnums
-:
-
 {\tt joinI} is used to ``flatten'' enumeratees, to transform them into an
 {\tt Iteratee}.
 
-:f Data/Enumerator.hs
+:d unsorted utilities
 |apidoc Data.Enumerator.joinI|
 joinI :: Monad m => Iteratee a m (Step a' m b)
       -> Iteratee a m b
@@ -42,7 +32,7 @@ joinI outer = outer >>= check where
 {\tt joinE} is similar, except it flattens an enumerator/enumeratee pair
 into a single enumerator.
 
-:f Data/Enumerator.hs
+:d unsorted utilities
 |apidoc Data.Enumerator.joinE|
 joinE :: Monad m
       => Enumerator ao m (Step ai m b)
@@ -58,7 +48,7 @@ joinE enum enee s = Iteratee $ do
 
 {\tt sequence} repeatedly runs its parameter to transform the stream.
 
-:f Data/Enumerator.hs
+:d unsorted utilities
 |apidoc Data.Enumerator.sequence|
 sequence :: Monad m => Iteratee ao m ai
          -> Enumeratee ao ai m b
@@ -70,50 +60,7 @@ sequence i = loop where
 	step k = i >>= \v -> k (Chunks [v]) >>== loop
 :
 
-Another small, useful enumerator separates an input list into chunks, and
-sends them to the iteratee. This is useful for testing iteratees in pure
-code.
-
-:d Data.Enumerator imports
-import Data.List (genericSplitAt)
-:
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.enumList|
-enumList :: Monad m => Integer -> [a] -> Enumerator a m b
-enumList n = loop where
-	loop xs (Continue k) | not (null xs) = let
-		(s1, s2) = genericSplitAt n xs
-		in k (Chunks s1) >>== loop s2
-	loop _ step = returnI step
-:
-
-:d Data.Enumerator exports
-, joinI
-, joinE
-, Data.Enumerator.sequence
-, enumList
-:
-
-\subsection{Running iteratees}
-
-To simplify running iteratees, {\tt run} sends {\tt EOF} and then examines
-the result. It is not possible for the result to be {\tt Continue}, because
-{\tt enumEOF} calls {\tt error} for divergent iteratees.
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.run|
-run :: Monad m => Iteratee a m b
-    -> m (Either Exc.SomeException b)
-run i = do
-	mStep <- runIteratee $ enumEOF ==<< i
-	case mStep of
-		Error err -> return $ Left err
-		Yield x _ -> return $ Right x
-		Continue _ -> error "run: divergent iteratee"
-:
-
-:f Data/Enumerator.hs
+:d unsorted utilities
 |apidoc Data.Enumerator.enumEOF|
 enumEOF :: Monad m => Enumerator a m b
 enumEOF (Yield x _) = yield x EOF
@@ -122,23 +69,6 @@ enumEOF (Continue k) = k EOF >>== check where
 	check (Continue _) = error "enumEOF: divergent iteratee"
 	check s = enumEOF s
 :
-
-{\tt run\_} is even more simplified; it's used in simple scripts, where the
-user doesn't care about error handling.
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.run_|
-run_ :: Monad m => Iteratee a m b -> m b
-run_ i = run i >>= either Exc.throw return
-:
-
-:d Data.Enumerator exports
-, enumEOF
-, run
-, run_
-:
-
-\subsection{{\tt checkDone} and {\tt checkDoneEx}}
 
 A common pattern in {\tt Enumeratee} implementations is to check whether
 the inner {\tt Iteratee} has finished, and if so, to return its output.
@@ -150,7 +80,7 @@ some sort of input buffer, but the underlying iteratee enters {\tt Yield},
 it will discard the output buffer. {\tt checkDoneEx} corrects this; for
 backwards compatibility, {\tt checkDone} remains.
 
-:f Data/Enumerator.hs
+:d unsorted utilities
 |apidoc Data.Enumerator.checkDoneEx|
 checkDoneEx :: Monad m =>
 	Stream a' ->
@@ -166,21 +96,12 @@ checkDone :: Monad m =>
 checkDone = checkDoneEx (Chunks [])
 :
 
-:d Data.Enumerator exports
-, checkDone
-, checkDoneEx
-:
-
-:f Data/Enumerator.hs
+:d unsorted utilities
 |apidoc Data.Enumerator.isEOF|
 isEOF :: Monad m => Iteratee a m Bool
 isEOF = continue $ \s -> case s of
 	EOF -> yield True s
 	_ -> yield False s
-:
-
-:d Data.Enumerator exports
-, isEOF
 :
 
 {\tt Data.Enumerator.Util} is a hidden module for functions used by several
@@ -259,4 +180,122 @@ textToStrict = TL.toStrict
 #else
 textToStrict = T.concat . TL.toChunks
 #endif
+:
+
+\subsection{Supplemental instances}
+
+It can be pretty useful to define {\tt Typeable} instances for iteratees
+and streams. For example, they allow iteratee-based libraries to be loaded
+dynamically as plugins.
+
+Normally I'd use the {\tt DeriveDataTypeable} language extension, but
+many users have said they find {\tt enumerator} useful in large part
+because it doesn't rely on extensions. So instead, the instances are
+derived manually.
+
+:d Data.Enumerator imports
+import Data.Typeable ( Typeable, typeOf
+                     , Typeable1, typeOf1
+                     , mkTyConApp, mkTyCon)
+:
+
+:d supplemental instances
+-- | Since: 0.4.8
+instance Typeable1 Stream where
+	typeOf1 _ = mkTyConApp tyCon [] where
+		tyCon = mkTyCon "Data.Enumerator.Stream"
+:
+
+:d supplemental instances
+-- | Since: 0.4.6
+instance (Typeable a, Typeable1 m) =>
+	Typeable1 (Iteratee a m) where
+		typeOf1 i = let
+			tyCon = mkTyCon "Data.Enumerator.Iteratee"
+			(a, m) = peel i
+			
+			peel :: Iteratee a m b -> (a, m ())
+			peel = undefined
+			
+			in mkTyConApp tyCon [typeOf a, typeOf1 m]
+:
+
+:d supplemental instances
+-- | Since: 0.4.8
+instance (Typeable a, Typeable1 m) =>
+	Typeable1 (Step a m) where
+		typeOf1 s = let
+			tyCon = mkTyCon "Data.Enumerator.Step"
+			(a, m) = peel s
+			
+			peel :: Step a m b -> (a, m ())
+			peel = undefined
+			
+			in mkTyConApp tyCon [typeOf a, typeOf1 m]
+:
+
+It's probably possible to define {\tt Functor} and {\tt Applicative}
+instances for {\tt Iteratee} without a {\tt Monad} constraint, but I haven't
+bothered, since every useful operation requires {\tt m} to be a Monad anyway.
+
+:d supplemental instances
+instance Monad m => Functor (Iteratee a m) where
+	fmap = CM.liftM
+:
+
+:d supplemental instances
+instance Monad m => A.Applicative (Iteratee a m) where
+	pure = return
+	(<*>) = CM.ap
+:
+
+:d supplementary instances
+instance Functor Stream where
+	fmap f (Chunks xs) = Chunks (fmap f xs)
+	fmap _ EOF = EOF
+
+-- | Since: 0.4.5
+instance A.Applicative Stream where
+	pure = return
+	(<*>) = CM.ap
+:
+
+\subsection{Testing and debugging}
+
+Debugging enumerator-based code is mostly a question of what inputs are
+being passed around. {\tt printChunks} prints out exactly what chunks are
+being sent from an enumerator.
+
+:d utilities for testing and debugging
+|apidoc Data.Enumerator.printChunks|
+printChunks :: (MonadIO m, Show a)
+            => Bool -- ^ Print empty chunks
+            -> Iteratee a m ()
+printChunks printEmpty = continue loop where
+	loop (Chunks xs) = do
+		let hide = null xs && not printEmpty
+		CM.unless hide (liftIO (print xs))
+		continue loop
+	
+	loop EOF = do
+		liftIO (putStrLn "EOF")
+		yield () EOF
+:
+
+Another small, useful enumerator separates an input list into chunks, and
+sends them to the iteratee. This is useful for testing iteratees in pure
+code.
+
+:d Data.Enumerator imports
+import Data.List (genericSplitAt)
+:
+
+:d utilities for testing and debugging
+|apidoc Data.Enumerator.enumList|
+enumList :: Monad m => Integer -> [a] -> Enumerator a m b
+enumList n = loop where
+	loop xs (Continue k) | not (null xs) = let
+		(s1, s2) = genericSplitAt n xs
+		in k (Chunks s1) >>== loop s2
+	loop _ step = returnI step
 :

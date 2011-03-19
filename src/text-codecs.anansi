@@ -1,0 +1,339 @@
+\section{Text Codecs}
+
+Many protocols need the non-blocking input behavior of binary \io{}, but
+are defined in terms of unicode characters. The {\tt encode} and
+{\tt decode} enumeratees allow text-based protocols to be easily parsed
+from a binary input source.
+
+Most common codecs ({\sc utf-8}, {\sc iso-8859-1}, {\sc ascii}) are
+supported; more complex codecs can be implemented by bindings to libraries
+such as libicu.
+
+All of the codecs here are incremental; that is, they try to read as much
+data as possible, but no more. This allows iteratees to read partial data
+if the input stream contains invalid data.
+
+:d text codecs
+data Codec = Codec
+	{ codecName :: T.Text
+	, codecEncode
+		:: T.Text
+		-> (B.ByteString, Maybe (Exc.SomeException, T.Text))
+	, codecDecode
+		:: B.ByteString
+		-> (T.Text, Either
+			(Exc.SomeException, B.ByteString)
+			B.ByteString)
+	}
+
+instance Show Codec where
+	showsPrec d c = showParen (d > 10) $
+		showString "Codec " . shows (codecName c)
+:
+
+:d text codecs
+|apidoc Data.Enumerator.Text.encode|
+encode :: Monad m => Codec
+       -> Enumeratee T.Text B.ByteString m b
+encode codec = checkDone (continue . step) where
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks xs) = loop k xs
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = let
+		(bytes, extra) = codecEncode codec x
+		extraChunks = Chunks $ case extra of
+			Nothing -> xs
+			Just (_, text) -> text:xs
+		
+		checkError k' = case extra of
+			Nothing -> loop k' xs
+			Just (exc, _) -> throwError exc
+		
+		in if B.null bytes
+			then checkError k
+			else k (Chunks [bytes]) >>==
+				checkDoneEx extraChunks checkError
+:
+
+:d text codecs
+|apidoc Data.Enumerator.Text.decode|
+decode :: Monad m => Codec
+       -> Enumeratee B.ByteString T.Text m b
+decode codec = checkDone (continue . step B.empty) where
+	step _   k EOF = yield (Continue k) EOF
+	step acc k (Chunks xs) = loop acc k xs
+	
+	loop acc k [] = continue (step acc k)
+	loop acc k (x:xs) = let
+		(text, extra) = codecDecode codec (B.append acc x)
+		extraChunks = Chunks (either snd id extra : xs)
+		
+		checkError k' = case extra of
+			Left (exc, _) -> throwError exc
+			Right bytes -> loop bytes k' xs
+		
+		in if T.null text
+			then checkError k
+			else k (Chunks [text]) >>==
+				checkDoneEx extraChunks checkError
+:
+
+The variable-width decoders all follow the same basic pattern. First,
+they examine their input to calculate how many bytes the decoder
+function should accept. Next they try to decode it -- if the input
+is valid, decoding is finished.
+
+If the input is invalid, trying to decode the full input will throw
+an exception. When an exception is caught, decoding is passed off to
+{\tt splitSlowly} for a more careful parse. The input is reduced until
+the decoder can parse something, and the rest of the bytes are stored
+for later. An error will only be thrown if the iteratee requires input,
+but there are no valid bytes remaining.
+
+:d text codecs
+byteSplits :: B.ByteString
+           -> [(B.ByteString, B.ByteString)]
+byteSplits bytes = loop (B.length bytes) where
+	loop 0 = [(B.empty, bytes)]
+	loop n = B.splitAt n bytes : loop (n - 1)
+:
+
+:d text codecs
+splitSlowly :: (B.ByteString -> T.Text)
+            -> B.ByteString
+            -> (T.Text, Either
+            	(Exc.SomeException, B.ByteString)
+            	B.ByteString)
+splitSlowly dec bytes = valid where
+	valid = firstValid (Prelude.map decFirst splits)
+	splits = byteSplits bytes
+	firstValid = Prelude.head . catMaybes
+	tryDec = tryEvaluate . dec
+	
+	decFirst (a, b) = case tryDec a of
+		Left _ -> Nothing
+		Right text -> Just (text, case tryDec b of
+			Left exc -> Left (exc, b)
+			
+			-- this case shouldn't occur, since splitSlowly
+			-- is only called when parsing failed somewhere
+			Right _ -> Right B.empty)
+:
+
+\subsection{UTF-8}
+
+:d text codecs
+utf8 :: Codec
+utf8 = Codec name enc dec where
+	name = T.pack "UTF-8"
+	enc text = (TE.encodeUtf8 text, Nothing)
+	dec bytes = case splitQuickly bytes of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf8 bytes
+	|utf8 split bytes|
+:
+
+:d utf8 split bytes
+splitQuickly bytes = loop 0 >>= maybeDecode where
+	|utf8 required bytes count|
+	maxN = B.length bytes
+	
+	loop n | n == maxN = Just (TE.decodeUtf8 bytes, B.empty)
+	loop n = let
+		req = required (B.index bytes n)
+		tooLong = first TE.decodeUtf8 (B.splitAt n bytes)
+		decodeMore = loop $! n + req
+		in if req == 0
+			then Nothing
+			else if n + req > maxN
+				then Just tooLong
+				else decodeMore
+:
+
+:d utf8 required bytes count
+required x0
+	| x0 .&. 0x80 == 0x00 = 1
+	| x0 .&. 0xE0 == 0xC0 = 2
+	| x0 .&. 0xF0 == 0xE0 = 3
+	| x0 .&. 0xF8 == 0xF0 = 4
+	
+	-- Invalid input; let Text figure it out
+	| otherwise           = 0
+:
+
+\subsection{UTF-16}
+
+:d text codecs
+utf16_le :: Codec
+utf16_le = Codec name enc dec where
+	name = T.pack "UTF-16-LE"
+	enc text = (TE.encodeUtf16LE text, Nothing)
+	dec bytes = case splitQuickly bytes of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf16LE bytes
+	|utf16-le split bytes|
+:
+
+:d text codecs
+utf16_be :: Codec
+utf16_be = Codec name enc dec where
+	name = T.pack "UTF-16-BE"
+	enc text = (TE.encodeUtf16BE text, Nothing)
+	dec bytes = case splitQuickly bytes of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf16BE bytes
+	|utf16-be split bytes|
+:
+
+:d utf16-le split bytes
+splitQuickly bytes = maybeDecode (loop 0) where
+	maxN = B.length bytes
+	
+	loop n |  n      == maxN = decodeAll
+	       | (n + 1) == maxN = decodeTo n
+	loop n = let
+		req = utf16Required
+			(B.index bytes 0)
+			(B.index bytes 1)
+		decodeMore = loop $! n + req
+		in if n + req > maxN
+			then decodeTo n
+			else decodeMore
+	
+	decodeTo n = first TE.decodeUtf16LE (B.splitAt n bytes)
+	decodeAll = (TE.decodeUtf16LE bytes, B.empty)
+:
+
+:d utf16-be split bytes
+splitQuickly bytes = maybeDecode (loop 0) where
+	maxN = B.length bytes
+	
+	loop n |  n      == maxN = decodeAll
+	       | (n + 1) == maxN = decodeTo n
+	loop n = let
+		req = utf16Required
+			(B.index bytes 1)
+			(B.index bytes 0)
+		decodeMore = loop $! n + req
+		in if n + req > maxN
+			then decodeTo n
+			else decodeMore
+	
+	decodeTo n = first TE.decodeUtf16BE (B.splitAt n bytes)
+	decodeAll = (TE.decodeUtf16BE bytes, B.empty)
+:
+
+:d text codecs
+utf16Required :: Word8 -> Word8 -> Int
+utf16Required x0 x1 = required where
+	required = if x >= 0xD800 && x <= 0xDBFF
+		then 4
+		else 2
+	x :: Word16
+	x = (fromIntegral x1 `shiftL` 8) .|. fromIntegral x0
+:
+
+\subsection{UTF-32}
+
+:d text codecs
+utf32_le :: Codec
+utf32_le = Codec name enc dec where
+	name = T.pack "UTF-32-LE"
+	enc text = (TE.encodeUtf32LE text, Nothing)
+	dec bs = case utf32SplitBytes TE.decodeUtf32LE bs of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf32LE bs
+
+utf32_be :: Codec
+utf32_be = Codec name enc dec where
+	name = T.pack "UTF-32-BE"
+	enc text = (TE.encodeUtf32BE text, Nothing)
+	dec bs = case utf32SplitBytes TE.decodeUtf32BE bs of
+		Just (text, extra) -> (text, Right extra)
+		Nothing -> splitSlowly TE.decodeUtf32BE bs
+:
+
+:d text codecs
+utf32SplitBytes :: (B.ByteString -> T.Text)
+                -> B.ByteString
+                -> Maybe (T.Text, B.ByteString)
+utf32SplitBytes dec bytes = split where
+	split = maybeDecode (dec toDecode, extra)
+	len = B.length bytes
+	lenExtra = mod len 4
+	
+	lenToDecode = len - lenExtra
+	(toDecode, extra) = if lenExtra == 0
+		then (bytes, B.empty)
+		else B.splitAt lenToDecode bytes
+:
+
+\subsection{ASCII}
+
+:d text codecs
+ascii :: Codec
+ascii = Codec name enc dec where
+	name = T.pack "ASCII"
+	enc text = (bytes, extra) where
+		(safe, unsafe) = tSpanBy (\c -> ord c <= 0x7F) text
+		bytes = B8.pack (T.unpack safe)
+		extra = if T.null unsafe
+			then Nothing
+			else Just (illegalEnc name (T.head unsafe), unsafe)
+	
+	dec bytes = (text, extra) where
+		(safe, unsafe) = B.span (<= 0x7F) bytes
+		text = T.pack (B8.unpack safe)
+		extra = if B.null unsafe
+			then Right B.empty
+			else Left (illegalDec name (B.head unsafe), unsafe)
+:
+
+\subsection{ISO 8859-1}
+
+:d text codecs
+iso8859_1 :: Codec
+iso8859_1 = Codec name enc dec where
+	name = T.pack "ISO-8859-1"
+	enc text = (bytes, extra) where
+		(safe, unsafe) = tSpanBy (\c -> ord c <= 0xFF) text
+		bytes = B8.pack (T.unpack safe)
+		extra = if T.null unsafe
+			then Nothing
+			else Just (illegalEnc name (T.head unsafe), unsafe)
+	
+	dec bytes = (T.pack (B8.unpack bytes), Right B.empty)
+:
+
+\subsection*{Encoding Utilities}
+
+:d text codecs
+illegalEnc :: T.Text -> Char -> Exc.SomeException
+illegalEnc name c = Exc.toException . Exc.ErrorCall $
+	concat [ "Codec "
+	       , show name
+	       , " can't encode character "
+	       , reprChar c
+	       ]
+:
+
+:d text codecs
+illegalDec :: T.Text -> Word8 -> Exc.SomeException
+illegalDec name w = Exc.toException . Exc.ErrorCall $
+	concat [ "Codec "
+	       , show name
+	       , " can't decode byte "
+	       , reprWord w
+	       ]
+:
+
+:d text codecs
+tryEvaluate :: a -> Either Exc.SomeException a
+tryEvaluate = unsafePerformIO . Exc.try . Exc.evaluate
+
+maybeDecode:: (a, b) -> Maybe (a, b)
+maybeDecode (a, b) = case tryEvaluate a of
+	Left _ -> Nothing
+	Right _ -> Just (a, b)
+:

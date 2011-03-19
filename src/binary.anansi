@@ -1,139 +1,6 @@
 \section{Binary}
 
-:f Data/Enumerator/Binary.hs
-|Data.Enumerator.Binary module header|
-module Data.Enumerator.Binary (
-	|Data.Enumerator.Binary exports|
-	) where
-import Prelude hiding (head, drop, takeWhile)
-import Data.Enumerator hiding (head, drop)
-import qualified Data.ByteString as B
-|Data.Enumerator.Binary imports|
-:
-
-\subsection{IO}
-
-{\tt enumHandle} and {\tt enumFile} are rough analogues of
-{\tt hGetContents} and {\tt readFile} from the standard library, except
-they operate only in binary mode.
-
-Any exceptions thrown while reading or writing data are caught and reported
-using {\tt throwError}, so errors can be handled in pure iteratees.
-
-:d Data.Enumerator.Binary imports
-import Data.Enumerator.Util (tryIO)
-import qualified Control.Exception as Exc
-import Control.Monad.IO.Class (MonadIO)
-import qualified System.IO as IO
-import System.IO.Error (isEOFError)
-import Data.Function (fix)
-:
-
-:f Data/Enumerator/Binary.hs
-|apidoc Data.Enumerator.Binary.enumHandle|
-enumHandle :: MonadIO m
-           => Integer -- ^ Buffer size
-           -> IO.Handle
-           -> Enumerator B.ByteString m b
-enumHandle bufferSize h = do
-	let intSize = fromInteger bufferSize
-	
-	fix $ \loop step -> case step of
-		Continue k -> do
-			bytes <- tryIO (getBytes h intSize)
-			if B.null bytes
-				then continue k
-				else k (Chunks [bytes]) >>== loop
-		_ -> returnI step
-:
-
-:f Data/Enumerator/Binary.hs
-|apidoc Data.Enumerator.Binary.enumHandleRange|
-enumHandleRange :: MonadIO m
-                => Integer -- ^ Buffer size
-                -> Maybe Integer -- ^ Offset
-                -> Maybe Integer -- ^ Maximum count
-                -> IO.Handle
-                -> Enumerator B.ByteString m b
-enumHandleRange bufferSize offset count h s = seek >> enum where
-	seek = case offset of
-		Nothing -> return ()
-		Just off -> tryIO (IO.hSeek h IO.AbsoluteSeek off)
-	
-	enum = case count of
-		Just n -> loop n s
-		Nothing -> enumHandle bufferSize h s
-	
-	loop n (Continue k) =
-		let rem = fromInteger (min bufferSize n) in
-		if rem <= 0
-			then continue k
-			else do
-				bytes <- tryIO (getBytes h rem)
-				if B.null bytes
-					then continue k
-					else k (Chunks [bytes]) >>== loop (n - (toInteger (B.length bytes)))
-	loop _ step = returnI step
-:
-
-:f Data/Enumerator/Binary.hs
-getBytes :: IO.Handle -> Int -> IO B.ByteString
-getBytes h n = do
-	hasInput <- Exc.catch
-		(IO.hWaitForInput h (-1))
-		(\err -> if isEOFError err
-			then return False
-			else Exc.throwIO err)
-	if hasInput
-		then B.hGetNonBlocking h n
-		else return B.empty
-:
-
-:f Data/Enumerator/Binary.hs
-|apidoc Data.Enumerator.Binary.enumFile|
-enumFile :: FilePath -> Enumerator B.ByteString IO b
-enumFile path = enumFileRange path Nothing Nothing
-:
-
-:f Data/Enumerator/Binary.hs
-|apidoc Data.Enumerator.Binary.enumFileRange|
-enumFileRange :: FilePath
-              -> Maybe Integer -- ^ Offset
-              -> Maybe Integer -- ^ Maximum count
-              -> Enumerator B.ByteString IO b
-enumFileRange path offset count step = do
-	h <- tryIO (IO.openBinaryFile path IO.ReadMode)
-	let iter = enumHandleRange 4096 offset count h step
-	Iteratee (Exc.finally (runIteratee iter) (IO.hClose h))
-:
-
-:f Data/Enumerator/Binary.hs
-|apidoc Data.Enumerator.Binary.iterHandle|
-iterHandle :: MonadIO m => IO.Handle
-           -> Iteratee B.ByteString m ()
-iterHandle h = continue step where
-	step EOF = yield () EOF
-	step (Chunks []) = continue step
-	step (Chunks bytes) = do
-		tryIO (mapM_ (B.hPut h) bytes)
-		continue step
-:
-
-:d Data.Enumerator.Binary exports
-  -- * Binary IO
-  enumHandle
-, enumHandleRange
-, enumFile
-, enumFileRange
-, iterHandle
-:
-
 \subsection{List analogues}
-
-:d Data.Enumerator.Binary imports
-import Data.Word (Word8)
-import qualified Data.ByteString.Lazy as BL
-:
 
 :f Data/Enumerator/Binary.hs
 toChunks :: BL.ByteString -> Stream B.ByteString
@@ -269,11 +136,6 @@ splitWhen p = loop where
 				else k (Chunks [bytes]) >>== loop
 :
 
-:d Data.Enumerator.Binary imports
-import qualified Data.Enumerator.List as EL
-import qualified Control.Monad as CM
-:
-
 :f Data/Enumerator/Binary.hs
 fold :: Monad m => (b -> Word8 -> b) -> b
      -> Iteratee B.ByteString m b
@@ -284,11 +146,6 @@ fold step = EL.fold (B.foldl' step)
 foldM :: Monad m => (b -> Word8 -> m b) -> b
       -> Iteratee B.ByteString m b
 foldM step = EL.foldM (\b bytes -> CM.foldM step b (B.unpack bytes))
-:
-
-:d Data.Enumerator.Binary imports
-import Control.Monad (liftM)
-import Control.Monad.Trans.Class (lift)
 :
 
 :f Data/Enumerator/Binary.hs
@@ -355,33 +212,4 @@ unfold f = loop where
 		Nothing -> continue k
 		Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
 	loop _ step = returnI step
-:
-
-:d Data.Enumerator.Binary exports
--- * List analogues
-, Data.Enumerator.Binary.head
-, Data.Enumerator.Binary.drop
-, Data.Enumerator.Binary.dropWhile
-, Data.Enumerator.Binary.take
-, Data.Enumerator.Binary.takeWhile
-, Data.Enumerator.Binary.consume
-, require
-, isolate
-, splitWhen
-, fold
-, Data.Enumerator.Binary.foldM
-, Data.Enumerator.Binary.iterate
-, Data.Enumerator.Binary.iterateM
-, Data.Enumerator.Binary.repeat
-, Data.Enumerator.Binary.repeatM
-, Data.Enumerator.Binary.replicate
-, Data.Enumerator.Binary.replicateM
-, Data.Enumerator.Binary.generateM
-, Data.Enumerator.Binary.map
-, Data.Enumerator.Binary.mapM
-, Data.Enumerator.Binary.concatMap
-, Data.Enumerator.Binary.concatMapM
-, Data.Enumerator.Binary.filter
-, Data.Enumerator.Binary.filterM
-, unfold
 :
