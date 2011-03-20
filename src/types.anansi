@@ -78,6 +78,77 @@ newtype Iteratee a m b = Iteratee
 	}
 :
 
+The pattern {\tt Iteratee (return (} \ldots{\tt ))} shows up a lot, so I define a
+couple simple wrappers to save typing:
+
+:d primitives
+|apidoc Data.Enumerator.returnI|
+returnI :: Monad m => Step a m b -> Iteratee a m b
+returnI step = Iteratee (return step)
+
+|apidoc Data.Enumerator.yield|
+yield :: Monad m => b -> Stream a -> Iteratee a m b
+yield x extra = returnI (Yield x extra)
+
+|apidoc Data.Enumerator.continue|
+continue :: Monad m => (Stream a -> Iteratee a m b) -> Iteratee a m b
+continue k = returnI (Continue k)
+:
+
+\subsection*{Monad instances}
+
+Iteratees are monads; by sequencing iteratees, very complex processing may
+be applied to arbitrary input streams. Iteratees are also applicative
+functors and monad transformers.
+
+:d types and instances
+instance Monad m => Monad (Iteratee a m) where
+	return x = yield x (Chunks [])
+	|optimized iteratee bind|
+:
+
+Because iteratees are often used for high-performance software, it is
+important that the {\tt (>>=)} method be very efficient. We use a couple
+magic-ish features here:
+
+\begin{itemize}
+\item First, the whole {\tt (>>=)} is worker-wrapper transformed so {\tt f}
+can be cached when working with {\tt Continue}. This prevents a potential
+space leak when working with infinite streams.
+
+\item Second, the worker is rendered anonymous with {\tt fix}, so it doesn't
+incur any additional time overhead.
+\end{itemize}
+
+The end result is a bind implementation with time performance equivalent to
+the standard definition, but with significantly reduced memory allocation
+rates.
+
+:d optimized iteratee bind
+m0 >>= f = ($ m0) $ fix $
+	\bind m -> Iteratee $ runIteratee m >>= \r1 ->
+		case r1 of
+			Continue k -> return (Continue (bind . k))
+			Error err -> return (Error err)
+			Yield x (Chunks []) -> runIteratee (f x)
+			Yield x extra -> runIteratee (f x) >>= \r2 ->
+				case r2 of
+					Continue k -> runIteratee (k extra)
+					Error err -> return (Error err)
+					Yield x' _ -> return (Yield x' extra)
+:
+
+Most iteratees are used to wrap \io{} operations, so it's sensible to define
+instances for typeclasses from {\tt transformers}.
+
+:d types and instances
+instance MonadTrans (Iteratee a) where
+	lift m = Iteratee (m >>= runIteratee . return)
+
+instance MonadIO m => MonadIO (Iteratee a m) where
+	liftIO = lift . liftIO
+:
+
 \subsection{Enumerators}
 
 Enumerators typically read from an external source (parser, handle, random
@@ -127,60 +198,5 @@ inner inputs, and vice-versa.
 
 :d types and instances
 |apidoc Data.Enumerator.Enumeratee|
-type Enumeratee ao ai m b = Step ai m b
-          -> Iteratee ao m (Step ai m b)
-:
-
-\subsection*{Monad instances}
-
-Iteratees are monads; by sequencing iteratees, very complex processing may
-be applied to arbitrary input streams. Iteratees are also applicative
-functors and monad transformers.
-
-:d types and instances
-instance Monad m => Monad (Iteratee a m) where
-	return x = Iteratee (return (Yield x (Chunks [])))
-	|optimized iteratee bind|
-:
-
-Because iteratees are often used for high-performance software, it is
-important that the {\tt (>>=)} method be very efficient. We use a couple
-magic-ish features here:
-
-\begin{itemize}
-\item First, the whole {\tt (>>=)} is worker-wrapper transformed so {\tt f}
-can be cached when working with {\tt Continue}. This prevents a potential
-space leak when working with infinite streams.
-
-\item Second, the worker is rendered anonymous with {\tt fix}, so it doesn't
-incur any additional time overhead.
-\end{itemize}
-
-The end result is a bind implementation with time performance equivalent to
-the standard definition, but with significantly reduced memory allocation
-rates.
-
-:d optimized iteratee bind
-m0 >>= f = ($ m0) $ fix $
-	\bind m -> Iteratee $ runIteratee m >>= \r1 ->
-		case r1 of
-			Continue k -> return (Continue (bind . k))
-			Error err -> return (Error err)
-			Yield x (Chunks []) -> runIteratee (f x)
-			Yield x extra -> runIteratee (f x) >>= \r2 ->
-				case r2 of
-					Continue k -> runIteratee (k extra)
-					Error err -> return (Error err)
-					Yield x' _ -> return (Yield x' extra)
-:
-
-Most iteratees are used to wrap \io{} operations, so it's sensible to define
-instances for typeclasses from {\tt transformers}.
-
-:d types and instances
-instance MonadTrans (Iteratee a) where
-	lift m = Iteratee (m >>= runIteratee . return)
-
-instance MonadIO m => MonadIO (Iteratee a m) where
-	liftIO = lift . liftIO
+type Enumeratee ao ai m b = Step ai m b -> Iteratee ao m (Step ai m b)
 :

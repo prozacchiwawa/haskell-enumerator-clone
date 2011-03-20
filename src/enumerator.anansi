@@ -15,6 +15,9 @@
 \usepackage{latex/noweb}
 \usepackage[margin=3cm]{latex/geometry}
 
+\usepackage{titlesec}
+\newcommand{\subsectionbreak}{\clearpage}
+
 % \noweboptions{smallcode}
 
 % Remove boxes from hyperlinks

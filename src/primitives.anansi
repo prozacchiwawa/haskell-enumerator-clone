@@ -1,23 +1,5 @@
 \section{Primitives}
 
-Users often need to construct iteratees which only yield or continue,
-so we define some helper functions to save typing:
-
-:d primitives
-|apidoc Data.Enumerator.returnI|
-returnI :: Monad m => Step a m b -> Iteratee a m b
-returnI step = Iteratee (return step)
-
-|apidoc Data.Enumerator.yield|
-yield :: Monad m => b -> Stream a -> Iteratee a m b
-yield x extra = returnI (Yield x extra)
-
-|apidoc Data.Enumerator.continue|
-continue :: Monad m => (Stream a -> Iteratee a m b)
-         -> Iteratee a m b
-continue k = returnI (Continue k)
-:
-
 \subsection{Operators}
 
 Because {\tt Iteratee a m b} is semantically equivalent to
@@ -26,10 +8,12 @@ Because {\tt Iteratee a m b} is semantically equivalent to
 and enumeratees. {\tt (>>==)} corresponds to {\tt (>>=)}, {\tt (>==>)} to
 {\tt (>=>)}, and so on.
 
-For compatibility, {\tt (==<<)} is aliased to {\tt (\$\$)}.
-
-:d primitives
+:d iteratee operators
 infixl 1 >>==
+infixr 1 ==<<
+infixr 0 $$
+infixr 1 >==>
+infixr 1 <==<
 
 |apidoc Data.Enumerator.(>>==)|
 (>>==) :: Monad m
@@ -37,10 +21,6 @@ infixl 1 >>==
        -> (Step a m b -> Iteratee a' m b')
        -> Iteratee a' m b'
 i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
-:
-
-:d primitives
-infixr 1 ==<<
 
 |apidoc Data.Enumerator.(==<<)|
 (==<<) :: Monad m
@@ -48,10 +28,6 @@ infixr 1 ==<<
        -> Iteratee a m b
        -> Iteratee a' m b'
 (==<<) = flip (>>==)
-:
-
-:d primitives
-infixr 0 $$
 
 |apidoc Data.Enumerator.($$)|
 ($$) :: Monad m
@@ -59,10 +35,6 @@ infixr 0 $$
      -> Iteratee a m b
      -> Iteratee a' m b'
 ($$) = (==<<)
-:
-
-:d primitives
-infixr 1 >==>
 
 |apidoc Data.Enumerator.(>==>)|
 (>==>) :: Monad m
@@ -71,10 +43,6 @@ infixr 1 >==>
        -> Step a m b
        -> Iteratee a' m b'
 (>==>) e1 e2 s = e1 s >>== e2
-:
-
-:d primitives
-infixr 1 <==<
 
 |apidoc Data.Enumerator.(<==<)|
 (<==<) :: Monad m
@@ -126,8 +94,7 @@ libraries, to avoid extraneous dependencies.
 
 :d primitives
 |apidoc Data.Enumerator.throwError|
-throwError :: (Monad m, Exc.Exception e) => e
-           -> Iteratee a m b
+throwError :: (Monad m, Exc.Exception e) => e -> Iteratee a m b
 throwError exc = returnI (Error (Exc.toException exc))
 :
 
@@ -140,7 +107,8 @@ transforming or logging errors, not ignoring them.
 
 :d primitives
 |apidoc Data.Enumerator.catchError|
-catchError :: Monad m => Iteratee a m b
+catchError :: Monad m
+           => Iteratee a m b
            -> (Exc.SomeException -> Iteratee a m b)
            -> Iteratee a m b
 catchError iter h = iter >>== step where

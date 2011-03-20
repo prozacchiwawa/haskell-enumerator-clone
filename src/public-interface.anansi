@@ -10,6 +10,7 @@ module Data.Enumerator (
 |types and instances|
 |supplemental instances|
 |primitives|
+|iteratee operators|
 |utilities for testing and debugging|
 |unsorted utilities|
 |compatibility: obsolete|

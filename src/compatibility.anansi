@@ -4,7 +4,7 @@ Version 0.4.5 of this library introduced some substantial reorganization
 and renamings; this section implements compatibility shims, so the API
 remains stable.
 
-\subsection*{Obsolete functions}
+\subsection{Obsolete functions}
 
 These are functions which seemed like good ideas, or were defined by other
 enumerator/iteratee libraries, but turned out to be basically useless. At
@@ -58,7 +58,7 @@ length = continue (loop 0) where
 	loop n EOF = yield n EOF
 :
 
-\subsection*{Aliases}
+\subsection{Aliases}
 
 In previous library versions, several list-based iteratees were defined in
 {\tt Data.Enumerator}. They are now defined in {\tt Data.Enumerator.List};
@@ -248,7 +248,6 @@ liftFoldM :: Monad m => (b -> a -> m b) -> b
 liftFoldM = EL.foldM
 :
 
-\clearpage
 Finally, the {\tt Data.Enumerator.IO} module was moved to
 {\tt Data.Enumerator.Binary}, and altered to include many more functions
 related to binary and {\tt ByteString} processing.
