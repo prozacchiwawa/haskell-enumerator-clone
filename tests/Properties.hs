@@ -171,22 +171,22 @@ test_Primitives = F.testGroup "Primitives"
 	]
 
 test_Map :: F.Test
-test_Map = test_Enumeratee "map" (E.map id)
+test_Map = test_Enumeratee "map" (EL.map id)
 
 test_ConcatMap :: F.Test
-test_ConcatMap = test_Enumeratee "concatMap" (E.concatMap (:[]))
+test_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
 
 test_MapM :: F.Test
-test_MapM = test_Enumeratee "mapM" (E.mapM return)
+test_MapM = test_Enumeratee "mapM" (EL.mapM return)
 
 test_ConcatMapM :: F.Test
-test_ConcatMapM = test_Enumeratee "concatMapM" (E.concatMapM (\x -> return [x]))
+test_ConcatMapM = test_Enumeratee "concatMapM" (EL.concatMapM (\x -> return [x]))
 
 test_Filter :: F.Test
-test_Filter = test_Enumeratee "filter" (E.filter (\_ -> True))
+test_Filter = test_Enumeratee "filter" (EL.filter (\_ -> True))
 
 test_FilterM :: F.Test
-test_FilterM = test_Enumeratee "filterM" (E.filterM (\_ -> return True))
+test_FilterM = test_Enumeratee "filterM" (EL.filterM (\_ -> return True))
 
 -- }}}
 
@@ -784,7 +784,7 @@ test_joinE = testProperty "joinE" prop where
 		result = runIdentity (E.run_ iter)
 		expected = map (* 10) xs
 		
-		iter = (E.joinE (E.enumList 1 xs) (E.map (* 10))) $$ EL.consume
+		iter = (E.joinE (E.enumList 1 xs) (EL.map (* 10))) $$ EL.consume
 
 -- misc
 
