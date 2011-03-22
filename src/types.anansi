@@ -1,4 +1,4 @@
-\section{Core types}
+\section{Types and instances}
 
 Most of this library's types and functions are exported from the
 {\tt Data.Enumerator} module.
