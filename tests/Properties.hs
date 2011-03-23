@@ -51,7 +51,6 @@ test_StreamInstances :: F.Test
 test_StreamInstances = F.testGroup "Stream Instances"
 	[ test_StreamMonoid
 	, test_StreamFunctor
-	, test_StreamApplicative
 	, test_StreamMonad
 	]
 
@@ -86,30 +85,6 @@ test_StreamFunctor = F.testGroup "Functor Stream" props where
 	
 	prop_law2 :: E.Stream A -> Blind (B -> C) -> Blind (A -> B) -> Bool
 	prop_law2 x (Blind f) (Blind g) = fmap (f . g) x == (fmap f . fmap g) x
-
-test_StreamApplicative :: F.Test
-test_StreamApplicative = F.testGroup "Applicative Stream" props where
-	props = [ testProperty "law 1" prop_law1
-	        , testProperty "law 2" prop_law2
-	        , testProperty "law 3" prop_law3
-	        , testProperty "law 4" prop_law4
-	        , testProperty "law 5" prop_law5
-	        ]
-	
-	prop_law1 :: E.Stream A -> Bool
-	prop_law1 v = (pure id <*> v) == v
-	
-	prop_law2 :: Blind (E.Stream (B -> C)) -> Blind (E.Stream (A -> B)) -> E.Stream A -> Bool
-	prop_law2 (Blind u) (Blind v) w = (pure (.) <*> u <*> v <*> w) == (u <*> (v <*> w))
-	
-	prop_law3 :: Blind (A -> B) -> A -> Bool
-	prop_law3 (Blind f) x = (pure f <*> pure x) == (pure (f x) `asTypeOf` E.Chunks [B 0])
-	
-	prop_law4 :: Blind (E.Stream (A -> B)) -> A -> Bool
-	prop_law4 (Blind u) y = (u <*> pure y) == (pure ($ y) <*> u)
-	
-	prop_law5 :: Blind (A -> B) -> E.Stream A -> Bool
-	prop_law5 (Blind f) x = (fmap f x) == (pure f <*> x)
 
 test_StreamMonad :: F.Test
 test_StreamMonad = F.testGroup "Monad Stream" props where
