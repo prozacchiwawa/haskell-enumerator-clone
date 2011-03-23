@@ -309,6 +309,17 @@ unfold f = loop where
 	loop _ step = returnI step
 :
 
+:f Data/Enumerator/List.hs
+unfoldM :: Monad m => (s -> m (Maybe (a, s))) -> s -> Enumerator a m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (a, s') -> k (Chunks [a]) >>== loop s'
+	loop _ step = returnI step
+:
+
 :d Data.Enumerator.List exports
 -- ** Enumerators
 , Data.Enumerator.List.iterate
@@ -319,6 +330,7 @@ unfold f = loop where
 , replicateM
 , generateM
 , unfold
+, unfoldM
 :
 
 \subsection{Enumeratees}

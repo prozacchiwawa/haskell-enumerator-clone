@@ -357,6 +357,17 @@ unfold f = loop where
 	loop _ step = returnI step
 :
 
+:f Data/Enumerator/Binary.hs
+unfoldM :: Monad m => (s -> m (Maybe (Word8, s))) -> s -> Enumerator B.ByteString m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
+	loop _ step = returnI step
+:
+
 :d Data.Enumerator.Binary exports
 -- * List analogues
 , Data.Enumerator.Binary.head
@@ -384,4 +395,5 @@ unfold f = loop where
 , Data.Enumerator.Binary.filter
 , Data.Enumerator.Binary.filterM
 , unfold
+, unfoldM
 :

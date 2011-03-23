@@ -311,6 +311,17 @@ unfold f = loop where
 	loop _ step = returnI step
 :
 
+:f Data/Enumerator/Text.hs
+unfoldM :: Monad m => (s -> m (Maybe (Char, s))) -> s -> Enumerator T.Text m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
+	loop _ step = returnI step
+:
+
 :d Data.Enumerator.Text exports
 -- * List analogues
 , Data.Enumerator.Text.head
@@ -339,6 +350,7 @@ unfold f = loop where
 , Data.Enumerator.Text.filter
 , Data.Enumerator.Text.filterM
 , unfold
+, unfoldM
 :
 
 \subsection{Codecs}
