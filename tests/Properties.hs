@@ -3,7 +3,17 @@
 -- See license.txt for details
 module Main (tests, main) where
 
-import Data.Enumerator (($$))
+import           Control.Exception (ErrorCall(..))
+import           Data.Bits ((.&.))
+import           Data.Char (chr)
+import qualified Data.List as L
+import qualified Data.List.Split as LS
+import           Data.Monoid (mappend, mempty, mconcat)
+import           Data.Functor.Identity (Identity, runIdentity)
+import           Data.String (IsString, fromString)
+import           Data.Word (Word8)
+
+import           Data.Enumerator (($$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.Text as ET
@@ -16,22 +26,10 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as TE
 
-import Test.QuickCheck hiding ((.&.))
-import Test.QuickCheck.Poly
+import           Test.QuickCheck hiding ((.&.))
+import           Test.QuickCheck.Poly (A, B, C)
 import qualified Test.Framework as F
-import Test.Framework.Providers.QuickCheck2 (testProperty)
-
-import Control.Applicative
-import Control.Exception
-import Control.Monad
-import Data.Bits
-import Data.Char (chr)
-import qualified Data.List as L
-import qualified Data.List.Split as LS
-import Data.Monoid
-import Data.Functor.Identity
-import Data.String
-import Data.Word
+import           Test.Framework.Providers.QuickCheck2 (testProperty)
 
 tests :: [F.Test]
 tests =
@@ -127,7 +125,7 @@ test_Enumeratee name enee = F.testGroup name props where
 		result = runIdentity (E.run_ iter)
 		
 		iter = E.enumList n xs $$ do
-			a <- enee $$ E.throwError (ErrorCall "")
+			_ <- enee $$ E.throwError (ErrorCall "")
 			EL.consume
 		
 		in result == xs
