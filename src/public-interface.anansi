@@ -206,7 +206,9 @@ import Control.Monad (liftM)
 :d Data.Enumerator.Binary exports
 -- * IO
   enumHandle
+, enumHandleRange
 , enumFile
+, enumFileRange
 , iterHandle
 
 -- * List analogues
