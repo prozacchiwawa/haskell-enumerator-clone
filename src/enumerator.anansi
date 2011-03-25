@@ -11,6 +11,7 @@
 \usepackage{indentfirst}
 \usepackage{amsmath}
 \usepackage{multicol}
+\usepackage{comment}
 
 \usepackage{latex/noweb}
 \usepackage[margin=3cm]{latex/geometry}
@@ -83,7 +84,9 @@
 \newpage
 :include compatibility.anansi
 
-\newpage
+% exclude API docs from LaTeX output, since they're generally uninteresting
+\begin{comment}
 :include api-docs.anansi
+\end{comment}
 
 \end{document}
