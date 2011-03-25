@@ -249,7 +249,7 @@ instance Monad m => A.Applicative (Iteratee a m) where
 	(<*>) = CM.ap
 :
 
-:d supplementary instances
+:d supplemental instances
 instance Functor Stream where
 	fmap f (Chunks xs) = Chunks (fmap f xs)
 	fmap _ EOF = EOF
