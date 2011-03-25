@@ -232,7 +232,7 @@ import Control.Monad (liftM)
 , replicateM
 , generateM
 , unfold
--- , unfoldM
+, unfoldM
 
 -- ** Filters
 , Data.Enumerator.Binary.filter
@@ -277,7 +277,7 @@ import Control.Monad (liftM)
 , replicateM
 , generateM
 , unfold
--- , unfoldM
+, unfoldM
 
 -- ** Filters
 , Data.Enumerator.List.filter
@@ -326,7 +326,7 @@ import Control.Monad (liftM)
 , replicateM
 , generateM
 , unfold
--- , unfoldM
+, unfoldM
 
 -- ** Filters
 , Data.Enumerator.Text.filter

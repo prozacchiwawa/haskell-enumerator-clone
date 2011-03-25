@@ -56,6 +56,68 @@ foldM :: Monad m => (b -> Char -> m b) -> b
 foldM step = EL.foldM (\b txt -> CM.foldM step b (T.unpack txt))
 :
 
+\subsection{Unfolds}
+
+:d element-oriented list analogues
+unfold :: Monad m => (s -> Maybe (a, s)) -> s -> Enumerator a m b
+unfold f = loop where
+	loop s (Continue k) = case f s of
+		Nothing -> continue k
+		Just (a, s') -> k (Chunks [a]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d byte-oriented list analogues
+unfold :: Monad m => (s -> Maybe (Word8, s)) -> s -> Enumerator B.ByteString m b
+unfold f = loop where
+	loop s (Continue k) = case f s of
+		Nothing -> continue k
+		Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d text-oriented list analogues
+unfold :: Monad m => (s -> Maybe (Char, s)) -> s -> Enumerator T.Text m b
+unfold f = loop where
+	loop s (Continue k) = case f s of
+		Nothing -> continue k
+		Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d element-oriented list analogues
+unfoldM :: Monad m => (s -> m (Maybe (a, s))) -> s -> Enumerator a m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (a, s') -> k (Chunks [a]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d byte-oriented list analogues
+unfoldM :: Monad m => (s -> m (Maybe (Word8, s))) -> s -> Enumerator B.ByteString m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d text-oriented list analogues
+unfoldM :: Monad m => (s -> m (Maybe (Char, s))) -> s -> Enumerator T.Text m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
+	loop _ step = returnI step
+:
+
 \subsection{Maps}
 
 Enumeratees are conceptually similar to a monadic {\tt concatMap}; each
@@ -303,33 +365,6 @@ generateM next = EL.generateM (liftM (liftM B.singleton) next)
 :d text-oriented list analogues
 generateM :: Monad m => m (Maybe Char) -> Enumerator T.Text m b
 generateM next = EL.generateM (liftM (liftM T.singleton) next)
-:
-
-:d element-oriented list analogues
-unfold :: Monad m => (s -> Maybe (a, s)) -> s -> Enumerator a m b
-unfold f = loop where
-	loop s (Continue k) = case f s of
-		Nothing -> continue k
-		Just (a, s') -> k (Chunks [a]) >>== loop s'
-	loop _ step = returnI step
-:
-
-:d byte-oriented list analogues
-unfold :: Monad m => (s -> Maybe (Word8, s)) -> s -> Enumerator B.ByteString m b
-unfold f = loop where
-	loop s (Continue k) = case f s of
-		Nothing -> continue k
-		Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
-	loop _ step = returnI step
-:
-
-:d text-oriented list analogues
-unfold :: Monad m => (s -> Maybe (Char, s)) -> s -> Enumerator T.Text m b
-unfold f = loop where
-	loop s (Continue k) = case f s of
-		Nothing -> continue k
-		Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
-	loop _ step = returnI step
 :
 
 \subsection{Filters}
