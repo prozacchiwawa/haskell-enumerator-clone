@@ -1,35 +1,4 @@
-\section{Core types}
-
-Most of this library's types and functions are exported from the
-{\tt Data.Enumerator} module.
-
-:f Data/Enumerator.hs
-|Data.Enumerator module header|
-module Data.Enumerator (
-	|Data.Enumerator exports|
-	) where
-|Data.Enumerator imports|
-:
-
-\noindent A few utility functions share names with functions from the Prelude, so
-those are removed from the default namespace.
-
-:d Data.Enumerator imports
-import qualified Prelude as Prelude
-import Prelude hiding (
-	|excluded Prelude imports|
-	)
-:
-
-:d Data.Enumerator exports
--- * Core
--- ** Types
-  Stream (..)
-, Iteratee (..)
-, Step (..)
-, Enumerator
-, Enumeratee
-:
+\section{Types and instances}
 
 \subsection{Input streams}
 
@@ -43,7 +12,7 @@ simplifies handling of leftover inputs.
 no data is currently available. Iteratees and enumeratees often special-case
 empty chunks for performance reasons, though they're not required to.
 
-:f Data/Enumerator.hs
+:d types and instances
 |apidoc Data.Enumerator.Stream|
 data Stream a
 	= Chunks [a]
@@ -54,15 +23,6 @@ instance Monad Stream where
 	return = Chunks . return
 	Chunks xs >>= f = mconcat (fmap f xs)
 	EOF >>= _ = EOF
-
-instance Functor Stream where
-	fmap f (Chunks xs) = Chunks (fmap f xs)
-	fmap _ EOF = EOF
-
--- | Since: 0.4.5
-instance A.Applicative Stream where
-	pure = return
-	(<*>) = CM.ap
 :
 
 The {\tt Monoid} instance deserves some special attention, because it has
@@ -70,11 +30,7 @@ the unexpected behavior that {\tt mappend EOF (Chunks []) == EOF}. Although
 it's reasonable that appending chunks to an {\sc eof} stream should provide
 a valid stream, such behavior would violate the monoid laws.
 
-:d Data.Enumerator imports
-import Data.Monoid (Monoid, mempty, mappend, mconcat)
-:
-
-:f Data/Enumerator.hs
+:d types and instances
 instance Monoid (Stream a) where
 	mempty = Chunks mempty
 	mappend (Chunks xs) (Chunks ys) = Chunks (xs ++ ys)
@@ -105,11 +61,7 @@ the next iteratee.
 proceeding further.
 \end{itemize}
 
-:d Data.Enumerator imports
-import qualified Control.Exception as Exc
-:
-
-:f Data/Enumerator.hs
+:d types and instances
 data Step a m b
 	|apidoc Data.Enumerator.Continue|
 	= Continue (Stream a -> Iteratee a m b)
@@ -126,10 +78,10 @@ newtype Iteratee a m b = Iteratee
 	}
 :
 
-Users often need to construct iteratees which only yield or continue,
-so we define some helper functions to save typing:
+The pattern {\tt Iteratee (return (} \ldots{\tt ))} shows up a lot, so I define a
+couple simple wrappers to save typing:
 
-:f Data/Enumerator.hs
+:d primitives
 |apidoc Data.Enumerator.returnI|
 returnI :: Monad m => Step a m b -> Iteratee a m b
 returnI step = Iteratee (return step)
@@ -139,15 +91,62 @@ yield :: Monad m => b -> Stream a -> Iteratee a m b
 yield x extra = returnI (Yield x extra)
 
 |apidoc Data.Enumerator.continue|
-continue :: Monad m => (Stream a -> Iteratee a m b)
-         -> Iteratee a m b
+continue :: Monad m => (Stream a -> Iteratee a m b) -> Iteratee a m b
 continue k = returnI (Continue k)
 :
 
-:d Data.Enumerator exports
-, returnI
-, yield
-, continue
+\subsection*{Monad instances}
+
+Iteratees are monads; by sequencing iteratees, very complex processing may
+be applied to arbitrary input streams. Iteratees are also applicative
+functors and monad transformers.
+
+:d types and instances
+instance Monad m => Monad (Iteratee a m) where
+	return x = yield x (Chunks [])
+	|optimized iteratee bind|
+:
+
+Because iteratees are often used for high-performance software, it is
+important that the {\tt (>>=)} method be very efficient. We use a couple
+magic-ish features here:
+
+\begin{itemize}
+\item First, the whole {\tt (>>=)} is worker-wrapper transformed so {\tt f}
+can be cached when working with {\tt Continue}. This prevents a potential
+space leak when working with infinite streams.
+
+\item Second, the worker is rendered anonymous with {\tt fix}, so it doesn't
+incur any additional time overhead.
+\end{itemize}
+
+The end result is a bind implementation with time performance equivalent to
+the standard definition, but with significantly reduced memory allocation
+rates.
+
+:d optimized iteratee bind
+m0 >>= f = ($ m0) $ fix $
+	\bind m -> Iteratee $ runIteratee m >>= \r1 ->
+		case r1 of
+			Continue k -> return (Continue (bind . k))
+			Error err -> return (Error err)
+			Yield x (Chunks []) -> runIteratee (f x)
+			Yield x extra -> runIteratee (f x) >>= \r2 ->
+				case r2 of
+					Continue k -> runIteratee (k extra)
+					Error err -> return (Error err)
+					Yield x' _ -> return (Yield x' extra)
+:
+
+Most iteratees are used to wrap \io{} operations, so it's sensible to define
+instances for typeclasses from {\tt transformers}.
+
+:d types and instances
+instance MonadTrans (Iteratee a) where
+	lift m = Iteratee (m >>= runIteratee . return)
+
+instance MonadIO m => MonadIO (Iteratee a m) where
+	liftIO = lift . liftIO
 :
 
 \subsection{Enumerators}
@@ -161,7 +160,7 @@ Since {\tt Iteratee} is an alias for {\tt m (Step a m b)}, enumerators can
 also be considered step transformers of type
 {\tt Step a m b -> m (Step a m b)}.
 
-:f Data/Enumerator.hs
+:d types and instances
 |apidoc Data.Enumerator.Enumerator|
 type Enumerator a m b = Step a m b -> Iteratee a m b
 :
@@ -197,163 +196,7 @@ a stream of \emph{ao} values, transforms them into \emph{ai}, and passes them
 to an inner iteratee. This model allows a single outer input to generate many
 inner inputs, and vice-versa.
 
-:f Data/Enumerator.hs
+:d types and instances
 |apidoc Data.Enumerator.Enumeratee|
-type Enumeratee ao ai m b = Step ai m b
-          -> Iteratee ao m (Step ai m b)
-:
-
-\subsection{Operators}
-
-Because {\tt Iteratee a m b} is semantically equivalent to
-{\tt m (Step a m b)}, several of the monadic combinators ({\tt (>>=)},
-{\tt (>=>)}, etc) are useful to save typing when constructing enumerators
-and enumeratees. {\tt (>>==)} corresponds to {\tt (>>=)}, {\tt (>==>)} to
-{\tt (>=>)}, and so on.
-
-For compatibility, {\tt (==<<)} is aliased to {\tt (\$\$)}.
-
-:f Data/Enumerator.hs
-infixl 1 >>==
-
-|apidoc Data.Enumerator.(>>==)|
-(>>==) :: Monad m
-       => Iteratee a m b
-       -> (Step a m b -> Iteratee a' m b')
-       -> Iteratee a' m b'
-i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
-:
-
-:f Data/Enumerator.hs
-infixr 1 ==<<
-
-|apidoc Data.Enumerator.(==<<)|
-(==<<) :: Monad m
-       => (Step a m b -> Iteratee a' m b')
-       -> Iteratee a m b
-       -> Iteratee a' m b'
-(==<<) = flip (>>==)
-:
-
-:f Data/Enumerator.hs
-infixr 0 $$
-
-|apidoc Data.Enumerator.($$)|
-($$) :: Monad m
-     => (Step a m b -> Iteratee a' m b')
-     -> Iteratee a m b
-     -> Iteratee a' m b'
-($$) = (==<<)
-:
-
-:f Data/Enumerator.hs
-infixr 1 >==>
-
-|apidoc Data.Enumerator.(>==>)|
-(>==>) :: Monad m
-       => Enumerator a m b
-       -> (Step a m b -> Iteratee a' m b')
-       -> Step a m b
-       -> Iteratee a' m b'
-(>==>) e1 e2 s = e1 s >>== e2
-:
-
-:f Data/Enumerator.hs
-infixr 1 <==<
-
-|apidoc Data.Enumerator.(<==<)|
-(<==<) :: Monad m
-       => (Step a m b -> Iteratee a' m b')
-       -> Enumerator a m b
-       -> Step a m b
-       -> Iteratee a' m b'
-(<==<) = flip (>==>)
-:
-
-:d Data.Enumerator exports
--- ** Operators
-, (>>==)
-, (==<<)
-, ($$)
-, (>==>)
-, (<==<)
-:
-
-\subsection{Iteratees as Monads}
-
-Iteratees are monads; by sequencing iteratees, very complex processing may
-be applied to arbitrary input streams. Iteratees are also applicative
-functors and monad transformers.
-
-:d Data.Enumerator imports
-import Data.Function (fix)
-:
-
-:f Data/Enumerator.hs
-instance Monad m => Monad (Iteratee a m) where
-	return x = yield x (Chunks [])
-	
-	m0 >>= f = ($ m0) $ fix $ \bind m -> Iteratee $ runIteratee m >>=
-		\r1 -> case r1 of
-			Continue k -> return (Continue (bind . k))
-			Error err -> return (Error err)
-			Yield x (Chunks []) -> runIteratee (f x)
-			Yield x extra -> runIteratee (f x) >>=
-				\r2 -> case r2 of
-					Continue k -> runIteratee (k extra)
-					Error err -> return (Error err)
-					Yield x' _ -> return (Yield x' extra)
-:
-
-Most iteratees are used to wrap \io{} operations, so it's sensible to define
-instances for typeclasses from {\tt transformers}.
-
-:d Data.Enumerator imports
-import Control.Monad.Trans.Class (MonadTrans, lift)
-import Control.Monad.IO.Class (MonadIO, liftIO)
-:
-
-:f Data/Enumerator.hs
-instance MonadTrans (Iteratee a) where
-	lift m = Iteratee (m >>= runIteratee . return)
-
-instance MonadIO m => MonadIO (Iteratee a m) where
-	liftIO = lift . liftIO
-:
-
-It's probably possible to define {\tt Functor} and {\tt Applicative}
-instances for {\tt Iteratee} without a {\tt Monad} constraint, but I haven't
-bothered, since every useful operation requires {\tt m} to be a Monad anyway.
-
-:d Data.Enumerator imports
-import qualified Control.Applicative as A
-import qualified Control.Monad as CM
-:
-
-:f Data/Enumerator.hs
-instance Monad m => Functor (Iteratee a m) where
-	fmap = CM.liftM
-:
-
-:f Data/Enumerator.hs
-instance Monad m => A.Applicative (Iteratee a m) where
-	pure = return
-	(<*>) = CM.ap
-:
-
-:d Data.Enumerator imports
-import Data.Typeable ( Typeable, typeOf
-                     , Typeable1, typeOf1
-                     , mkTyConApp, mkTyCon)
-:
-
-:f Data/Enumerator.hs
--- | Since: 0.4.6
-instance (Typeable a, Typeable1 m) => Typeable1 (Iteratee a m) where
-	typeOf1 i = mkTyConApp tyCon [typeOf a, typeOf1 m] where
-		tyCon = mkTyCon "Data.Enumerator.Iteratee"
-		(a, m) = peel i
-		
-		peel :: Iteratee a m b -> (a, m ())
-		peel = undefined
+type Enumeratee ao ai m b = Step ai m b -> Iteratee ao m (Step ai m b)
 :

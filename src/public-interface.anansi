@@ -1,0 +1,362 @@
+\section{Public interface}
+
+:f Data/Enumerator.hs
+|Data.Enumerator module header|
+module Data.Enumerator (
+	|Data.Enumerator exports|
+	) where
+|Data.Enumerator imports|
+
+|types and instances|
+|supplemental instances|
+|primitives|
+|iteratee operators|
+|utilities for testing and debugging|
+|unsorted utilities|
+|compatibility: obsolete|
+|compatibility: aliases|
+:
+
+:f Data/Enumerator/Binary.hs
+|Data.Enumerator.Binary module header|
+module Data.Enumerator.Binary (
+	|Data.Enumerator.Binary exports|
+	) where
+|Data.Enumerator.Binary imports|
+|byte-oriented list analogues|
+|binary IO|
+
+toChunks :: BL.ByteString -> Stream B.ByteString
+toChunks = Chunks . BL.toChunks
+:
+
+:f Data/Enumerator/List.hs
+|Data.Enumerator.List module header|
+module Data.Enumerator.List (
+	|Data.Enumerator.List exports|
+	) where
+|Data.Enumerator.List imports|
+|element-oriented list analogues|
+:
+
+:f Data/Enumerator/Text.hs
+|Data.Enumerator.Text module header|
+module Data.Enumerator.Text (
+	|Data.Enumerator.Text exports|
+	) where
+|Data.Enumerator.Text imports|
+|text-oriented list analogues|
+|text IO|
+|text codecs|
+
+toChunks :: TL.Text -> Stream T.Text
+toChunks = Chunks . TL.toChunks
+:
+
+:d Data.Enumerator imports
+import qualified Control.Exception as Exc
+import Data.Monoid (Monoid, mempty, mappend, mconcat)
+import Control.Monad.Trans.Class (MonadTrans, lift)
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Applicative as A
+import qualified Control.Monad as CM
+import Data.Function (fix)
+import {-# SOURCE #-} qualified Data.Enumerator.List as EL
+import Data.List (genericLength)
+:
+
+:d Data.Enumerator.Binary imports
+import Prelude hiding (head, drop, takeWhile)
+import Data.Enumerator hiding ( head, drop, iterateM, repeatM, replicateM
+                              , generateM, filterM, consume, foldM
+                              , concatMapM)
+import Data.Enumerator.Util (tryIO)
+import Control.Monad.IO.Class (MonadIO)
+import qualified Data.ByteString as B
+import qualified System.IO as IO
+import Data.Function (fix)
+import qualified Control.Exception as Exc
+import System.IO.Error (isEOFError)
+import Data.Word (Word8)
+import qualified Data.Enumerator.List as EL
+import qualified Control.Monad as CM
+import qualified Data.ByteString.Lazy as BL
+import Control.Monad.Trans.Class (lift)
+import Control.Monad (liftM)
+:
+
+:d Data.Enumerator.List imports
+import Prelude hiding (head, drop, sequence, takeWhile)
+import Data.Enumerator hiding ( concatMapM, iterateM, replicateM, head, drop
+                              , foldM, repeatM, generateM, filterM, consume)
+import Control.Monad.Trans.Class (lift)
+import qualified Control.Monad as CM
+import qualified Data.List as L
+import Control.Exception (ErrorCall(..))
+:
+
+:d Data.Enumerator.Text imports
+import Prelude hiding (head, drop, takeWhile, lines)
+import qualified Prelude
+import Data.Enumerator hiding ( head, drop, generateM, filterM, consume
+                              , concatMapM, iterateM, repeatM, replicateM
+                              , foldM)
+import Data.Enumerator.Util (tryIO, tSpanBy, tlSpanBy, reprWord, reprChar, textToStrict)
+import Control.Monad.IO.Class (MonadIO)
+import qualified Control.Exception as Exc
+import Control.Arrow (first)
+import Data.Maybe (catMaybes)
+import qualified Data.Text as T
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
+import qualified Data.Text.Encoding as TE
+import Data.Word (Word8, Word16)
+import Data.Bits ((.&.), (.|.), shiftL)
+import qualified System.IO as IO
+import System.IO.Error (isEOFError)
+import qualified Data.Text.IO as TIO
+import Data.Char (ord)
+import System.IO.Unsafe (unsafePerformIO)
+import qualified Data.Text.Lazy as TL
+import qualified Data.Enumerator.List as EL
+import qualified Control.Monad as CM
+import Control.Monad.Trans.Class (lift)
+import Control.Monad (liftM)
+:
+
+:d Data.Enumerator exports
+-- * Types
+  Stream (..)
+, Iteratee (..)
+, Step (..)
+, Enumerator
+, Enumeratee
+
+-- * Primitives
+, returnI
+, continue
+, yield
+
+-- ** Operators
+, (>>==)
+, (==<<)
+, ($$)
+, (>==>)
+, (<==<)
+
+-- ** Running iteratees
+, run
+, run_
+
+-- ** Error handling
+, throwError
+, catchError
+
+-- * Miscellaneous
+, concatEnums
+, joinI
+, joinE
+, Data.Enumerator.sequence
+, enumEOF
+, checkDoneEx
+, checkDone
+, isEOF
+
+-- ** Testing and debugging
+, printChunks
+, enumList
+
+-- * Legacy compatibility
+
+-- ** Obsolete
+, liftTrans
+, liftI
+, peek
+, Data.Enumerator.last
+, Data.Enumerator.length
+
+-- ** Aliases
+, Data.Enumerator.head
+, Data.Enumerator.drop
+, Data.Enumerator.dropWhile
+, Data.Enumerator.span
+, Data.Enumerator.break
+, consume
+, Data.Enumerator.foldl
+, Data.Enumerator.foldl'
+, foldM
+, Data.Enumerator.iterate
+, iterateM
+, Data.Enumerator.repeat
+, repeatM
+, Data.Enumerator.replicate
+, replicateM
+, generateM
+, Data.Enumerator.map
+, Data.Enumerator.mapM
+, Data.Enumerator.concatMap
+, concatMapM
+, Data.Enumerator.filter
+, filterM
+, liftFoldL
+, liftFoldL'
+, liftFoldM
+:
+
+:d Data.Enumerator.Binary exports
+-- * IO
+  enumHandle
+, enumHandleRange
+, enumFile
+, enumFileRange
+, iterHandle
+
+-- * List analogues
+
+-- ** Folds
+, fold
+, foldM
+
+-- ** Maps
+, Data.Enumerator.Binary.map
+, Data.Enumerator.Binary.mapM
+, Data.Enumerator.Binary.concatMap
+, concatMapM
+
+-- ** Infinite streams
+, Data.Enumerator.Binary.iterate
+, iterateM
+, Data.Enumerator.Binary.repeat
+, repeatM
+
+-- ** Bounded streams
+, Data.Enumerator.Binary.replicate
+, replicateM
+, generateM
+, unfold
+, unfoldM
+
+-- ** Filters
+, Data.Enumerator.Binary.filter
+, filterM
+
+-- ** Consumers
+, Data.Enumerator.Binary.take
+, takeWhile
+, consume
+
+-- ** Unsorted
+, Data.Enumerator.Binary.head
+, Data.Enumerator.Binary.drop
+, Data.Enumerator.Binary.dropWhile
+, require
+, isolate
+, splitWhen
+
+:
+
+:d Data.Enumerator.List exports
+-- * List analogues
+
+-- ** Folds
+  fold
+, foldM
+
+-- ** Maps
+, Data.Enumerator.List.map
+, Data.Enumerator.List.mapM
+, Data.Enumerator.List.concatMap
+, concatMapM
+
+-- ** Infinite streams
+, Data.Enumerator.List.iterate
+, iterateM
+, Data.Enumerator.List.repeat
+, repeatM
+
+-- ** Bounded streams
+, Data.Enumerator.List.replicate
+, replicateM
+, generateM
+, unfold
+, unfoldM
+
+-- ** Filters
+, Data.Enumerator.List.filter
+, filterM
+
+-- ** Consumers
+, Data.Enumerator.List.take
+, takeWhile
+, consume
+
+-- ** Unsorted
+, head
+, drop
+, Data.Enumerator.List.dropWhile
+, require
+, isolate
+, splitWhen
+:
+
+:d Data.Enumerator.Text exports
+-- * IO
+  enumHandle
+, enumFile
+, iterHandle
+
+-- * List analogues
+
+-- ** Folds
+, fold
+, foldM
+
+-- ** Maps
+, Data.Enumerator.Text.map
+, Data.Enumerator.Text.mapM
+, Data.Enumerator.Text.concatMap
+, concatMapM
+
+-- ** Infinite streams
+, Data.Enumerator.Text.iterate
+, iterateM
+, Data.Enumerator.Text.repeat
+, repeatM
+
+-- ** Bounded streams
+, Data.Enumerator.Text.replicate
+, replicateM
+, generateM
+, unfold
+, unfoldM
+
+-- ** Filters
+, Data.Enumerator.Text.filter
+, filterM
+
+-- ** Consumers
+, Data.Enumerator.Text.take
+, takeWhile
+, consume
+
+-- ** Unsorted
+, Data.Enumerator.Text.head
+, Data.Enumerator.Text.drop
+, Data.Enumerator.Text.dropWhile
+, require
+, isolate
+, splitWhen
+, lines
+
+-- * Text codecs
+, Codec
+, encode
+, decode
+, utf8
+, utf16_le
+, utf16_be
+, utf32_le
+, utf32_be
+, ascii
+, iso8859_1
+:

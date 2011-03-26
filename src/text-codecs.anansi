@@ -1,218 +1,4 @@
-\section{Text}
-
-:f Data/Enumerator/Text.hs
-|Data.Enumerator.Text module header|
-module Data.Enumerator.Text (
-	|Data.Enumerator.Text exports|
-	) where
-import qualified Prelude
-import Prelude hiding (head, drop, takeWhile)
-import Data.Enumerator hiding (head, drop)
-import qualified Data.Text as T
-|Data.Enumerator.Text imports|
-:
-
-\subsection{IO}
-
-Reading text is similar to reading bytes, but the enumerators have slightly
-different behavior -- instead of reading in fixed-size chunks of data, the
-text enumerators read in lines. This matches similar text-based {\sc api}s,
-such as Python's {\tt xreadlines()}.
-
-:d Data.Enumerator.Text imports
-import Data.Enumerator.Util (tryStep)
-import qualified Data.Text.IO as TIO
-
-import qualified Control.Exception as Exc
-import Control.Monad.IO.Class (MonadIO)
-import qualified System.IO as IO
-import System.IO.Error (isEOFError)
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.enumHandle|
-enumHandle :: MonadIO m => IO.Handle
-           -> Enumerator T.Text m b
-enumHandle h = loop where
-	loop (Continue k) = withText $ \maybeText ->
-		case maybeText of
-			Nothing -> continue k
-			Just text -> k (Chunks [text]) >>== loop
-	
-	loop step = returnI step
-	withText = tryStep $ Exc.catch
-		(Just `fmap` TIO.hGetLine h)
-		(\err -> if isEOFError err
-			then return Nothing
-			else Exc.throwIO err)
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.enumFile|
-enumFile :: FilePath -> Enumerator T.Text IO b
-enumFile path = enum where
-	withHandle = tryStep (IO.openFile path IO.ReadMode)
-	enum step = withHandle $ \h -> Iteratee $ Exc.finally
-		(runIteratee (enumHandle h step))
-		(IO.hClose h)
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.iterHandle|
-iterHandle :: MonadIO m => IO.Handle
-           -> Iteratee T.Text m ()
-iterHandle h = continue step where
-	step EOF = yield () EOF
-	step (Chunks []) = continue step
-	step (Chunks chunks) = let
-		put = mapM_ (TIO.hPutStr h) chunks
-		in tryStep put (\_ -> continue step)
-:
-
-:d Data.Enumerator.Text exports
-  -- * Text IO
-  enumHandle
-, enumFile
-, iterHandle
-:
-
-\subsection{List analogues}
-
-:d Data.Enumerator.Text imports
-import qualified Data.Text.Lazy as TL
-:
-
-:f Data/Enumerator/Text.hs
-toChunks :: TL.Text -> Stream T.Text
-toChunks = Chunks . TL.toChunks
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.head|
-head :: Monad m => Iteratee T.Text m (Maybe Char)
-head = continue loop where
-	loop (Chunks xs) = case TL.uncons (TL.fromChunks xs) of
-		Just (char, extra) -> yield (Just char) (toChunks extra)
-		Nothing -> head
-	loop EOF = yield Nothing EOF
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.drop|
-drop :: Monad m => Integer -> Iteratee T.Text m ()
-drop n | n <= 0 = return ()
-drop n = continue (loop n) where
-	loop n' (Chunks xs) = iter where
-		lazy = TL.fromChunks xs
-		len = toInteger (TL.length lazy)
-		iter = if len < n'
-			then drop (n' - len)
-			else yield () (toChunks (TL.drop (fromInteger n') lazy))
-	loop _ EOF = yield () EOF
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.dropWhile|
-dropWhile :: Monad m => (Char -> Bool) -> Iteratee T.Text m ()
-dropWhile p = continue loop where
-	loop (Chunks xs) = iter where
-		lazy = TL.dropWhile p (TL.fromChunks xs)
-		iter = if TL.null lazy
-			then continue loop
-			else yield () (toChunks lazy)
-	loop EOF = yield () EOF
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.take|
-take :: Monad m => Integer -> Iteratee T.Text m TL.Text
-take n | n <= 0 = return TL.empty
-take n = continue (loop id n) where
-	loop acc n' (Chunks xs) = iter where
-		lazy = TL.fromChunks xs
-		len = toInteger (TL.length lazy)
-		
-		iter = if len < n'
-			then continue (loop (acc . (TL.append lazy)) (n' - len))
-			else let
-				(xs', extra) = TL.splitAt (fromInteger n') lazy
-				in yield (acc xs') (toChunks extra)
-	loop acc _ EOF = yield (acc TL.empty) EOF
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.takeWhile|
-takeWhile :: Monad m => (Char -> Bool) -> Iteratee T.Text m TL.Text
-takeWhile p = continue (loop id) where
-	loop acc (Chunks []) = continue (loop acc)
-	loop acc (Chunks xs) = iter where
-		lazy = TL.fromChunks xs
-		(xs', extra) = tlSpanBy p lazy
-		iter = if TL.null extra
-			then continue (loop (acc . (TL.append lazy)))
-			else yield (acc xs') (toChunks extra)
-	loop acc EOF = yield (acc TL.empty) EOF
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.consume|
-consume :: Monad m => Iteratee T.Text m TL.Text
-consume = continue (loop id) where
-	loop acc (Chunks []) = continue (loop acc)
-	loop acc (Chunks xs) = iter where
-		lazy = TL.fromChunks xs
-		iter = continue (loop (acc . (TL.append lazy)))
-	loop acc EOF = yield (acc TL.empty) EOF
-:
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.require|
-require :: Monad m => Integer -> Iteratee T.Text m ()
-require n | n <= 0 = return ()
-require n = continue (loop id n) where
-	loop acc n' (Chunks xs) = iter where
-		lazy = TL.fromChunks xs
-		len = toInteger (TL.length lazy)
-		iter = if len < n'
-			then continue (loop (acc . (TL.append lazy)) (n' - len))
-			else yield () (toChunks (acc lazy))
-	loop _ _ EOF = throwError (Exc.ErrorCall "require: Unexpected EOF")
-:
-
-Same caveats as {\tt Data.Enumerator.List.isolate}
-
-:f Data/Enumerator/Text.hs
-|apidoc Data.Enumerator.Text.isolate|
-isolate :: Monad m => Integer -> Enumeratee T.Text T.Text m b
-isolate n step | n <= 0 = return step
-isolate n (Continue k) = continue loop where
-	loop (Chunks []) = continue loop
-	loop (Chunks xs) = iter where
-		lazy = TL.fromChunks xs
-		len = toInteger (TL.length lazy)
-		
-		iter = if len <= n
-			then k (Chunks xs) >>== isolate (n - len)
-			else let
-				(s1, s2) = TL.splitAt (fromInteger n) lazy
-				in k (toChunks s1) >>== (\step -> yield step (toChunks s2))
-	loop EOF = k EOF >>== (\step -> yield step EOF)
-isolate n step = drop n >> return step
-:
-
-:d Data.Enumerator.Text exports
--- * List analogues
-, Data.Enumerator.Text.head
-, Data.Enumerator.Text.drop
-, Data.Enumerator.Text.dropWhile
-, Data.Enumerator.Text.take
-, Data.Enumerator.Text.takeWhile
-, Data.Enumerator.Text.consume
-, require
-, isolate
-:
-
-\subsection{Codecs}
+\section{Text Codecs}
 
 Many protocols need the non-blocking input behavior of binary \io{}, but
 are defined in terms of unicode characters. The {\tt encode} and
@@ -227,20 +13,7 @@ All of the codecs here are incremental; that is, they try to read as much
 data as possible, but no more. This allows iteratees to read partial data
 if the input stream contains invalid data.
 
-:d Data.Enumerator.Text imports
-import qualified Data.ByteString as B
-import Data.Enumerator.Util (tSpanBy, tlSpanBy, reprWord, reprChar)
-:
-
-:d Data.Enumerator.Text exports
-  -- * Codecs
-, Codec
-, encode
-, decode
-|text codec exports|
-:
-
-:f Data/Enumerator/Text.hs
+:d text codecs
 data Codec = Codec
 	{ codecName :: T.Text
 	, codecEncode
@@ -258,7 +31,7 @@ instance Show Codec where
 		showString "Codec " . shows (codecName c)
 :
 
-:f Data/Enumerator/Text.hs
+:d text codecs
 |apidoc Data.Enumerator.Text.encode|
 encode :: Monad m => Codec
        -> Enumeratee T.Text B.ByteString m b
@@ -283,7 +56,7 @@ encode codec = checkDone (continue . step) where
 				checkDoneEx extraChunks checkError
 :
 
-:f Data/Enumerator/Text.hs
+:d text codecs
 |apidoc Data.Enumerator.Text.decode|
 decode :: Monad m => Codec
        -> Enumeratee B.ByteString T.Text m b
@@ -306,18 +79,6 @@ decode codec = checkDone (continue . step B.empty) where
 				checkDoneEx extraChunks checkError
 :
 
-Most of the codecs here need to perform at least basic bitbashing, to
-calculate how many input bytes will be needed for the next character.
-
-:d Data.Enumerator.Text imports
-import Control.Arrow (first)
-import Data.Bits ((.&.), (.|.), shiftL)
-import Data.Char (ord)
-import Data.Word (Word8, Word16)
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.Text.Encoding as TE
-:
-
 The variable-width decoders all follow the same basic pattern. First,
 they examine their input to calculate how many bytes the decoder
 function should accept. Next they try to decode it -- if the input
@@ -330,7 +91,7 @@ the decoder can parse something, and the rest of the bytes are stored
 for later. An error will only be thrown if the iteratee requires input,
 but there are no valid bytes remaining.
 
-:f Data/Enumerator/Text.hs
+:d text codecs
 byteSplits :: B.ByteString
            -> [(B.ByteString, B.ByteString)]
 byteSplits bytes = loop (B.length bytes) where
@@ -338,11 +99,7 @@ byteSplits bytes = loop (B.length bytes) where
 	loop n = B.splitAt n bytes : loop (n - 1)
 :
 
-:d Data.Enumerator.Text imports
-import Data.Maybe (catMaybes)
-:
-
-:f Data/Enumerator/Text.hs
+:d text codecs
 splitSlowly :: (B.ByteString -> T.Text)
             -> B.ByteString
             -> (T.Text, Either
@@ -364,13 +121,9 @@ splitSlowly dec bytes = valid where
 			Right _ -> Right B.empty)
 :
 
-\subsubsection{UTF-8}
+\subsection{UTF-8}
 
-:d text codec exports
-, utf8
-:
-
-:f Data/Enumerator/Text.hs
+:d text codecs
 utf8 :: Codec
 utf8 = Codec name enc dec where
 	name = T.pack "UTF-8"
@@ -409,14 +162,9 @@ required x0
 	| otherwise           = 0
 :
 
-\subsubsection{UTF-16}
+\subsection{UTF-16}
 
-:d text codec exports
-, utf16_le
-, utf16_be
-:
-
-:f Data/Enumerator/Text.hs
+:d text codecs
 utf16_le :: Codec
 utf16_le = Codec name enc dec where
 	name = T.pack "UTF-16-LE"
@@ -427,7 +175,7 @@ utf16_le = Codec name enc dec where
 	|utf16-le split bytes|
 :
 
-:f Data/Enumerator/Text.hs
+:d text codecs
 utf16_be :: Codec
 utf16_be = Codec name enc dec where
 	name = T.pack "UTF-16-BE"
@@ -476,7 +224,7 @@ splitQuickly bytes = maybeDecode (loop 0) where
 	decodeAll = (TE.decodeUtf16BE bytes, B.empty)
 :
 
-:f Data/Enumerator/Text.hs
+:d text codecs
 utf16Required :: Word8 -> Word8 -> Int
 utf16Required x0 x1 = required where
 	required = if x >= 0xD800 && x <= 0xDBFF
@@ -486,14 +234,9 @@ utf16Required x0 x1 = required where
 	x = (fromIntegral x1 `shiftL` 8) .|. fromIntegral x0
 :
 
-\subsubsection{UTF-32}
+\subsection{UTF-32}
 
-:d text codec exports
-, utf32_le
-, utf32_be
-:
-
-:f Data/Enumerator/Text.hs
+:d text codecs
 utf32_le :: Codec
 utf32_le = Codec name enc dec where
 	name = T.pack "UTF-32-LE"
@@ -511,7 +254,7 @@ utf32_be = Codec name enc dec where
 		Nothing -> splitSlowly TE.decodeUtf32BE bs
 :
 
-:f Data/Enumerator/Text.hs
+:d text codecs
 utf32SplitBytes :: (B.ByteString -> T.Text)
                 -> B.ByteString
                 -> Maybe (T.Text, B.ByteString)
@@ -526,13 +269,9 @@ utf32SplitBytes dec bytes = split where
 		else B.splitAt lenToDecode bytes
 :
 
-\subsubsection{ASCII}
+\subsection{ASCII}
 
-:d text codec exports
-, ascii
-:
-
-:f Data/Enumerator/Text.hs
+:d text codecs
 ascii :: Codec
 ascii = Codec name enc dec where
 	name = T.pack "ASCII"
@@ -551,13 +290,9 @@ ascii = Codec name enc dec where
 			else Left (illegalDec name (B.head unsafe), unsafe)
 :
 
-\subsubsection{ISO 8859-1}
+\subsection{ISO 8859-1}
 
-:d text codec exports
-, iso8859_1
-:
-
-:f Data/Enumerator/Text.hs
+:d text codecs
 iso8859_1 :: Codec
 iso8859_1 = Codec name enc dec where
 	name = T.pack "ISO-8859-1"
@@ -571,9 +306,9 @@ iso8859_1 = Codec name enc dec where
 	dec bytes = (T.pack (B8.unpack bytes), Right B.empty)
 :
 
-\subsection{Encoding Utilities}
+\subsection*{Encoding Utilities}
 
-:f Data/Enumerator/Text.hs
+:d text codecs
 illegalEnc :: T.Text -> Char -> Exc.SomeException
 illegalEnc name c = Exc.toException . Exc.ErrorCall $
 	concat [ "Codec "
@@ -583,7 +318,7 @@ illegalEnc name c = Exc.toException . Exc.ErrorCall $
 	       ]
 :
 
-:f Data/Enumerator/Text.hs
+:d text codecs
 illegalDec :: T.Text -> Word8 -> Exc.SomeException
 illegalDec name w = Exc.toException . Exc.ErrorCall $
 	concat [ "Codec "
@@ -593,11 +328,7 @@ illegalDec name w = Exc.toException . Exc.ErrorCall $
 	       ]
 :
 
-:d Data.Enumerator.Text imports
-import System.IO.Unsafe (unsafePerformIO)
-:
-
-:f Data/Enumerator/Text.hs
+:d text codecs
 tryEvaluate :: a -> Either Exc.SomeException a
 tryEvaluate = unsafePerformIO . Exc.try . Exc.evaluate
 

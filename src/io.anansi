@@ -1,0 +1,148 @@
+\section{IO}
+
+\subsection{Binary IO}
+
+{\tt enumHandle} and {\tt enumFile} are rough analogues of
+{\tt hGetContents} and {\tt readFile} from the standard library, except
+they operate only in binary mode.
+
+Any exceptions thrown while reading or writing data are caught and reported
+using {\tt throwError}, so errors can be handled in pure iteratees.
+
+:d binary IO
+|apidoc Data.Enumerator.Binary.enumHandle|
+enumHandle :: MonadIO m
+           => Integer -- ^ Buffer size
+           -> IO.Handle
+           -> Enumerator B.ByteString m b
+enumHandle bufferSize h = do
+	let intSize = fromInteger bufferSize
+	
+	fix $ \loop step -> case step of
+		Continue k -> do
+			bytes <- tryIO (getBytes h intSize)
+			if B.null bytes
+				then continue k
+				else k (Chunks [bytes]) >>== loop
+		_ -> returnI step
+:
+
+:d binary IO
+|apidoc Data.Enumerator.Binary.enumHandleRange|
+enumHandleRange :: MonadIO m
+                => Integer -- ^ Buffer size
+                -> Maybe Integer -- ^ Offset
+                -> Maybe Integer -- ^ Maximum count
+                -> IO.Handle
+                -> Enumerator B.ByteString m b
+enumHandleRange bufferSize offset count h s = seek >> enum where
+	seek = case offset of
+		Nothing -> return ()
+		Just off -> tryIO (IO.hSeek h IO.AbsoluteSeek off)
+	
+	enum = case count of
+		Just n -> loop n s
+		Nothing -> enumHandle bufferSize h s
+	
+	loop n (Continue k) =
+		let rem = fromInteger (min bufferSize n) in
+		if rem <= 0
+			then continue k
+			else do
+				bytes <- tryIO (getBytes h rem)
+				if B.null bytes
+					then continue k
+					else k (Chunks [bytes]) >>== loop (n - (toInteger (B.length bytes)))
+	loop _ step = returnI step
+:
+
+:d binary IO
+getBytes :: IO.Handle -> Int -> IO B.ByteString
+getBytes h n = do
+	hasInput <- Exc.catch
+		(IO.hWaitForInput h (-1))
+		(\err -> if isEOFError err
+			then return False
+			else Exc.throwIO err)
+	if hasInput
+		then B.hGetNonBlocking h n
+		else return B.empty
+:
+
+:d binary IO
+|apidoc Data.Enumerator.Binary.enumFile|
+enumFile :: FilePath -> Enumerator B.ByteString IO b
+enumFile path = enumFileRange path Nothing Nothing
+:
+
+:d binary IO
+|apidoc Data.Enumerator.Binary.enumFileRange|
+enumFileRange :: FilePath
+              -> Maybe Integer -- ^ Offset
+              -> Maybe Integer -- ^ Maximum count
+              -> Enumerator B.ByteString IO b
+enumFileRange path offset count step = do
+	h <- tryIO (IO.openBinaryFile path IO.ReadMode)
+	let iter = enumHandleRange 4096 offset count h step
+	Iteratee (Exc.finally (runIteratee iter) (IO.hClose h))
+:
+
+:d binary IO
+|apidoc Data.Enumerator.Binary.iterHandle|
+iterHandle :: MonadIO m => IO.Handle
+           -> Iteratee B.ByteString m ()
+iterHandle h = continue step where
+	step EOF = yield () EOF
+	step (Chunks []) = continue step
+	step (Chunks bytes) = do
+		tryIO (mapM_ (B.hPut h) bytes)
+		continue step
+:
+
+\subsection{Text IO}
+
+Reading text is similar to reading bytes, but the enumerators have slightly
+different behavior -- instead of reading in fixed-size chunks of data, the
+text enumerators read in lines. This matches similar text-based {\sc api}s,
+such as Python's {\tt xreadlines()}.
+
+:d text IO
+|apidoc Data.Enumerator.Text.enumHandle|
+enumHandle :: MonadIO m => IO.Handle
+           -> Enumerator T.Text m b
+enumHandle h = loop where
+	loop (Continue k) = do
+		maybeText <- tryIO getText
+		case maybeText of
+			Nothing -> continue k
+			Just text -> k (Chunks [text]) >>== loop
+	
+	loop step = returnI step
+	getText = Exc.catch
+		(Just `fmap` TIO.hGetLine h)
+		(\err -> if isEOFError err
+			then return Nothing
+			else Exc.throwIO err)
+:
+
+:d text IO
+|apidoc Data.Enumerator.Text.enumFile|
+enumFile :: FilePath -> Enumerator T.Text IO b
+enumFile path step = do
+	h <- tryIO (IO.openFile path IO.ReadMode)
+	Iteratee $ Exc.finally
+		(runIteratee (enumHandle h step))
+		(IO.hClose h)
+:
+
+:d text IO
+|apidoc Data.Enumerator.Text.iterHandle|
+iterHandle :: MonadIO m => IO.Handle
+           -> Iteratee T.Text m ()
+iterHandle h = continue step where
+	step EOF = yield () EOF
+	step (Chunks []) = continue step
+	step (Chunks chunks) = do
+		tryIO (mapM_ (TIO.hPutStr h) chunks)
+		continue step
+:

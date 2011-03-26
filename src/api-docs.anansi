@@ -103,7 +103,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.($$)
--- | @($$) = (==\<\<)@
+-- | @'($$)' = '(==\<\<)'@
 --
 -- This might be easier to read when passing a chain of iteratees to an
 -- enumerator.
@@ -112,17 +112,17 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.(<==<)
--- | @(\<==\<) = flip (>==>)@
+-- | @'(\<==\<)' = flip '(>==>)'@
 --
 -- Since: 0.1.1
 :
 
 :d apidoc Data.Enumerator.(==<<)
--- | @(==\<\<) = flip (\>\>==)@
+-- | @'(==\<\<)' = flip '(\>\>==)'@
 :
 
 :d apidoc Data.Enumerator.(>==>)
--- | @(>==>) e1 e2 s = e1 s >>== e2@
+-- | @'(>==>)' e1 e2 s = e1 s '>>==' e2@
 --
 -- Since: 0.1.1
 :
@@ -200,7 +200,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.checkDone
--- | @checkDone = 'checkDoneEx' ('Chunks' [])@
+-- | @'checkDone' = 'checkDoneEx' ('Chunks' [])@
 --
 -- Use this for enumeratees which do not have an input buffer.
 :
@@ -219,14 +219,13 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.concatMap
--- | @concatMap f = 'concatMapM' (return . f)@
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.concatMap' instead
 --
 -- Since: 0.4.3
 :
 
 :d apidoc Data.Enumerator.concatMapM
--- | @concatMapM f@ applies /f/ to each input element and feeds the
--- resulting outputs to the inner iteratee.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.concatMapM' instead
 --
 -- Since: 0.4.5
 :
@@ -236,7 +235,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.continue
--- | @continue k = 'returnI' ('Continue' k)@
+-- | @'continue' k = 'returnI' ('Continue' k)@
 :
 
 :d apidoc Data.Enumerator.drop
@@ -248,52 +247,49 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.enumEOF
--- | docs TODO
+-- | Sends 'EOF' to its iteratee. Most clients should use 'run' or 'run_'
+-- instead.
 :
 
 :d apidoc Data.Enumerator.enumList
--- | @enumList n xs@ enumerates /xs/ as a stream, passing /n/ inputs per
+-- | @'enumList' n xs@ enumerates /xs/ as a stream, passing /n/ inputs per
 -- chunk.
 --
 -- Primarily useful for testing and debugging.
 :
 
 :d apidoc Data.Enumerator.filter
--- | @filter p = 'concatMap' (\x -> 'Prelude.filter' p [x])@
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.filter' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.filterM
--- | @filterM p = 'concatMapM' (\x -> 'CM.filterM' p [x])@
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.filterM' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.foldl
--- | Run the entire input stream through a pure left fold, yielding when
--- there is no more input.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.fold' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.foldl'
--- | Run the entire input stream through a pure strict left fold, yielding
--- when there is no more input.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.fold' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.foldM
--- | Run the entire input stream through a monadic left fold, yielding
--- when there is no more input.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.foldM' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.generateM
--- | Like 'repeatM', except the computation may terminate the stream by
--- returning 'Nothing'.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.generateM' instead
 --
 -- Since: 0.4.5
 :
@@ -303,20 +299,18 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.isEOF
--- | docs TODO
+-- | Check whether a stream has reached EOF. Most clients should use
+-- 'Data.Enumerator.List.head' instead.
 :
 
 :d apidoc Data.Enumerator.iterate
--- | @iterate f x@ enumerates an infinite stream of repeated applications
--- of /f/ to /x/.
---
--- Analogous to 'Prelude.iterate'.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.iterate' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.iterateM
--- | Similar to 'iterate', except the iteration function is monadic.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.iterateM' instead
 --
 -- Since: 0.4.5
 :
@@ -344,19 +338,19 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.liftFoldL
--- | Deprecated in 0.4.5: use 'Data.Enumerator.foldl' instead
+-- | Deprecated in 0.4.5: use 'Data.Enumerator.List.fold' instead
 --
 -- Since: 0.1.1
 :
 
 :d apidoc Data.Enumerator.liftFoldL'
--- | Deprecated in 0.4.5: use 'Data.Enumerator.foldl'' instead
+-- | Deprecated in 0.4.5: use 'Data.Enumerator.List.fold' instead
 --
 -- Since: 0.1.1
 :
 
 :d apidoc Data.Enumerator.liftFoldM
--- | Deprecated in 0.4.5: use 'Data.Enumerator.foldM' instead
+-- | Deprecated in 0.4.5: use 'Data.Enumerator.List.foldM' instead
 --
 -- Since: 0.1.1
 :
@@ -373,11 +367,11 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.map
--- | @map f = 'concatMap' (\x -> 'Prelude.map' f [x])@
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.map' instead
 :
 
 :d apidoc Data.Enumerator.mapM
--- | @mapM f = 'concatMapM' (\x -> 'Prelude.mapM' f [x])@
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.mapM' instead
 --
 -- Since: 0.4.3
 :
@@ -393,37 +387,31 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.repeat
--- | Enumerates an infinite stream of the provided value.
---
--- Analogous to 'Prelude.repeat'.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.repeat' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.repeatM
--- | Enumerates an infinite stream by running the provided computation and
--- passing each result to the iteratee.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.repeatM' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.replicate
--- | @replicate n x = 'replicateM' n (return x)@
---
--- Analogous to 'Prelude.replicate'.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.replicate' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.replicateM
--- | @replicateM n m_x@ enumerates a stream of /n/ input elements; each
--- element is generated by running the input computation /m_x/ once.
+-- | Deprecated in 0.4.8: use 'Data.Enumerator.List.replicateM' instead
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.returnI
--- | @returnI step = 'Iteratee' (return step)@
+-- | @'returnI' step = 'Iteratee' (return step)@
 :
 
 :d apidoc Data.Enumerator.run
@@ -448,36 +436,67 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.throwError
--- | @throwError exc = 'returnI' ('Error' ('Exc.toException' exc))@
+-- | @'throwError' exc = 'returnI' ('Error' ('Exc.toException' exc))@
 :
 
 :d apidoc Data.Enumerator.yield
--- | @yield x extra = 'returnI' ('Yield' x extra)@
+-- | @'yield' x extra = 'returnI' ('Yield' x extra)@
+--
+-- WARNING: due to the current encoding of iteratees in this library,
+-- careless use of the 'yield' primitive may violate the monad laws.
+-- To prevent this, always make sure that an iteratee never yields
+-- extra data unless it has received at least one input element.
+--
+-- More strictly, iteratees may not yield data that they did not
+-- receive as input. Don't use 'yield' to &#x201c;inject&#x201d; elements
+-- into the stream.
+:
+
+:d apidoc Data.Enumerator.Binary.concatMap
+-- | @'concatMap' f@ applies /f/ to each input byte and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.concatMapM
+-- | @'concatMapM' f@ applies /f/ to each input byte and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.consume
--- | Read all remaining input from the stream, and return as a lazy
--- ByteString.
+-- | @'consume' = 'takeWhile' (const True)@
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.Binary.drop
--- | @drop n@ ignores /n/ bytes of input from the stream.
+-- | @'drop' n@ ignores /n/ bytes of input from the stream.
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.Binary.dropWhile
--- | @dropWhile p@ ignores input from the stream until the first byte which
--- does not match the predicate.
+-- | @'dropWhile' p@ ignores input from the stream until the first byte
+-- which does not match the predicate.
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.Binary.enumFile
--- | Opens a file path in binary mode, and passes the handle to 'enumHandle'.
--- The file will be closed when the 'Iteratee' finishes.
+-- | Opens a file path in binary mode, and passes the handle to
+-- 'enumHandle'. The file will be closed when enumeration finishes.
+--
+-- Since: 0.4.5
+:
+
+:d apidoc Data.Enumerator.Binary.enumFileRange
+-- | Opens a file path in binary mode, and passes the handle to
+-- 'enumHandleRange'. The file will be closed when enumeration finishes.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.enumHandle
@@ -492,6 +511,66 @@ This section just repeats literate documentation in Haddock syntax.
 --
 -- The handle should be opened with no encoding, and in 'IO.ReadMode' or
 -- 'IO.ReadWriteMode'.
+--
+-- Since: 0.4.5
+:
+
+:d apidoc Data.Enumerator.Binary.enumHandleRange
+-- | Read bytes (in chunks of the given buffer size) from the handle, and
+-- stream them to an 'Iteratee'. If an exception occurs during file IO,
+-- enumeration will stop and 'Error' will be returned. Exceptions from the
+-- iteratee are not caught.
+--
+-- This enumerator blocks until at least one byte is available from the
+-- handle, and might read less than the maximum buffer size in some
+-- cases.
+--
+-- The handle should be opened with no encoding, and in 'IO.ReadMode' or
+-- 'IO.ReadWriteMode'.
+--
+-- If an offset is specified, the handle will be seeked to that offset
+-- before reading. If the handle cannot be seeked, an error will be
+-- thrown.
+--
+-- If a maximum count is specified, the number of bytes read will not
+-- exceed that count.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.filter
+-- | Applies a predicate to the stream. The inner iteratee only receives
+-- characters for which the predicate is @True@.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.filterM
+-- | Applies a monadic predicate to the stream. The inner iteratee only
+-- receives bytes for which the predicate returns @True@.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.fold
+-- | Consume the entire input stream with a strict left fold, one byte
+-- at a time.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.foldM
+-- | Consume the entire input stream with a strict monadic left fold, one
+-- byte at a time.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.generateM
+-- | Like 'repeatM', except the computation may terminate the stream by
+-- returning 'Nothing'.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.head
@@ -502,11 +581,26 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.isolate
--- | @isolate n@ reads at most /n/ bytes from the stream, and passes them
+-- | @'isolate' n@ reads at most /n/ bytes from the stream, and passes them
 -- to its iteratee. If the iteratee finishes early, bytes continue to be
 -- consumed from the outer stream until /n/ have been consumed.
 --
 -- Since: 0.4.5
+:
+
+:d apidoc Data.Enumerator.Binary.iterate
+-- | @'iterate' f x@ enumerates an infinite stream of repeated applications
+-- of /f/ to /x/.
+--
+-- Analogous to 'Prelude.iterate'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.iterateM
+-- | Similar to 'iterate', except the iteration function is monadic.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.iterHandle
@@ -516,58 +610,174 @@ This section just repeats literate documentation in Haddock syntax.
 --
 -- The handle should be opened with no encoding, and in 'IO.WriteMode' or
 -- 'IO.ReadWriteMode'.
+--
+-- Since: 0.4.5
+:
+
+:d apidoc Data.Enumerator.Binary.map
+-- | @'map' f@ applies /f/ to each input byte and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.mapM
+-- | @'mapM' f@ applies /f/ to each input byte and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.repeat
+-- | Enumerates an infinite stream of a single byte.
+--
+-- Analogous to 'Prelude.repeat'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.repeatM
+-- | Enumerates an infinite stream of byte. Each byte is computed by the
+-- underlying monad.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.replicate
+-- | @'replicate' n x@ enumerates a stream containing /n/ copies of /x/.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.replicateM
+-- | @'replicateM' n m_x@ enumerates a stream of /n/ bytes, with each byte
+-- computed by /m_x/.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.require
--- | @require n@ buffers input until at least /n/ bytes are available, or
+-- | @'require' n@ buffers input until at least /n/ bytes are available, or
 -- throws an error if the stream ends early.
 --
 -- Since: 0.4.5
 :
 
+:d apidoc Data.Enumerator.Binary.splitWhen
+-- | Split on bytes satisfying a given predicate.
+--
+-- Since: 0.4.8
+:
+
 :d apidoc Data.Enumerator.Binary.take
--- | @take n@ extracts the next /n/ bytes from the stream, as a lazy
+-- | @'take' n@ extracts the next /n/ bytes from the stream, as a lazy
 -- ByteString.
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.Binary.takeWhile
--- | @takeWhile p@ extracts input from the stream until the first byte which
+-- | @'takeWhile' p@ extracts input from the stream until the first byte which
 -- does not match the predicate.
 --
 -- Since: 0.4.5
 :
 
+:d apidoc Data.Enumerator.Binary.unfold
+-- | Enumerates a stream of bytes by repeatedly applying a function to
+-- some state.
+--
+-- Similar to 'iterate'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Binary.unfoldM
+-- | Enumerates a stream of bytes by repeatedly applying a computation to
+-- some state.
+--
+-- Similar to 'iterateM'.
+--
+-- Since: 0.4.8
+:
+
 :d apidoc Data.Enumerator.IO.enumFile
--- | Deprecated in 0.4.5: use 'Data.Enumerator.Binary.enumFile' instead
+-- | Deprecated in 0.4.5: use 'EB.enumFile' instead
 :
 
 :d apidoc Data.Enumerator.IO.enumHandle
--- | Deprecated in 0.4.5: use 'Data.Enumerator.Binary.enumHandle' instead
+-- | Deprecated in 0.4.5: use 'EB.enumHandle' instead
 :
 
 :d apidoc Data.Enumerator.IO.iterHandle
--- | Deprecated in 0.4.5: use 'Data.Enumerator.Binary.iterHandle' instead
+-- | Deprecated in 0.4.5: use 'EB.iterHandle' instead
 :
 
+:d apidoc Data.Enumerator.List.concatMap
+-- | @'concatMap' f@ applies /f/ to each input element and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.concatMapM
+-- | @'concatMapM' f@ applies /f/ to each input element and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
 :d apidoc Data.Enumerator.List.consume
--- | Read all remaining input elements from the stream, and return as a list.
+-- | @'consume' = 'takeWhile' (const True)@
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.List.drop
--- | @drop n@ ignores /n/ input elements from the stream.
+-- | @'drop' n@ ignores /n/ input elements from the stream.
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.List.dropWhile
--- | @dropWhile p@ ignores input from the stream until the first element
+-- | @'dropWhile' p@ ignores input from the stream until the first element
 -- which does not match the predicate.
 --
 -- Since: 0.4.5
+:
+
+:d apidoc Data.Enumerator.List.filter
+-- | Applies a predicate to the stream. The inner iteratee only receives
+-- elements for which the predicate is @True@.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.filterM
+-- | Applies a monadic predicate to the stream. The inner iteratee only
+-- receives elements for which the predicate returns @True@.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.fold
+-- | Consume the entire input stream with a strict left fold, one element
+-- at a time.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.foldM
+-- | Consume the entire input stream with a strict monadic left fold, one
+-- element at a time.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.generateM
+-- | Like 'repeatM', except the computation may terminate the stream by
+-- returning 'Nothing'.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.List.head
@@ -578,42 +788,136 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.isolate
--- | @isolate n@ reads at most /n/ elements from the stream, and passes them
+-- | @'isolate' n@ reads at most /n/ elements from the stream, and passes them
 -- to its iteratee. If the iteratee finishes early, elements continue to be
 -- consumed from the outer stream until /n/ have been consumed.
 --
 -- Since: 0.4.5
 :
 
+:d apidoc Data.Enumerator.List.iterate
+-- | @'iterate' f x@ enumerates an infinite stream of repeated applications
+-- of /f/ to /x/.
+--
+-- Analogous to 'Prelude.iterate'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.iterateM
+-- | Similar to 'iterate', except the iteration function is monadic.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.map
+-- | @'map' f@ applies /f/ to each input element and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.mapM
+-- | @'mapM' f@ applies /f/ to each input element and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.repeat
+-- | Enumerates an infinite stream of a single element.
+--
+-- Analogous to 'Prelude.repeat'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.repeatM
+-- | Enumerates an infinite stream of element. Each element is computed by
+-- the underlying monad.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.replicate
+-- | @'replicate' n x@ enumerates a stream containing /n/ copies of /x/.
+--
+-- Analogous to 'Prelude.replicate'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.replicateM
+-- | @'replicateM' n m_x@ enumerates a stream of /n/ elements, with each
+-- element computed by /m_x/.
+--
+-- Since: 0.4.8
+:
+
 :d apidoc Data.Enumerator.List.require
--- | @require n@ buffers input until at least /n/ elements are available, or
+-- | @'require' n@ buffers input until at least /n/ elements are available, or
 -- throws an error if the stream ends early.
 --
 -- Since: 0.4.5
 :
 
+:d apidoc Data.Enumerator.List.splitWhen
+-- | Split on elements satisfying a given predicate.
+--
+-- Since: 0.4.8
+:
+
 :d apidoc Data.Enumerator.List.take
--- | @take n@ extracts the next /n/ elements from the stream, as a list.
+-- | @'take' n@ extracts the next /n/ elements from the stream, as a list.
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.List.takeWhile
--- | @takeWhile p@ extracts input from the stream until the first element
+-- | @'takeWhile' p@ extracts input from the stream until the first element
 -- which does not match the predicate.
 --
 -- Since: 0.4.5
 :
 
-:d apidoc Data.Enumerator.Text.Codec
--- | docs TODO
+:d apidoc Data.Enumerator.List.unfold
+-- | Enumerates a stream of elements by repeatedly applying a function to
+-- some state.
 --
--- Since: 0.2
+-- Similar to 'iterate'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.unfoldM
+-- | Enumerates a stream of elements by repeatedly applying a computation to
+-- some state.
+--
+-- Similar to 'iterateM'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.Codec
+-- | Since: 0.2
+:
+
+:d apidoc Data.Enumerator.Text.concatMap
+-- | @'concatMap' f@ applies /f/ to each input character and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.concatMapM
+-- | @'concatMapM' f@ applies /f/ to each input character and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Text.consume
--- | Read all remaining input from the stream, and return as a lazy
--- Text.
+-- | @'consume' = 'takeWhile' (const True)@
 --
 -- Since: 0.4.5
 :
@@ -626,13 +930,13 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.drop
--- | @drop n@ ignores /n/ characters of input from the stream.
+-- | @'drop' n@ ignores /n/ characters of input from the stream.
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.Text.dropWhile
--- | @dropWhile p@ ignores input from the stream until the first character
+-- | @'dropWhile' p@ ignores input from the stream until the first character
 -- which does not match the predicate.
 --
 -- Since: 0.4.5
@@ -663,6 +967,41 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.2
 :
 
+:d apidoc Data.Enumerator.Text.filter
+-- | Applies a predicate to the stream. The inner iteratee only receives
+-- characters for which the predicate is @True@.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.filterM
+-- | Applies a monadic predicate to the stream. The inner iteratee only
+-- receives characters for which the predicate returns @True@.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.fold
+-- | Consume the entire input stream with a strict left fold, one character
+-- at a time.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.foldM
+-- | Consume the entire input stream with a strict monadic left fold, one
+-- character at a time.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.generateM
+-- | Like 'repeatM', except the computation may terminate the stream by
+-- returning 'Nothing'.
+--
+-- Since: 0.4.8
+:
+
 :d apidoc Data.Enumerator.Text.head
 -- | Get the next character from the stream, or 'Nothing' if the stream has
 -- ended.
@@ -671,11 +1010,26 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.isolate
--- | @isolate n@ reads at most /n/ characters from the stream, and passes
+-- | @'isolate' n@ reads at most /n/ characters from the stream, and passes
 -- them to its iteratee. If the iteratee finishes early, characters continue
 -- to be consumed from the outer stream until /n/ have been consumed.
 --
 -- Since: 0.4.5
+:
+
+:d apidoc Data.Enumerator.Text.iterate
+-- | @'iterate' f x@ enumerates an infinite stream of repeated applications
+-- of /f/ to /x/.
+--
+-- Analogous to 'Prelude.iterate'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.iterateM
+-- | Similar to 'iterate', except the iteration function is monadic.
+--
+-- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Text.iterHandle
@@ -689,23 +1043,95 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.2
 :
 
+:d apidoc Data.Enumerator.Text.lines
+-- | @'lines' = 'splitWhen' (== '\n')@
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.map
+-- | @'map' f@ applies /f/ to each input character and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.mapM
+-- | @'mapM' f@ applies /f/ to each input character and feeds the
+-- resulting outputs to the inner iteratee.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.repeat
+-- | Enumerates an infinite stream of a single character.
+--
+-- Analogous to 'Prelude.repeat'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.repeatM
+-- | Enumerates an infinite stream of characters. Each character is computed
+-- by the underlying monad.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.replicate
+-- | @'replicate' n x@ enumerates a stream containing /n/ copies of /x/.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.replicateM
+-- | @'replicateM' n m_x@ enumerates a stream of /n/ characters, with each
+-- character computed by /m_x/.
+--
+-- Since: 0.4.8
+:
+
 :d apidoc Data.Enumerator.Text.require
--- | @require n@ buffers input until at least /n/ characters are available,
+-- | @'require' n@ buffers input until at least /n/ characters are available,
 -- or throws an error if the stream ends early.
 --
 -- Since: 0.4.5
 :
 
+:d apidoc Data.Enumerator.Text.splitWhen
+-- | Split on characters satisfying a given predicate.
+--
+-- Since: 0.4.8
+:
+
 :d apidoc Data.Enumerator.Text.take
--- | @take n@ extracts the next /n/ characters from the stream, as a lazy
+-- | @'take' n@ extracts the next /n/ characters from the stream, as a lazy
 -- Text.
 --
 -- Since: 0.4.5
 :
 
 :d apidoc Data.Enumerator.Text.takeWhile
--- | @takeWhile p@ extracts input from the stream until the first character
+-- | @'takeWhile' p@ extracts input from the stream until the first character
 -- which does not match the predicate.
 --
 -- Since: 0.4.5
+:
+
+:d apidoc Data.Enumerator.Text.unfold
+-- | Enumerates a stream of characters by repeatedly applying a function to
+-- some state.
+--
+-- Similar to 'iterate'.
+--
+-- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.unfoldM
+-- | Enumerates a stream of characters by repeatedly applying a computation
+-- to some state.
+--
+-- Similar to 'iterateM'.
+--
+-- Since: 0.4.8
 :
