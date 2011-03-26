@@ -57,21 +57,28 @@ extra-source-files:
   readme.txt
   --
   src/api-docs.anansi
-  src/binary.anansi
-  src/compat.anansi
+  src/compatibility.anansi
   src/enumerator.anansi
-  src/list.anansi
+  src/io.anansi
+  src/list-analogues.anansi
   src/primitives.anansi
-  src/text.anansi
+  src/public-interface.anansi
+  src/summary.anansi
+  src/text-codecs.anansi
   src/types.anansi
-  src/util.anansi
+  src/utilities.anansi
   --
   examples/cat.hs
   examples/wc.hs
   --
-  scripts/cabal-dist
+  scripts/common.bash
+  scripts/dist
+  scripts/haddock
+  scripts/latex
+  scripts/run-benchmarks
   scripts/run-tests
   --
+  tests/Benchmarks.hs
   tests/enumerator-tests.cabal
   tests/Properties.hs
 
