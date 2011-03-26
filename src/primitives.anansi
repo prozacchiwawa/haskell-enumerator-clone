@@ -1,33 +1,5 @@
 \section{Primitives}
 
-:d Data.Enumerator exports
--- * Primitives
-:
-
-Users often need to construct iteratees which only yield or continue,
-so we define some helper functions to save typing:
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.returnI|
-returnI :: Monad m => Step a m b -> Iteratee a m b
-returnI step = Iteratee (return step)
-
-|apidoc Data.Enumerator.yield|
-yield :: Monad m => b -> Stream a -> Iteratee a m b
-yield x extra = returnI (Yield x extra)
-
-|apidoc Data.Enumerator.continue|
-continue :: Monad m => (Stream a -> Iteratee a m b)
-         -> Iteratee a m b
-continue k = returnI (Continue k)
-:
-
-:d Data.Enumerator exports
-, returnI
-, yield
-, continue
-:
-
 \subsection{Operators}
 
 Because {\tt Iteratee a m b} is semantically equivalent to
@@ -36,10 +8,12 @@ Because {\tt Iteratee a m b} is semantically equivalent to
 and enumeratees. {\tt (>>==)} corresponds to {\tt (>>=)}, {\tt (>==>)} to
 {\tt (>=>)}, and so on.
 
-For compatibility, {\tt (==<<)} is aliased to {\tt (\$\$)}.
-
-:f Data/Enumerator.hs
+:d iteratee operators
 infixl 1 >>==
+infixr 1 ==<<
+infixr 0 $$
+infixr 1 >==>
+infixr 1 <==<
 
 |apidoc Data.Enumerator.(>>==)|
 (>>==) :: Monad m
@@ -47,10 +21,6 @@ infixl 1 >>==
        -> (Step a m b -> Iteratee a' m b')
        -> Iteratee a' m b'
 i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
-:
-
-:f Data/Enumerator.hs
-infixr 1 ==<<
 
 |apidoc Data.Enumerator.(==<<)|
 (==<<) :: Monad m
@@ -58,10 +28,6 @@ infixr 1 ==<<
        -> Iteratee a m b
        -> Iteratee a' m b'
 (==<<) = flip (>>==)
-:
-
-:f Data/Enumerator.hs
-infixr 0 $$
 
 |apidoc Data.Enumerator.($$)|
 ($$) :: Monad m
@@ -69,10 +35,6 @@ infixr 0 $$
      -> Iteratee a m b
      -> Iteratee a' m b'
 ($$) = (==<<)
-:
-
-:f Data/Enumerator.hs
-infixr 1 >==>
 
 |apidoc Data.Enumerator.(>==>)|
 (>==>) :: Monad m
@@ -81,10 +43,6 @@ infixr 1 >==>
        -> Step a m b
        -> Iteratee a' m b'
 (>==>) e1 e2 s = e1 s >>== e2
-:
-
-:f Data/Enumerator.hs
-infixr 1 <==<
 
 |apidoc Data.Enumerator.(<==<)|
 (<==<) :: Monad m
@@ -95,13 +53,31 @@ infixr 1 <==<
 (<==<) = flip (>==>)
 :
 
-:d Data.Enumerator exports
--- ** Operators
-, (>>==)
-, (==<<)
-, ($$)
-, (>==>)
-, (<==<)
+\subsection{Running iteratees}
+
+To simplify running iteratees, {\tt run} sends {\tt EOF} and then examines
+the result. It is not possible for the result to be {\tt Continue}, because
+{\tt enumEOF} calls {\tt error} for divergent iteratees.
+
+:d primitives
+|apidoc Data.Enumerator.run|
+run :: Monad m => Iteratee a m b
+    -> m (Either Exc.SomeException b)
+run i = do
+	mStep <- runIteratee $ enumEOF ==<< i
+	case mStep of
+		Error err -> return $ Left err
+		Yield x _ -> return $ Right x
+		Continue _ -> error "run: divergent iteratee"
+:
+
+{\tt run\_} is even more simplified; it's used in simple scripts, where the
+user doesn't care about error handling.
+
+:d primitives
+|apidoc Data.Enumerator.run_|
+run_ :: Monad m => Iteratee a m b -> m b
+run_ i = run i >>= either Exc.throw return
 :
 
 \subsection{Error handling}
@@ -116,10 +92,9 @@ module and its types.
 Instances for the {\tt MonadError} class are provided in auxiliary
 libraries, to avoid extraneous dependencies.
 
-:f Data/Enumerator.hs
+:d primitives
 |apidoc Data.Enumerator.throwError|
-throwError :: (Monad m, Exc.Exception e) => e
-           -> Iteratee a m b
+throwError :: (Monad m, Exc.Exception e) => e -> Iteratee a m b
 throwError exc = returnI (Error (Exc.toException exc))
 :
 
@@ -130,46 +105,14 @@ error, either buffer the input stream or use a separate framing mechanism.
 This limitation means that {\tt catchError} is mostly only useful for
 transforming or logging errors, not ignoring them.
 
-:f Data/Enumerator.hs
+:d primitives
 |apidoc Data.Enumerator.catchError|
-catchError :: Monad m => Iteratee a m b
+catchError :: Monad m
+           => Iteratee a m b
            -> (Exc.SomeException -> Iteratee a m b)
            -> Iteratee a m b
 catchError iter h = iter >>== step where
 	step (Yield b as) = yield b as
 	step (Error err) = h err
 	step (Continue k) = continue (\s -> k s >>== step)
-:
-
-:d Data.Enumerator exports
--- ** Error handling
-, throwError
-, catchError
-:
-
-\subsection{Debugging}
-
-Debugging enumerator-based code is mostly a question of what inputs are
-being passed around. {\tt printChunks} prints out exactly what chunks are
-being sent from an enumerator.
-
-:f Data/Enumerator.hs
-|apidoc Data.Enumerator.printChunks|
-printChunks :: (MonadIO m, Show a)
-            => Bool -- ^ Print empty chunks
-            -> Iteratee a m ()
-printChunks printEmpty = continue loop where
-	loop (Chunks xs) = do
-		let hide = null xs && not printEmpty
-		CM.unless hide (liftIO (print xs))
-		continue loop
-	
-	loop EOF = do
-		liftIO (putStrLn "EOF")
-		yield () EOF
-:
-
-:d Data.Enumerator exports
--- ** Debugging
-, printChunks
 :

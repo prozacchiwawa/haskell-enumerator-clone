@@ -1,0 +1,790 @@
+\section{List analogues}
+
+\subsection{Folds}
+
+Since iteratees are semantically a left-fold, there are many existing
+folds that can be lifted to iteratees. The {\tt foldl}, {\tt foldl'}, and
+{\tt foldM} functions work like their standard library namesakes, but
+construct iteratees instead. These iteratees are not as complex as what can
+be created using {\tt Yield} and {\tt Continue}, but cover many common cases.
+
+Each fold consumes input from the stream until {\sc eof}, when it yields its
+current accumulator.
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.fold|
+fold :: Monad m => (b -> a -> b) -> b
+       -> Iteratee a m b
+fold step = continue . loop where
+	f = L.foldl' step
+	loop acc stream = case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> continue (loop (f acc xs))
+		EOF -> yield acc EOF
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.foldM|
+foldM :: Monad m => (b -> a -> m b) -> b
+      -> Iteratee a m b
+foldM step = continue . loop where
+	f = CM.foldM step
+	
+	loop acc stream = acc `seq` case stream of
+		Chunks [] -> continue (loop acc)
+		Chunks xs -> lift (f acc xs) >>= continue . loop
+		EOF -> yield acc EOF
+:
+
+:d byte-oriented list analogues
+fold :: Monad m => (b -> Word8 -> b) -> b
+     -> Iteratee B.ByteString m b
+fold step = EL.fold (B.foldl' step)
+
+foldM :: Monad m => (b -> Word8 -> m b) -> b
+      -> Iteratee B.ByteString m b
+foldM step = EL.foldM (\b bytes -> CM.foldM step b (B.unpack bytes))
+:
+
+:d text-oriented list analogues
+fold :: Monad m => (b -> Char -> b) -> b
+     -> Iteratee T.Text m b
+fold step = EL.fold (T.foldl' step)
+
+foldM :: Monad m => (b -> Char -> m b) -> b
+      -> Iteratee T.Text m b
+foldM step = EL.foldM (\b txt -> CM.foldM step b (T.unpack txt))
+:
+
+\subsection{Unfolds}
+
+:d element-oriented list analogues
+unfold :: Monad m => (s -> Maybe (a, s)) -> s -> Enumerator a m b
+unfold f = loop where
+	loop s (Continue k) = case f s of
+		Nothing -> continue k
+		Just (a, s') -> k (Chunks [a]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d byte-oriented list analogues
+unfold :: Monad m => (s -> Maybe (Word8, s)) -> s -> Enumerator B.ByteString m b
+unfold f = loop where
+	loop s (Continue k) = case f s of
+		Nothing -> continue k
+		Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d text-oriented list analogues
+unfold :: Monad m => (s -> Maybe (Char, s)) -> s -> Enumerator T.Text m b
+unfold f = loop where
+	loop s (Continue k) = case f s of
+		Nothing -> continue k
+		Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d element-oriented list analogues
+unfoldM :: Monad m => (s -> m (Maybe (a, s))) -> s -> Enumerator a m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (a, s') -> k (Chunks [a]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d byte-oriented list analogues
+unfoldM :: Monad m => (s -> m (Maybe (Word8, s))) -> s -> Enumerator B.ByteString m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
+	loop _ step = returnI step
+:
+
+:d text-oriented list analogues
+unfoldM :: Monad m => (s -> m (Maybe (Char, s))) -> s -> Enumerator T.Text m b
+unfoldM f = loop where
+	loop s (Continue k) = do
+		fs <- lift (f s)
+		case fs of
+			Nothing -> continue k
+			Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
+	loop _ step = returnI step
+:
+
+\subsection{Maps}
+
+Enumeratees are conceptually similar to a monadic {\tt concatMap}; each
+outer input element is converted to a list of inner inputs, which are passed
+to the inner iteratee. Error handling and performance considerations
+make most real-life enumeratees more complex, but some don't need the extra
+design.
+
+The {\tt checkDone} and {\tt checkDoneEx} functions referenced here are
+defined later, with other utilities.
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.concatMapM|
+concatMapM :: Monad m => (ao -> m [ai])
+           -> Enumeratee ao ai m b
+concatMapM f = checkDone (continue . step) where
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks xs) = loop k xs
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = do
+		fx <- lift (f x)
+		k (Chunks fx) >>==
+			checkDoneEx (Chunks xs) (\k' -> loop k' xs)
+:
+
+Once {\tt concatMapM} is defined, similar enumeratees can be easily created
+via small wrappers.
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.concatMap|
+concatMap :: Monad m => (ao -> [ai])
+          -> Enumeratee ao ai m b
+concatMap f = concatMapM (return . f)
+
+|apidoc Data.Enumerator.List.map|
+map :: Monad m => (ao -> ai)
+    -> Enumeratee ao ai m b
+map f = Data.Enumerator.List.concatMap (\x -> [f x])
+
+|apidoc Data.Enumerator.List.mapM|
+mapM :: Monad m => (ao -> m ai)
+     -> Enumeratee ao ai m b
+mapM f = concatMapM (\x -> Prelude.mapM f [x])
+:
+
+:d byte-oriented list analogues
+map :: Monad m => (Word8 -> Word8) -> Enumeratee B.ByteString B.ByteString m b
+map f = Data.Enumerator.Binary.concatMap (\x -> B.singleton (f x))
+
+mapM :: Monad m => (Word8 -> m Word8) -> Enumeratee B.ByteString B.ByteString m b
+mapM f = Data.Enumerator.Binary.concatMapM (\x -> liftM B.singleton (f x))
+
+concatMap :: Monad m => (Word8 -> B.ByteString) -> Enumeratee B.ByteString B.ByteString m b
+concatMap f = Data.Enumerator.Binary.concatMapM (return . f)
+
+concatMapM :: Monad m => (Word8 -> m B.ByteString) -> Enumeratee B.ByteString B.ByteString m b
+concatMapM f = checkDone (continue . step) where
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks xs) = loop k (BL.unpack (BL.fromChunks xs))
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = do
+		fx <- lift (f x)
+		k (Chunks [fx]) >>==
+			checkDoneEx (Chunks [B.pack xs]) (\k' -> loop k' xs)
+:
+
+:d text-oriented list analogues
+map :: Monad m => (Char -> Char) -> Enumeratee T.Text T.Text m b
+map f = Data.Enumerator.Text.concatMap (\x -> T.singleton (f x))
+
+mapM :: Monad m => (Char -> m Char) -> Enumeratee T.Text T.Text m b
+mapM f = Data.Enumerator.Text.concatMapM (\x -> liftM T.singleton (f x))
+
+concatMap :: Monad m => (Char -> T.Text) -> Enumeratee T.Text T.Text m b
+concatMap f = Data.Enumerator.Text.concatMapM (return . f)
+
+concatMapM :: Monad m => (Char -> m T.Text) -> Enumeratee T.Text T.Text m b
+concatMapM f = checkDone (continue . step) where
+	step k EOF = yield (Continue k) EOF
+	step k (Chunks xs) = loop k (TL.unpack (TL.fromChunks xs))
+	
+	loop k [] = continue (step k)
+	loop k (x:xs) = do
+		fx <- lift (f x)
+		k (Chunks [fx]) >>==
+			checkDoneEx (Chunks [T.pack xs]) (\k' -> loop k' xs)
+:
+
+\subsection{Infinite streams}
+
+{\tt iterate} and {\tt iterateM} apply a function repeatedly to the base
+input, passing the results through as a stream.
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.iterate|
+iterate :: Monad m => (a -> a) -> a -> Enumerator a m b
+iterate f = loop where
+	loop a (Continue k) = k (Chunks [a]) >>== loop (f a)
+	loop _ step = returnI step
+:
+
+:d byte-oriented list analogues
+iterate :: Monad m => (Word8 -> Word8) -> Word8 -> Enumerator B.ByteString m b
+iterate f = loop where
+	loop byte (Continue k) = k (Chunks [B.singleton byte]) >>== loop (f byte)
+	loop _ step = returnI step
+:
+
+:d text-oriented list analogues
+iterate :: Monad m => (Char -> Char) -> Char -> Enumerator T.Text m b
+iterate f = loop where
+	loop char (Continue k) = k (Chunks [T.singleton char]) >>== loop (f char)
+	loop _ step = returnI step
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.iterateM|
+iterateM :: Monad m => (a -> m a) -> a
+         -> Enumerator a m b
+iterateM f base = loop (return base) where
+	loop m_a (Continue k) = do
+		a <- lift m_a
+		k (Chunks [a]) >>== loop (f a)
+	loop _ step = returnI step
+:
+
+:d byte-oriented list analogues
+iterateM :: Monad m => (Word8 -> m Word8) -> Word8 -> Enumerator B.ByteString m b
+iterateM f base = loop (return base) where
+	loop m_byte (Continue k) = do
+		byte <- lift m_byte
+		k (Chunks [B.singleton byte]) >>== loop (f byte)
+	loop _ step = returnI step
+:
+
+:d text-oriented list analogues
+iterateM :: Monad m => (Char -> m Char) -> Char -> Enumerator T.Text m b
+iterateM f base = loop (return base) where
+	loop m_char (Continue k) = do
+		char <- lift m_char
+		k (Chunks [T.singleton char]) >>== loop (f char)
+	loop _ step = returnI step
+:
+
+{\tt repeat} and {\tt repeatM} create infinite streams, where each input
+is a single value.
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.repeat|
+repeat :: Monad m => a -> Enumerator a m b
+repeat a = Data.Enumerator.List.iterate (const a) a
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.repeatM|
+repeatM :: Monad m => m a -> Enumerator a m b
+repeatM m_a step = do
+	a <- lift m_a
+	iterateM (const m_a) a step
+:
+
+:d byte-oriented list analogues
+repeat :: Monad m => Word8 -> Enumerator B.ByteString m b
+repeat byte = EL.repeat (B.singleton byte)
+
+repeatM :: Monad m => m Word8 -> Enumerator B.ByteString m b
+repeatM next = EL.repeatM (liftM B.singleton next)
+:
+
+:d text-oriented list analogues
+repeat :: Monad m => Char -> Enumerator T.Text m b
+repeat char = EL.repeat (T.singleton char)
+
+repeatM :: Monad m => m Char -> Enumerator T.Text m b
+repeatM next = EL.repeatM (liftM T.singleton next)
+:
+
+\subsection{Bounded streams}
+
+{\tt replicate} and {\tt replicateM} create streams containing a given
+quantity of the input value.
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.replicateM|
+replicateM :: Monad m => Integer -> m a
+           -> Enumerator a m b
+replicateM maxCount getNext = loop maxCount where
+	loop 0 step = returnI step
+	loop n (Continue k) = do
+		next <- lift getNext
+		k (Chunks [next]) >>== loop (n - 1)
+	loop _ step = returnI step
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.replicate|
+replicate :: Monad m => Integer -> a
+          -> Enumerator a m b
+replicate maxCount a = replicateM maxCount (return a)
+:
+
+:d byte-oriented list analogues
+replicate :: Monad m => Integer -> Word8 -> Enumerator B.ByteString m b
+replicate n byte = EL.replicate n (B.singleton byte)
+
+replicateM :: Monad m => Integer -> m Word8 -> Enumerator B.ByteString m b
+replicateM n next = EL.replicateM n (liftM B.singleton next)
+:
+
+:d text-oriented list analogues
+replicate :: Monad m => Integer -> Char -> Enumerator T.Text m b
+replicate n byte = EL.replicate n (T.singleton byte)
+
+replicateM :: Monad m => Integer -> m Char -> Enumerator T.Text m b
+replicateM n next = EL.replicateM n (liftM T.singleton next)
+:
+
+{\tt generateM} runs a monadic computation until it returns {\tt Nothing},
+which signals the end of enumeration.
+
+Note that when the enumerator is finished, it does not send {\tt EOF} to
+the iteratee. Instead, it returns a continuation, so additional enumerators
+may add their own input to the stream.
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.generateM|
+generateM :: Monad m => m (Maybe a)
+          -> Enumerator a m b
+generateM getNext = loop where
+	loop (Continue k) = do
+		next <- lift getNext
+		case next of
+			Nothing -> continue k
+			Just x -> k (Chunks [x]) >>== loop
+	loop step = returnI step
+:
+
+:d byte-oriented list analogues
+generateM :: Monad m => m (Maybe Word8) -> Enumerator B.ByteString m b
+generateM next = EL.generateM (liftM (liftM B.singleton) next)
+:
+
+:d text-oriented list analogues
+generateM :: Monad m => m (Maybe Char) -> Enumerator T.Text m b
+generateM next = EL.generateM (liftM (liftM T.singleton) next)
+:
+
+\subsection{Filters}
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.filter|
+filter :: Monad m => (a -> Bool)
+       -> Enumeratee a a m b
+filter p = Data.Enumerator.List.concatMap (\x -> [x | p x])
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.filterM|
+filterM :: Monad m => (a -> m Bool)
+        -> Enumeratee a a m b
+filterM p = concatMapM (\x -> CM.filterM p [x])
+:
+
+:d byte-oriented list analogues
+filter :: Monad m => (Word8 -> Bool) -> Enumeratee B.ByteString B.ByteString m b
+filter p = Data.Enumerator.Binary.concatMap (\x -> B.pack [x | p x])
+
+filterM :: Monad m => (Word8 -> m Bool) -> Enumeratee B.ByteString B.ByteString m b
+filterM p = Data.Enumerator.Binary.concatMapM (\x -> liftM B.pack (CM.filterM p [x]))
+:
+
+:d text-oriented list analogues
+filter :: Monad m => (Char -> Bool) -> Enumeratee T.Text T.Text m b
+filter p = Data.Enumerator.Text.concatMap (\x -> T.pack [x | p x])
+
+filterM :: Monad m => (Char -> m Bool) -> Enumeratee T.Text T.Text m b
+filterM p = Data.Enumerator.Text.concatMapM (\x -> liftM T.pack (CM.filterM p [x]))
+:
+
+\subsection{Consumers}
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.take|
+take :: Monad m => Integer -> Iteratee a m [a]
+take n | n <= 0 = return []
+take n = continue (loop id n) where
+	len = L.genericLength
+	loop acc n' (Chunks xs)
+		| len xs < n' = continue (loop (acc . (xs ++)) (n' - len xs))
+		| otherwise   = let
+			(xs', extra) = L.genericSplitAt n' xs
+			in yield (acc xs') (Chunks extra)
+	loop acc _ EOF = yield (acc []) EOF
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.take|
+take :: Monad m => Integer -> Iteratee B.ByteString m BL.ByteString
+take n | n <= 0 = return BL.empty
+take n = continue (loop id n) where
+	loop acc n' (Chunks xs) = iter where
+		lazy = BL.fromChunks xs
+		len = toInteger (BL.length lazy)
+		
+		iter = if len < n'
+			then continue (loop (acc . (BL.append lazy)) (n' - len))
+			else let
+				(xs', extra) = BL.splitAt (fromInteger n') lazy
+				in yield (acc xs') (toChunks extra)
+	loop acc _ EOF = yield (acc BL.empty) EOF
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.take|
+take :: Monad m => Integer -> Iteratee T.Text m TL.Text
+take n | n <= 0 = return TL.empty
+take n = continue (loop id n) where
+	loop acc n' (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		len = toInteger (TL.length lazy)
+		
+		iter = if len < n'
+			then continue (loop (acc . (TL.append lazy)) (n' - len))
+			else let
+				(xs', extra) = TL.splitAt (fromInteger n') lazy
+				in yield (acc xs') (toChunks extra)
+	loop acc _ EOF = yield (acc TL.empty) EOF
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.takeWhile|
+takeWhile :: Monad m => (a -> Bool) -> Iteratee a m [a]
+takeWhile p = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = case Prelude.span p xs of
+		(_, []) -> continue (loop (acc . (xs ++)))
+		(xs', extra) -> yield (acc xs') (Chunks extra)
+	loop acc EOF = yield (acc []) EOF
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.takeWhile|
+takeWhile :: Monad m => (Word8 -> Bool) -> Iteratee B.ByteString m BL.ByteString
+takeWhile p = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = iter where
+		lazy = BL.fromChunks xs
+		(xs', extra) = BL.span p lazy
+		iter = if BL.null extra
+			then continue (loop (acc . (BL.append lazy)))
+			else yield (acc xs') (toChunks extra)
+	loop acc EOF = yield (acc BL.empty) EOF
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.takeWhile|
+takeWhile :: Monad m => (Char -> Bool) -> Iteratee T.Text m TL.Text
+takeWhile p = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		(xs', extra) = tlSpanBy p lazy
+		iter = if TL.null extra
+			then continue (loop (acc . (TL.append lazy)))
+			else yield (acc xs') (toChunks extra)
+	loop acc EOF = yield (acc TL.empty) EOF
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.consume|
+consume :: Monad m => Iteratee a m [a]
+consume = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = continue (loop (acc . (xs ++)))
+	loop acc EOF = yield (acc []) EOF
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.consume|
+consume :: Monad m => Iteratee B.ByteString m BL.ByteString
+consume = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = iter where
+		lazy = BL.fromChunks xs
+		iter = continue (loop (acc . (BL.append lazy)))
+	loop acc EOF = yield (acc BL.empty) EOF
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.consume|
+consume :: Monad m => Iteratee T.Text m TL.Text
+consume = continue (loop id) where
+	loop acc (Chunks []) = continue (loop acc)
+	loop acc (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		iter = continue (loop (acc . (TL.append lazy)))
+	loop acc EOF = yield (acc TL.empty) EOF
+:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Unsorted TODO}
+
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.head|
+head :: Monad m => Iteratee a m (Maybe a)
+head = continue loop where
+	loop (Chunks []) = head
+	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
+	loop EOF = yield Nothing EOF
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.head|
+head :: Monad m => Iteratee B.ByteString m (Maybe Word8)
+head = continue loop where
+	loop (Chunks xs) = case BL.uncons (BL.fromChunks xs) of
+		Just (char, extra) -> yield (Just char) (toChunks extra)
+		Nothing -> head
+	loop EOF = yield Nothing EOF
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.head|
+head :: Monad m => Iteratee T.Text m (Maybe Char)
+head = continue loop where
+	loop (Chunks xs) = case TL.uncons (TL.fromChunks xs) of
+		Just (char, extra) -> yield (Just char) (toChunks extra)
+		Nothing -> head
+	loop EOF = yield Nothing EOF
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.drop|
+drop :: Monad m => Integer -> Iteratee a m ()
+drop n | n <= 0 = return ()
+drop n = continue (loop n) where
+	loop n' (Chunks xs) = iter where
+		len = L.genericLength xs
+		iter = if len < n'
+			then drop (n' - len)
+			else yield () (Chunks (L.genericDrop n' xs))
+	loop _ EOF = yield () EOF
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.drop|
+drop :: Monad m => Integer -> Iteratee B.ByteString m ()
+drop n | n <= 0 = return ()
+drop n = continue (loop n) where
+	loop n' (Chunks xs) = iter where
+		lazy = BL.fromChunks xs
+		len = toInteger (BL.length lazy)
+		iter = if len < n'
+			then drop (n' - len)
+			else yield () (toChunks (BL.drop (fromInteger n') lazy))
+	loop _ EOF = yield () EOF
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.drop|
+drop :: Monad m => Integer -> Iteratee T.Text m ()
+drop n | n <= 0 = return ()
+drop n = continue (loop n) where
+	loop n' (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		len = toInteger (TL.length lazy)
+		iter = if len < n'
+			then drop (n' - len)
+			else yield () (toChunks (TL.drop (fromInteger n') lazy))
+	loop _ EOF = yield () EOF
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.dropWhile|
+dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()
+dropWhile p = continue loop where
+	loop (Chunks xs) = case L.dropWhile p xs of
+		[] -> continue loop
+		xs' -> yield () (Chunks xs')
+	loop EOF = yield () EOF
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.dropWhile|
+dropWhile :: Monad m => (Word8 -> Bool) -> Iteratee B.ByteString m ()
+dropWhile p = continue loop where
+	loop (Chunks xs) = iter where
+		lazy = BL.dropWhile p (BL.fromChunks xs)
+		iter = if BL.null lazy
+			then continue loop
+			else yield () (toChunks lazy)
+	loop EOF = yield () EOF
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.dropWhile|
+dropWhile :: Monad m => (Char -> Bool) -> Iteratee T.Text m ()
+dropWhile p = continue loop where
+	loop (Chunks xs) = iter where
+		lazy = TL.dropWhile p (TL.fromChunks xs)
+		iter = if TL.null lazy
+			then continue loop
+			else yield () (toChunks lazy)
+	loop EOF = yield () EOF
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.require|
+require :: Monad m => Integer -> Iteratee a m ()
+require n | n <= 0 = return ()
+require n = continue (loop id n) where
+	len = L.genericLength
+	loop acc n' (Chunks xs)
+		| len xs < n' = continue (loop (acc . (xs ++)) (n' - len xs))
+		| otherwise   = yield () (Chunks (acc xs))
+	loop _ _ EOF = throwError (ErrorCall "require: Unexpected EOF")
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.require|
+require :: Monad m => Integer -> Iteratee B.ByteString m ()
+require n | n <= 0 = return ()
+require n = continue (loop id n) where
+	loop acc n' (Chunks xs) = iter where
+		lazy = BL.fromChunks xs
+		len = toInteger (BL.length lazy)
+		iter = if len < n'
+			then continue (loop (acc . (BL.append lazy)) (n' - len))
+			else yield () (toChunks (acc lazy))
+	loop _ _ EOF = throwError (Exc.ErrorCall "require: Unexpected EOF")
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.require|
+require :: Monad m => Integer -> Iteratee T.Text m ()
+require n | n <= 0 = return ()
+require n = continue (loop id n) where
+	loop acc n' (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		len = toInteger (TL.length lazy)
+		iter = if len < n'
+			then continue (loop (acc . (TL.append lazy)) (n' - len))
+			else yield () (toChunks (acc lazy))
+	loop _ _ EOF = throwError (Exc.ErrorCall "require: Unexpected EOF")
+:
+
+Note: {\tt isolate} has some odd behavior regarding extra input in the
+inner iteratee. Depending on how large the chunks are, extra input might
+be returned in the {\tt Step}, or dropped.
+
+This doesn't matter if {\tt joinI} is used, but might if a user is poking
+around inside the {\tt Step}. Eventually, enumeratees will be modified to
+avoid exposing its internal iteratee state.
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.isolate|
+isolate :: Monad m => Integer -> Enumeratee a a m b
+isolate n step | n <= 0 = return step
+isolate n (Continue k) = continue loop where
+	len = L.genericLength
+	
+	loop (Chunks []) = continue loop
+	loop (Chunks xs)
+		| len xs <= n = k (Chunks xs) >>== isolate (n - len xs)
+		| otherwise = let
+			(s1, s2) = L.genericSplitAt n xs
+			in k (Chunks s1) >>== (\step -> yield step (Chunks s2))
+	loop EOF = k EOF >>== (\step -> yield step EOF)
+isolate n step = drop n >> return step
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.isolate|
+isolate :: Monad m => Integer -> Enumeratee B.ByteString B.ByteString m b
+isolate n step | n <= 0 = return step
+isolate n (Continue k) = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks xs) = iter where
+		lazy = BL.fromChunks xs
+		len = toInteger (BL.length lazy)
+		
+		iter = if len <= n
+			then k (Chunks xs) >>== isolate (n - len)
+			else let
+				(s1, s2) = BL.splitAt (fromInteger n) lazy
+				in k (toChunks s1) >>== (\step -> yield step (toChunks s2))
+	loop EOF = k EOF >>== (\step -> yield step EOF)
+isolate n step = drop n >> return step
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.isolate|
+isolate :: Monad m => Integer -> Enumeratee T.Text T.Text m b
+isolate n step | n <= 0 = return step
+isolate n (Continue k) = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		len = toInteger (TL.length lazy)
+		
+		iter = if len <= n
+			then k (Chunks xs) >>== isolate (n - len)
+			else let
+				(s1, s2) = TL.splitAt (fromInteger n) lazy
+				in k (toChunks s1) >>== (\step -> yield step (toChunks s2))
+	loop EOF = k EOF >>== (\step -> yield step EOF)
+isolate n step = drop n >> return step
+:
+
+:d element-oriented list analogues
+splitWhen :: Monad m => (a -> Bool) -> Enumeratee a [a] m b
+splitWhen p = sequence $ do
+	as <- takeWhile (not . p)
+	drop 1
+	return as
+:
+
+:d byte-oriented list analogues
+splitWhen :: Monad m => (Word8 -> Bool) -> Enumeratee B.ByteString B.ByteString m b
+splitWhen p = loop where
+	loop = checkDone step
+	step k = isEOF >>= \eof -> if eof
+		then yield (Continue k) EOF
+		else do
+			lazy <- takeWhile (not . p)
+			let bytes = B.concat (BL.toChunks lazy)
+			eof <- isEOF
+			drop 1
+			if BL.null lazy && eof
+				then yield (Continue k) EOF
+				else k (Chunks [bytes]) >>== loop
+:
+
+:d text-oriented list analogues
+splitWhen :: Monad m => (Char -> Bool) -> Enumeratee T.Text T.Text m b
+splitWhen p = loop where
+	loop = checkDone step
+	step k = isEOF >>= \eof -> if eof
+		then yield (Continue k) EOF
+		else do
+			lazy <- takeWhile (not . p)
+			let text = textToStrict lazy
+			eof <- isEOF
+			drop 1
+			if TL.null lazy && eof
+				then yield (Continue k) EOF
+				else k (Chunks [text]) >>== loop
+
+lines :: Monad m => Enumeratee T.Text T.Text m b
+lines = splitWhen (== '\n')
+:
