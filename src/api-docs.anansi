@@ -441,6 +441,15 @@ This section just repeats literate documentation in Haddock syntax.
 
 :d apidoc Data.Enumerator.yield
 -- | @'yield' x extra = 'returnI' ('Yield' x extra)@
+--
+-- WARNING: due to the current encoding of iteratees in this library,
+-- careless use of the 'yield' primitive may violate the monad laws.
+-- To prevent this, always make sure that an iteratee never yields
+-- extra data unless it has received at least one input element.
+--
+-- More strictly, iteratees may not yield data that they did not
+-- receive as input. Don't use 'yield' to &#x201c;inject&#x201d; elements
+-- into the stream.
 :
 
 :d apidoc Data.Enumerator.Binary.concatMap
