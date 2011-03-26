@@ -37,20 +37,24 @@ foldM step = continue . loop where
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.fold|
 fold :: Monad m => (b -> Word8 -> b) -> b
      -> Iteratee B.ByteString m b
 fold step = EL.fold (B.foldl' step)
 
+|apidoc Data.Enumerator.Binary.foldM|
 foldM :: Monad m => (b -> Word8 -> m b) -> b
       -> Iteratee B.ByteString m b
 foldM step = EL.foldM (\b bytes -> CM.foldM step b (B.unpack bytes))
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.fold|
 fold :: Monad m => (b -> Char -> b) -> b
      -> Iteratee T.Text m b
 fold step = EL.fold (T.foldl' step)
 
+|apidoc Data.Enumerator.Text.foldM|
 foldM :: Monad m => (b -> Char -> m b) -> b
       -> Iteratee T.Text m b
 foldM step = EL.foldM (\b txt -> CM.foldM step b (T.unpack txt))
@@ -59,6 +63,7 @@ foldM step = EL.foldM (\b txt -> CM.foldM step b (T.unpack txt))
 \subsection{Unfolds}
 
 :d element-oriented list analogues
+|apidoc Data.Enumerator.List.unfold|
 unfold :: Monad m => (s -> Maybe (a, s)) -> s -> Enumerator a m b
 unfold f = loop where
 	loop s (Continue k) = case f s of
@@ -68,6 +73,7 @@ unfold f = loop where
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.unfold|
 unfold :: Monad m => (s -> Maybe (Word8, s)) -> s -> Enumerator B.ByteString m b
 unfold f = loop where
 	loop s (Continue k) = case f s of
@@ -77,6 +83,7 @@ unfold f = loop where
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.unfold|
 unfold :: Monad m => (s -> Maybe (Char, s)) -> s -> Enumerator T.Text m b
 unfold f = loop where
 	loop s (Continue k) = case f s of
@@ -86,6 +93,7 @@ unfold f = loop where
 :
 
 :d element-oriented list analogues
+|apidoc Data.Enumerator.List.unfoldM|
 unfoldM :: Monad m => (s -> m (Maybe (a, s))) -> s -> Enumerator a m b
 unfoldM f = loop where
 	loop s (Continue k) = do
@@ -97,6 +105,7 @@ unfoldM f = loop where
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.unfoldM|
 unfoldM :: Monad m => (s -> m (Maybe (Word8, s))) -> s -> Enumerator B.ByteString m b
 unfoldM f = loop where
 	loop s (Continue k) = do
@@ -108,6 +117,7 @@ unfoldM f = loop where
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.unfoldM|
 unfoldM :: Monad m => (s -> m (Maybe (Char, s))) -> s -> Enumerator T.Text m b
 unfoldM f = loop where
 	loop s (Continue k) = do
@@ -165,15 +175,19 @@ mapM f = concatMapM (\x -> Prelude.mapM f [x])
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.map|
 map :: Monad m => (Word8 -> Word8) -> Enumeratee B.ByteString B.ByteString m b
 map f = Data.Enumerator.Binary.concatMap (\x -> B.singleton (f x))
 
+|apidoc Data.Enumerator.Binary.mapM|
 mapM :: Monad m => (Word8 -> m Word8) -> Enumeratee B.ByteString B.ByteString m b
 mapM f = Data.Enumerator.Binary.concatMapM (\x -> liftM B.singleton (f x))
 
+|apidoc Data.Enumerator.Binary.concatMap|
 concatMap :: Monad m => (Word8 -> B.ByteString) -> Enumeratee B.ByteString B.ByteString m b
 concatMap f = Data.Enumerator.Binary.concatMapM (return . f)
 
+|apidoc Data.Enumerator.Binary.concatMapM|
 concatMapM :: Monad m => (Word8 -> m B.ByteString) -> Enumeratee B.ByteString B.ByteString m b
 concatMapM f = checkDone (continue . step) where
 	step k EOF = yield (Continue k) EOF
@@ -187,15 +201,19 @@ concatMapM f = checkDone (continue . step) where
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.map|
 map :: Monad m => (Char -> Char) -> Enumeratee T.Text T.Text m b
 map f = Data.Enumerator.Text.concatMap (\x -> T.singleton (f x))
 
+|apidoc Data.Enumerator.Text.mapM|
 mapM :: Monad m => (Char -> m Char) -> Enumeratee T.Text T.Text m b
 mapM f = Data.Enumerator.Text.concatMapM (\x -> liftM T.singleton (f x))
 
+|apidoc Data.Enumerator.Text.concatMap|
 concatMap :: Monad m => (Char -> T.Text) -> Enumeratee T.Text T.Text m b
 concatMap f = Data.Enumerator.Text.concatMapM (return . f)
 
+|apidoc Data.Enumerator.Text.concatMapM|
 concatMapM :: Monad m => (Char -> m T.Text) -> Enumeratee T.Text T.Text m b
 concatMapM f = checkDone (continue . step) where
 	step k EOF = yield (Continue k) EOF
@@ -222,6 +240,7 @@ iterate f = loop where
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.iterate|
 iterate :: Monad m => (Word8 -> Word8) -> Word8 -> Enumerator B.ByteString m b
 iterate f = loop where
 	loop byte (Continue k) = k (Chunks [B.singleton byte]) >>== loop (f byte)
@@ -229,6 +248,7 @@ iterate f = loop where
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.iterate|
 iterate :: Monad m => (Char -> Char) -> Char -> Enumerator T.Text m b
 iterate f = loop where
 	loop char (Continue k) = k (Chunks [T.singleton char]) >>== loop (f char)
@@ -247,6 +267,7 @@ iterateM f base = loop (return base) where
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.iterateM|
 iterateM :: Monad m => (Word8 -> m Word8) -> Word8 -> Enumerator B.ByteString m b
 iterateM f base = loop (return base) where
 	loop m_byte (Continue k) = do
@@ -256,6 +277,7 @@ iterateM f base = loop (return base) where
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.iterateM|
 iterateM :: Monad m => (Char -> m Char) -> Char -> Enumerator T.Text m b
 iterateM f base = loop (return base) where
 	loop m_char (Continue k) = do
@@ -282,17 +304,21 @@ repeatM m_a step = do
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.repeat|
 repeat :: Monad m => Word8 -> Enumerator B.ByteString m b
 repeat byte = EL.repeat (B.singleton byte)
 
+|apidoc Data.Enumerator.Binary.repeatM|
 repeatM :: Monad m => m Word8 -> Enumerator B.ByteString m b
 repeatM next = EL.repeatM (liftM B.singleton next)
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.repeat|
 repeat :: Monad m => Char -> Enumerator T.Text m b
 repeat char = EL.repeat (T.singleton char)
 
+|apidoc Data.Enumerator.Text.repeatM|
 repeatM :: Monad m => m Char -> Enumerator T.Text m b
 repeatM next = EL.repeatM (liftM T.singleton next)
 :
@@ -322,17 +348,21 @@ replicate maxCount a = replicateM maxCount (return a)
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.replicate|
 replicate :: Monad m => Integer -> Word8 -> Enumerator B.ByteString m b
 replicate n byte = EL.replicate n (B.singleton byte)
 
+|apidoc Data.Enumerator.Binary.replicateM|
 replicateM :: Monad m => Integer -> m Word8 -> Enumerator B.ByteString m b
 replicateM n next = EL.replicateM n (liftM B.singleton next)
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.replicate|
 replicate :: Monad m => Integer -> Char -> Enumerator T.Text m b
 replicate n byte = EL.replicate n (T.singleton byte)
 
+|apidoc Data.Enumerator.Text.replicateM|
 replicateM :: Monad m => Integer -> m Char -> Enumerator T.Text m b
 replicateM n next = EL.replicateM n (liftM T.singleton next)
 :
@@ -358,11 +388,13 @@ generateM getNext = loop where
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.generateM|
 generateM :: Monad m => m (Maybe Word8) -> Enumerator B.ByteString m b
 generateM next = EL.generateM (liftM (liftM B.singleton) next)
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.generateM|
 generateM :: Monad m => m (Maybe Char) -> Enumerator T.Text m b
 generateM next = EL.generateM (liftM (liftM T.singleton) next)
 :
@@ -384,17 +416,21 @@ filterM p = concatMapM (\x -> CM.filterM p [x])
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.filter|
 filter :: Monad m => (Word8 -> Bool) -> Enumeratee B.ByteString B.ByteString m b
 filter p = Data.Enumerator.Binary.concatMap (\x -> B.pack [x | p x])
 
+|apidoc Data.Enumerator.Binary.filterM|
 filterM :: Monad m => (Word8 -> m Bool) -> Enumeratee B.ByteString B.ByteString m b
 filterM p = Data.Enumerator.Binary.concatMapM (\x -> liftM B.pack (CM.filterM p [x]))
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.filter|
 filter :: Monad m => (Char -> Bool) -> Enumeratee T.Text T.Text m b
 filter p = Data.Enumerator.Text.concatMap (\x -> T.pack [x | p x])
 
+|apidoc Data.Enumerator.Text.filterM|
 filterM :: Monad m => (Char -> m Bool) -> Enumeratee T.Text T.Text m b
 filterM p = Data.Enumerator.Text.concatMapM (\x -> liftM T.pack (CM.filterM p [x]))
 :
@@ -747,6 +783,7 @@ isolate n step = drop n >> return step
 :
 
 :d element-oriented list analogues
+|apidoc Data.Enumerator.List.splitWhen|
 splitWhen :: Monad m => (a -> Bool) -> Enumeratee a [a] m b
 splitWhen p = sequence $ do
 	as <- takeWhile (not . p)
@@ -755,6 +792,7 @@ splitWhen p = sequence $ do
 :
 
 :d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.splitWhen|
 splitWhen :: Monad m => (Word8 -> Bool) -> Enumeratee B.ByteString B.ByteString m b
 splitWhen p = loop where
 	loop = checkDone step
@@ -771,6 +809,7 @@ splitWhen p = loop where
 :
 
 :d text-oriented list analogues
+|apidoc Data.Enumerator.Text.splitWhen|
 splitWhen :: Monad m => (Char -> Bool) -> Enumeratee T.Text T.Text m b
 splitWhen p = loop where
 	loop = checkDone step
@@ -785,6 +824,7 @@ splitWhen p = loop where
 				then yield (Continue k) EOF
 				else k (Chunks [text]) >>== loop
 
+|apidoc Data.Enumerator.Text.lines|
 lines :: Monad m => Enumeratee T.Text T.Text m b
 lines = splitWhen (== '\n')
 :
