@@ -1,0 +1,11 @@
+#!/bin/bash
+if [ ! -f 'enumerator.cabal' ]; then
+	echo -n "Can't find enumerator.cabal; please run this script as"
+	echo -n " ./scripts/latex from within the enumerator source"
+	echo " directory"
+	exit 1
+fi
+
+. scripts/common.bash
+
+make_pdf

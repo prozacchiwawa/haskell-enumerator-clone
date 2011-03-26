@@ -1,32 +1,21 @@
 #!/bin/bash
 if [ ! -f 'enumerator.cabal' ]; then
 	echo -n "Can't find enumerator.cabal; please run this script as"
-	echo -n " ./scripts/make-tests from within the enumerator source"
+	echo -n " ./scripts/run-benchmarks from within the enumerator source"
 	echo " directory"
 	exit 1
 fi
 
-CABAL=$(which cabal-dev)
-if [ -z "$CABAL" ]; then
-	echo -n "Can't find 'cabal-dev'; cowardly refusing to fuck with the"
-	echo " global package database"
-fi
-PATH="$PATH:$PWD/cabal-dev/bin/"
+. scripts/common.bash
 
-ANANSI=$(which anansi)
-if [ -z "$ANANSI" ]; then
-	echo "Can't find 'anansi' executable; make sure it exists on your "'$PATH'
-	exit 1
-fi
+require_anansi
+require_cabal_dev
 
-rm -rf hs dist
-anansi -o hs src/enumerator.anansi || exit 1
-
-$CABAL install || exit 1
+clean_dev_install
 
 pushd tests
 rm -rf dist
-$CABAL -s ../cabal-dev install || exit 1
+$CABAL_DEV -s ../cabal-dev install || exit 1
 popd
 
 cabal-dev/bin/enumerator_benchmarks $@
