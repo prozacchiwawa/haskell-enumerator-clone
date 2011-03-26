@@ -245,7 +245,7 @@ import Control.Monad (liftM)
 , takeWhile
 , consume
 
--- ** Unsorted TODO
+-- ** Unsorted
 , Data.Enumerator.Binary.head
 , Data.Enumerator.Binary.drop
 , Data.Enumerator.Binary.dropWhile
@@ -290,7 +290,7 @@ import Control.Monad (liftM)
 , takeWhile
 , consume
 
--- ** Unsorted TODO
+-- ** Unsorted
 , head
 , drop
 , Data.Enumerator.List.dropWhile
@@ -339,7 +339,7 @@ import Control.Monad (liftM)
 , takeWhile
 , consume
 
--- ** Unsorted TODO
+-- ** Unsorted
 , Data.Enumerator.Text.head
 , Data.Enumerator.Text.drop
 , Data.Enumerator.Text.dropWhile

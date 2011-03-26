@@ -555,25 +555,7 @@ consume = continue (loop id) where
 	loop acc EOF = yield (acc TL.empty) EOF
 :
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-\subsection{Unsorted TODO}
-
+\subsection{Unsorted}
 
 :d element-oriented list analogues
 |apidoc Data.Enumerator.List.head|
