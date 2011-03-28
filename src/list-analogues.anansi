@@ -378,13 +378,11 @@ may add their own input to the stream.
 |apidoc Data.Enumerator.List.generateM|
 generateM :: Monad m => m (Maybe a)
           -> Enumerator a m b
-generateM getNext = loop where
-	loop (Continue k) = do
-		next <- lift getNext
-		case next of
-			Nothing -> continue k
-			Just x -> k (Chunks [x]) >>== loop
-	loop step = returnI step
+generateM getNext = checkContinue $ \loop k -> do
+	next <- lift getNext
+	case next of
+		Nothing -> continue k
+		Just x -> k (Chunks [x]) >>== loop
 :
 
 :d byte-oriented list analogues

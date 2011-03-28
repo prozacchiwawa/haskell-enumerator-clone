@@ -73,7 +73,6 @@ import Data.Enumerator hiding ( head, drop, iterateM, repeatM, replicateM
 import Control.Monad.IO.Class (MonadIO)
 import qualified Data.ByteString as B
 import qualified System.IO as IO
-import Data.Function (fix)
 import qualified Control.Exception as Exc
 import System.IO.Error (isEOFError)
 import Data.Word (Word8)

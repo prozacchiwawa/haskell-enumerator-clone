@@ -15,16 +15,13 @@ enumHandle :: MonadIO m
            => Integer -- ^ Buffer size
            -> IO.Handle
            -> Enumerator B.ByteString m b
-enumHandle bufferSize h = do
+enumHandle bufferSize h = checkContinue $ \loop k -> do
 	let intSize = fromInteger bufferSize
 	
-	fix $ \loop step -> case step of
-		Continue k -> do
-			bytes <- tryIO (getBytes h intSize)
-			if B.null bytes
-				then continue k
-				else k (Chunks [bytes]) >>== loop
-		_ -> returnI step
+	bytes <- tryIO (getBytes h intSize)
+	if B.null bytes
+		then continue k
+		else k (Chunks [bytes]) >>== loop
 :
 
 :d binary IO
@@ -110,19 +107,18 @@ such as Python's {\tt xreadlines()}.
 |apidoc Data.Enumerator.Text.enumHandle|
 enumHandle :: MonadIO m => IO.Handle
            -> Enumerator T.Text m b
-enumHandle h = loop where
-	loop (Continue k) = do
-		maybeText <- tryIO getText
-		case maybeText of
-			Nothing -> continue k
-			Just text -> k (Chunks [text]) >>== loop
-	
-	loop step = returnI step
-	getText = Exc.catch
+enumHandle h = checkContinue $ \loop k -> do
+	let getText = Exc.catch
 		(Just `fmap` TIO.hGetLine h)
 		(\err -> if isEOFError err
 			then return Nothing
 			else Exc.throwIO err)
+	
+	maybeText <- tryIO getText
+	case maybeText of
+		Nothing -> continue k
+		Just text -> k (Chunks [text]) >>== loop
+	
 :
 
 :d text IO
