@@ -70,7 +70,6 @@ import Prelude hiding (head, drop, takeWhile)
 import Data.Enumerator hiding ( head, drop, iterateM, repeatM, replicateM
                               , generateM, filterM, consume, foldM
                               , concatMapM)
-import Data.Enumerator.Util (tryIO)
 import Control.Monad.IO.Class (MonadIO)
 import qualified Data.ByteString as B
 import qualified System.IO as IO
@@ -101,7 +100,7 @@ import qualified Prelude
 import Data.Enumerator hiding ( head, drop, generateM, filterM, consume
                               , concatMapM, iterateM, repeatM, replicateM
                               , foldM)
-import Data.Enumerator.Util (tryIO, tSpanBy, tlSpanBy, reprWord, reprChar, textToStrict)
+import Data.Enumerator.Util (tSpanBy, tlSpanBy, reprWord, reprChar, textToStrict)
 import Control.Monad.IO.Class (MonadIO)
 import qualified Control.Exception as Exc
 import Control.Arrow (first)
@@ -161,6 +160,7 @@ import Control.Monad (liftM)
 , checkDoneEx
 , checkDone
 , isEOF
+, tryIO
 
 -- ** Testing and debugging
 , printChunks

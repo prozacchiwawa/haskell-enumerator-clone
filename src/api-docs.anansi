@@ -1135,3 +1135,10 @@ This section just repeats literate documentation in Haddock syntax.
 --
 -- Since: 0.4.8
 :
+
+:d apidoc Data.Enumerator.tryIO
+-- | Try to run an IO computation. If it throws an exception, the exception
+-- is caught and converted into an {\tt Error}.
+--
+-- Since: 0.4.9
+:
