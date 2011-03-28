@@ -199,10 +199,10 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.1.1
 :
 
-:d apidoc Data.Enumerator.checkContinue
+:d apidoc Data.Enumerator.checkContinue0
 -- | A common pattern in 'Enumerator' implementations is to check whether
 -- the inner 'Iteratee' has finished, and if so, to return its output.
--- 'checkContinue' passes its parameter a continuation if the 'Iteratee'
+-- 'checkContinue0' passes its parameter a continuation if the 'Iteratee'
 -- can still consume input; if not, it returns the iteratee's step.
 --
 -- The type signature here is a bit crazy, but it's actually very easy to
@@ -216,7 +216,16 @@ This section just repeats literate documentation in Haddock syntax.
 -- And rewrite it without the boilerplate:
 --
 -- > repeat :: Monad m => a -> Enumerator a m b
--- > repeat x = checkContinue $ \loop k -> k (Chunks [x] >>== loop
+-- > repeat x = checkContinue0 $ \loop k -> k (Chunks [x] >>== loop
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.checkContinue1
+-- | Like 'checkContinue0', but allows each loop step to use a state value:
+--
+-- > iterate :: Monad m => (a -> a) -> a -> Enumerator a m b
+-- > iterate f = checkContinue1 $ \loop a k -> k (Chunks [a]) >>== loop (f a)
 --
 -- Since: 0.4.9
 :

@@ -65,67 +65,55 @@ foldM step = EL.foldM (\b txt -> CM.foldM step b (T.unpack txt))
 :d element-oriented list analogues
 |apidoc Data.Enumerator.List.unfold|
 unfold :: Monad m => (s -> Maybe (a, s)) -> s -> Enumerator a m b
-unfold f = loop where
-	loop s (Continue k) = case f s of
-		Nothing -> continue k
-		Just (a, s') -> k (Chunks [a]) >>== loop s'
-	loop _ step = returnI step
+unfold f = checkContinue1 $ \loop s k -> case f s of
+	Nothing -> continue k
+	Just (a, s') -> k (Chunks [a]) >>== loop s'
 :
 
 :d byte-oriented list analogues
 |apidoc Data.Enumerator.Binary.unfold|
 unfold :: Monad m => (s -> Maybe (Word8, s)) -> s -> Enumerator B.ByteString m b
-unfold f = loop where
-	loop s (Continue k) = case f s of
-		Nothing -> continue k
-		Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
-	loop _ step = returnI step
+unfold f = checkContinue1 $ \loop s k -> case f s of
+	Nothing -> continue k
+	Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
 :
 
 :d text-oriented list analogues
 |apidoc Data.Enumerator.Text.unfold|
 unfold :: Monad m => (s -> Maybe (Char, s)) -> s -> Enumerator T.Text m b
-unfold f = loop where
-	loop s (Continue k) = case f s of
-		Nothing -> continue k
-		Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
-	loop _ step = returnI step
+unfold f = checkContinue1 $ \loop s k -> case f s of
+	Nothing -> continue k
+	Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
 :
 
 :d element-oriented list analogues
 |apidoc Data.Enumerator.List.unfoldM|
 unfoldM :: Monad m => (s -> m (Maybe (a, s))) -> s -> Enumerator a m b
-unfoldM f = loop where
-	loop s (Continue k) = do
-		fs <- lift (f s)
-		case fs of
-			Nothing -> continue k
-			Just (a, s') -> k (Chunks [a]) >>== loop s'
-	loop _ step = returnI step
+unfoldM f = checkContinue1 $ \loop s k -> do
+	fs <- lift (f s)
+	case fs of
+		Nothing -> continue k
+		Just (a, s') -> k (Chunks [a]) >>== loop s'
 :
 
 :d byte-oriented list analogues
 |apidoc Data.Enumerator.Binary.unfoldM|
 unfoldM :: Monad m => (s -> m (Maybe (Word8, s))) -> s -> Enumerator B.ByteString m b
-unfoldM f = loop where
-	loop s (Continue k) = do
-		fs <- lift (f s)
-		case fs of
-			Nothing -> continue k
-			Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
-	loop _ step = returnI step
+unfoldM f = checkContinue1 $ \loop s k -> do
+	fs <- lift (f s)
+	case fs of
+		Nothing -> continue k
+		Just (b, s') -> k (Chunks [B.singleton b]) >>== loop s'
 :
 
 :d text-oriented list analogues
 |apidoc Data.Enumerator.Text.unfoldM|
 unfoldM :: Monad m => (s -> m (Maybe (Char, s))) -> s -> Enumerator T.Text m b
-unfoldM f = loop where
-	loop s (Continue k) = do
-		fs <- lift (f s)
-		case fs of
-			Nothing -> continue k
-			Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
-	loop _ step = returnI step
+unfoldM f = checkContinue1 $ \loop s k -> do
+	fs <- lift (f s)
+	case fs of
+		Nothing -> continue k
+		Just (c, s') -> k (Chunks [T.singleton c]) >>== loop s'
 :
 
 \subsection{Maps}
@@ -234,56 +222,47 @@ input, passing the results through as a stream.
 :d element-oriented list analogues
 |apidoc Data.Enumerator.List.iterate|
 iterate :: Monad m => (a -> a) -> a -> Enumerator a m b
-iterate f = loop where
-	loop a (Continue k) = k (Chunks [a]) >>== loop (f a)
-	loop _ step = returnI step
+iterate f = checkContinue1 $ \loop s k -> k (Chunks [s]) >>== loop (f s)
 :
 
 :d byte-oriented list analogues
 |apidoc Data.Enumerator.Binary.iterate|
 iterate :: Monad m => (Word8 -> Word8) -> Word8 -> Enumerator B.ByteString m b
-iterate f = loop where
-	loop byte (Continue k) = k (Chunks [B.singleton byte]) >>== loop (f byte)
-	loop _ step = returnI step
+iterate f = checkContinue1 $ \loop s k -> k (Chunks [B.singleton s]) >>== loop (f s)
 :
 
 :d text-oriented list analogues
 |apidoc Data.Enumerator.Text.iterate|
 iterate :: Monad m => (Char -> Char) -> Char -> Enumerator T.Text m b
-iterate f = loop where
-	loop char (Continue k) = k (Chunks [T.singleton char]) >>== loop (f char)
-	loop _ step = returnI step
+iterate f = checkContinue1 $ \loop s k -> k (Chunks [T.singleton s]) >>== loop (f s)
 :
 
 :d element-oriented list analogues
 |apidoc Data.Enumerator.List.iterateM|
 iterateM :: Monad m => (a -> m a) -> a
          -> Enumerator a m b
-iterateM f base = loop (return base) where
-	loop m_a (Continue k) = do
+iterateM f base = worker (return base) where
+	worker = checkContinue1 $ \loop m_a k -> do
 		a <- lift m_a
 		k (Chunks [a]) >>== loop (f a)
-	loop _ step = returnI step
 :
 
 :d byte-oriented list analogues
 |apidoc Data.Enumerator.Binary.iterateM|
 iterateM :: Monad m => (Word8 -> m Word8) -> Word8 -> Enumerator B.ByteString m b
-iterateM f base = loop (return base) where
-	loop m_byte (Continue k) = do
+iterateM f base = worker (return base) where
+	worker = checkContinue1 $ \loop m_byte k -> do
 		byte <- lift m_byte
 		k (Chunks [B.singleton byte]) >>== loop (f byte)
-	loop _ step = returnI step
 :
 
 :d text-oriented list analogues
 |apidoc Data.Enumerator.Text.iterateM|
 iterateM :: Monad m => (Char -> m Char) -> Char -> Enumerator T.Text m b
-iterateM f base = loop (return base) where
-	loop m_char (Continue k) = do
+iterateM f base = worker (return base) where
+	worker = checkContinue1 $ \loop m_char k -> do
 		char <- lift m_char
 		k (Chunks [T.singleton char]) >>== loop (f char)
-	loop _ step = returnI step
 :
 
 {\tt repeat} and {\tt repeatM} create infinite streams, where each input
@@ -292,7 +271,7 @@ is a single value.
 :d element-oriented list analogues
 |apidoc Data.Enumerator.List.repeat|
 repeat :: Monad m => a -> Enumerator a m b
-repeat a = Data.Enumerator.List.iterate (const a) a
+repeat a = checkContinue0 $ \loop k -> k (Chunks [a]) >>== loop
 :
 
 :d element-oriented list analogues
@@ -378,7 +357,7 @@ may add their own input to the stream.
 |apidoc Data.Enumerator.List.generateM|
 generateM :: Monad m => m (Maybe a)
           -> Enumerator a m b
-generateM getNext = checkContinue $ \loop k -> do
+generateM getNext = checkContinue0 $ \loop k -> do
 	next <- lift getNext
 	case next of
 		Nothing -> continue k

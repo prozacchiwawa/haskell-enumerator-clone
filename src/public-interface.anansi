@@ -156,7 +156,8 @@ import Control.Monad (liftM)
 , joinE
 , Data.Enumerator.sequence
 , enumEOF
-, checkContinue
+, checkContinue0
+, checkContinue1
 , checkDoneEx
 , checkDone
 , isEOF

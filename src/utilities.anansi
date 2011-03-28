@@ -121,18 +121,34 @@ tryIO io = Iteratee $ do
 Another enumerator pattern that pops up often is a loop that ignores any
 non-{\tt Continue} steps. This is especially useful when implementing
 most enumerators. It's sort of an analogue to {\tt checkDone}, so I
-called it {\tt checkContinue}.
+called it {\tt checkContinue}. It's actually implemented by various
+functions ({\tt checkContinue0}, {\tt checkContinue1}, etc), as most
+enumerators have some sort of state to pass around.
 
 :d unsorted utilities
-|apidoc Data.Enumerator.checkContinue|
-checkContinue :: Monad m
-              => (Enumerator a m b
-               -> (Stream a -> Iteratee a m b)
-               -> Iteratee a m b)
-              -> Enumerator a m b
-checkContinue inner = loop where
+|apidoc Data.Enumerator.checkContinue0|
+checkContinue0 :: Monad m
+               => (Enumerator a m b
+                -> (Stream a -> Iteratee a m b)
+                -> Iteratee a m b)
+               -> Enumerator a m b
+checkContinue0 inner = loop where
 	loop (Continue k) = inner loop k
 	loop step = returnI step
+:
+
+:d unsorted utilities
+|apidoc Data.Enumerator.checkContinue1|
+checkContinue1 :: Monad m
+               => ((s1 -> Enumerator a m b)
+                -> s1
+                -> (Stream a -> Iteratee a m b)
+                -> Iteratee a m b)
+               -> s1
+               -> Enumerator a m b
+checkContinue1 inner = loop where
+	loop s (Continue k) = inner loop s k
+	loop _ step = returnI step
 :
 
 {\tt Data.Enumerator.Util} is a hidden module for functions used by several
