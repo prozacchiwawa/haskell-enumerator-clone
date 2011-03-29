@@ -135,7 +135,7 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.(=$)
--- | @enum =$ iter = 'joinI' (enum $$ iter)
+-- | @enum =$ iter = 'joinI' (enum $$ iter)@
 --
 -- &#x201c;Wraps&#x201d; an iteratee /inner/ in an enumeratee /wrapper/.
 -- The resulting iteratee will consume /wrapper/&#x2019;s input type and
