@@ -29,6 +29,14 @@ joinI outer = outer >>= check where
 	check (Error e) = throwError e
 :
 
+:d unsorted utilities
+infixr 0 =$
+
+|apidoc Data.Enumerator.(=$)|
+(=$) :: Monad m => Enumeratee ao ai m b -> Iteratee ai m b -> Iteratee ao m b
+enum =$ iter = joinI (enum $$ iter)
+:
+
 {\tt joinE} is similar, except it flattens an enumerator/enumeratee pair
 into a single enumerator.
 
@@ -44,6 +52,17 @@ joinE enum enee s = Iteratee $ do
 		Error err -> return (Error err)
 		Yield x _ -> return x
 		Continue _ -> error "joinE: divergent iteratee"
+:
+
+:d unsorted utilities
+infixr 0 $=
+
+|apidoc Data.Enumerator.($=)|
+($=) :: Monad m
+     => Enumerator ao m (Step ai m b)
+     -> Enumeratee ao ai m b
+     -> Enumerator ai m b
+($=) = joinE
 :
 
 {\tt sequence} repeatedly runs its parameter to transform the stream.
@@ -104,31 +123,65 @@ isEOF = continue $ \s -> case s of
 	_ -> yield False s
 :
 
-{\tt Data.Enumerator.Util} is a hidden module for functions used by several
-public modules, but not logically part of the {\tt enumerator} API.
+When an enumerator has to interact with the outside world, it usually
+catches any exceptions that arise, and propagate them as {\tt Error} steps
+instead. {\tt tryIO} encapsulates that pattern.
 
-:f Data/Enumerator/Util.hs
-{-# LANGUAGE CPP #-}
-module Data.Enumerator.Util where
-import Data.Enumerator
-
-import Data.Char (toUpper, intToDigit, ord)
-import Data.Word (Word8)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import qualified Control.Exception as Exc
-import Numeric (showIntAtBase)
-:
-
-:f Data/Enumerator/Util.hs
+:d unsorted utilities
+|apidoc Data.Enumerator.tryIO|
 tryIO :: MonadIO m => IO b -> Iteratee a m b
 tryIO io = Iteratee $ do
 	tried <- liftIO (Exc.try io)
 	return $ case tried of
 		Right b -> Yield b (Chunks [])
 		Left err -> Error err
+:
+
+Another enumerator pattern that pops up often is a loop that ignores any
+non-{\tt Continue} steps. This is especially useful when implementing
+most enumerators. It's sort of an analogue to {\tt checkDone}, so I
+called it {\tt checkContinue}. It's actually implemented by various
+functions ({\tt checkContinue0}, {\tt checkContinue1}, etc), as most
+enumerators have some sort of state to pass around.
+
+:d unsorted utilities
+|apidoc Data.Enumerator.checkContinue0|
+checkContinue0 :: Monad m
+               => (Enumerator a m b
+                -> (Stream a -> Iteratee a m b)
+                -> Iteratee a m b)
+               -> Enumerator a m b
+checkContinue0 inner = loop where
+	loop (Continue k) = inner loop k
+	loop step = returnI step
+:
+
+:d unsorted utilities
+|apidoc Data.Enumerator.checkContinue1|
+checkContinue1 :: Monad m
+               => ((s1 -> Enumerator a m b)
+                -> s1
+                -> (Stream a -> Iteratee a m b)
+                -> Iteratee a m b)
+               -> s1
+               -> Enumerator a m b
+checkContinue1 inner = loop where
+	loop s (Continue k) = inner loop s k
+	loop _ step = returnI step
+:
+
+{\tt Data.Enumerator.Util} is a hidden module for functions used by several
+public modules, but not logically part of the {\tt enumerator} API.
+
+:f Data/Enumerator/Util.hs
+{-# LANGUAGE CPP #-}
+module Data.Enumerator.Util where
+
+import Data.Char (toUpper, intToDigit, ord)
+import Data.Word (Word8)
+import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
+import Numeric (showIntAtBase)
 :
 
 :f Data/Enumerator/Util.hs

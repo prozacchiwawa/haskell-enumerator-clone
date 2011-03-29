@@ -111,6 +111,54 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.1.1
 :
 
+:d apidoc Data.Enumerator.($=)
+-- | @enum $= enee = 'joinE' enum enee@
+--
+-- &#x201c;Wraps&#x201d; an enumerator /inner/ in an enumeratee /wrapper/.
+-- The resulting enumerator will generate /wrapper/&#x2019;s output type.
+--
+-- As an example, consider an enumerator that yields line character counts
+-- for a text file (e.g. for source code readability checking):
+--
+-- > enumFileCounts :: FilePath -> Enumerator Int IO b
+--
+-- It could be written with either 'joinE' or '($=)':
+--
+-- > import Data.Text as T
+-- > import Data.Enumerator.List as EL
+-- > import Data.Enumerator.Text as ET
+-- >
+-- > enumFileCounts path = joinE (enumFile path) (EL.map T.length)
+-- > enumFileCounts path = enumFile path $= EL.map T.length
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.(=$)
+-- | @enum =$ iter = 'joinI' (enum $$ iter)
+--
+-- &#x201c;Wraps&#x201d; an iteratee /inner/ in an enumeratee /wrapper/.
+-- The resulting iteratee will consume /wrapper/&#x2019;s input type and
+-- yield /inner/&#x2019;s output type.
+--
+-- Note: if the inner iteratee yields leftover input when it finishes,
+-- that extra will be discarded.
+--
+-- As an example, consider an iteratee that converts a stream of UTF8-encoded
+-- bytes into a single 'TL.Text':
+--
+-- > consumeUTF8 :: Monad m => Iteratee ByteString m Text
+--
+-- It could be written with either 'joinI' or '(=$)':
+--
+-- > import Data.Enumerator.Text as ET
+-- >
+-- > consumeUTF8 = joinI (decode utf8 $$ ET.consume)
+-- > consumeUTF8 = decode utf8 =$ ET.consume
+--
+-- Since: 0.4.9
+:
+
 :d apidoc Data.Enumerator.(<==<)
 -- | @'(\<==\<)' = flip '(>==>)'@
 --
@@ -197,6 +245,37 @@ This section just repeats literate documentation in Haddock syntax.
 -- varying error types can be easily composed.
 --
 -- Since: 0.1.1
+:
+
+:d apidoc Data.Enumerator.checkContinue0
+-- | A common pattern in 'Enumerator' implementations is to check whether
+-- the inner 'Iteratee' has finished, and if so, to return its output.
+-- 'checkContinue0' passes its parameter a continuation if the 'Iteratee'
+-- can still consume input; if not, it returns the iteratee's step.
+--
+-- The type signature here is a bit crazy, but it's actually very easy to
+-- use. Take this code:
+--
+-- > repeat :: Monad m => a -> Enumerator a m b
+-- > repeat x = loop where
+-- > 	loop (Continue k) = k (Chunks [x]) >>== loop
+-- > 	loop step = returnI step
+--
+-- And rewrite it without the boilerplate:
+--
+-- > repeat :: Monad m => a -> Enumerator a m b
+-- > repeat x = checkContinue0 $ \loop k -> k (Chunks [x] >>== loop
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.checkContinue1
+-- | Like 'checkContinue0', but allows each loop step to use a state value:
+--
+-- > iterate :: Monad m => (a -> a) -> a -> Enumerator a m b
+-- > iterate f = checkContinue1 $ \loop a k -> k (Chunks [a]) >>== loop (f a)
+--
+-- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.checkDone
@@ -628,6 +707,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.8
 :
 
+:d apidoc Data.Enumerator.Binary.mapAccum
+-- | Similar to 'map', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.Binary.mapAccumM
+-- | Similar to 'mapM', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
 :d apidoc Data.Enumerator.Binary.repeat
 -- | Enumerates an infinite stream of a single byte.
 --
@@ -822,6 +913,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.mapAccum
+-- | Similar to 'map', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.List.mapAccumM
+-- | Similar to 'mapM', but with a stateful step function.
+--
+-- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.List.repeat
@@ -1063,6 +1166,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.8
 :
 
+:d apidoc Data.Enumerator.Text.mapAccum
+-- | Similar to 'map', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.Text.mapAccumM
+-- | Similar to 'mapM', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
 :d apidoc Data.Enumerator.Text.repeat
 -- | Enumerates an infinite stream of a single character.
 --
@@ -1134,4 +1249,11 @@ This section just repeats literate documentation in Haddock syntax.
 -- Similar to 'iterateM'.
 --
 -- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.tryIO
+-- | Try to run an IO computation. If it throws an exception, the exception
+-- is caught and converted into an {\tt Error}.
+--
+-- Since: 0.4.9
 :

@@ -30,10 +30,10 @@
 
 \newcommand{\io}{{\sc i/o}}
 
-\title{enumerator\_0.4.8}
+\title{enumerator\_0.4.9}
 \author{John Millikin\\
         \href{mailto:"John Millikin" <jmillikin@gmail.com>}{\tt jmillikin@gmail.com}}
-\date{March 19, 2011}
+\date{March 29, 2011}
 
 \begin{document}
 

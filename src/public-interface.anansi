@@ -70,11 +70,9 @@ import Prelude hiding (head, drop, takeWhile)
 import Data.Enumerator hiding ( head, drop, iterateM, repeatM, replicateM
                               , generateM, filterM, consume, foldM
                               , concatMapM)
-import Data.Enumerator.Util (tryIO)
 import Control.Monad.IO.Class (MonadIO)
 import qualified Data.ByteString as B
 import qualified System.IO as IO
-import Data.Function (fix)
 import qualified Control.Exception as Exc
 import System.IO.Error (isEOFError)
 import Data.Word (Word8)
@@ -101,7 +99,7 @@ import qualified Prelude
 import Data.Enumerator hiding ( head, drop, generateM, filterM, consume
                               , concatMapM, iterateM, repeatM, replicateM
                               , foldM)
-import Data.Enumerator.Util (tryIO, tSpanBy, tlSpanBy, reprWord, reprChar, textToStrict)
+import Data.Enumerator.Util (tSpanBy, tlSpanBy, reprWord, reprChar, textToStrict)
 import Control.Monad.IO.Class (MonadIO)
 import qualified Control.Exception as Exc
 import Control.Arrow (first)
@@ -143,6 +141,8 @@ import Control.Monad (liftM)
 , ($$)
 , (>==>)
 , (<==<)
+, (=$)
+, ($=)
 
 -- ** Running iteratees
 , run
@@ -158,9 +158,12 @@ import Control.Monad (liftM)
 , joinE
 , Data.Enumerator.sequence
 , enumEOF
+, checkContinue0
+, checkContinue1
 , checkDoneEx
 , checkDone
 , isEOF
+, tryIO
 
 -- ** Testing and debugging
 , printChunks
@@ -223,6 +226,10 @@ import Control.Monad (liftM)
 , Data.Enumerator.Binary.concatMap
 , concatMapM
 
+-- ** Accumulating maps
+, mapAccum
+, mapAccumM
+
 -- ** Infinite streams
 , Data.Enumerator.Binary.iterate
 , iterateM
@@ -267,6 +274,10 @@ import Control.Monad (liftM)
 , Data.Enumerator.List.mapM
 , Data.Enumerator.List.concatMap
 , concatMapM
+
+-- ** Accumulating maps
+, mapAccum
+, mapAccumM
 
 -- ** Infinite streams
 , Data.Enumerator.List.iterate
@@ -316,6 +327,10 @@ import Control.Monad (liftM)
 , Data.Enumerator.Text.mapM
 , Data.Enumerator.Text.concatMap
 , concatMapM
+
+-- ** Accumulating maps
+, mapAccum
+, mapAccumM
 
 -- ** Infinite streams
 , Data.Enumerator.Text.iterate

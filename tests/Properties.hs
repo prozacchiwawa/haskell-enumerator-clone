@@ -34,7 +34,6 @@ import           Test.Framework.Providers.QuickCheck2 (testProperty)
 tests :: [F.Test]
 tests =
 	[ test_StreamInstances
-	, test_Primitives
 	, test_Text
 	, test_ListAnalogues
 	, test_Other
@@ -129,38 +128,6 @@ test_Enumeratee name enee = F.testGroup name props where
 			EL.consume
 		
 		in result == xs
-
--- }}}
-
--- Primitives {{{
-
-test_Primitives :: F.Test
-test_Primitives = F.testGroup "Primitives"
-	[ test_Map
-	, test_ConcatMap
-	, test_MapM
-	, test_ConcatMapM
-	, test_Filter
-	, test_FilterM
-	]
-
-test_Map :: F.Test
-test_Map = test_Enumeratee "map" (EL.map id)
-
-test_ConcatMap :: F.Test
-test_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
-
-test_MapM :: F.Test
-test_MapM = test_Enumeratee "mapM" (EL.mapM return)
-
-test_ConcatMapM :: F.Test
-test_ConcatMapM = test_Enumeratee "concatMapM" (EL.concatMapM (\x -> return [x]))
-
-test_Filter :: F.Test
-test_Filter = test_Enumeratee "filter" (EL.filter (\_ -> True))
-
-test_FilterM :: F.Test
-test_FilterM = test_Enumeratee "filterM" (EL.filterM (\_ -> return True))
 
 -- }}}
 
@@ -435,6 +402,14 @@ test_ListAnalogues = F.testGroup "list analogues"
 	, test_Require
 	, test_Isolate
 	, test_SplitWhen
+	, test_Map
+	, test_ConcatMap
+	, test_MapM
+	, test_ConcatMapM
+	, test_MapAccum
+	, test_MapAccumM
+	, test_Filter
+	, test_FilterM
 	]
 
 check :: Eq b => E.Iteratee a Identity b -> ([a] -> Either Exc.ErrorCall b) -> [a] -> Bool
@@ -616,6 +591,79 @@ test_SplitWhen = testListAnalogueX "splitWhen"
 		split = LS.split . LS.dropFinalBlank . LS.dropDelims . LS.whenElt
 		words = BL.unpack bytes
 		in Right (map B.pack (split (== x) words), []))
+
+test_Map :: F.Test
+test_Map = test_Enumeratee "map" (EL.map id)
+
+test_ConcatMap :: F.Test
+test_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
+
+test_MapM :: F.Test
+test_MapM = test_Enumeratee "mapM" (EL.mapM return)
+
+test_ConcatMapM :: F.Test
+test_ConcatMapM = test_Enumeratee "concatMapM" (EL.concatMapM (\x -> return [x]))
+
+test_MapAccum :: F.Test
+test_MapAccum = testListAnalogue "mapAccum"
+	(do
+		let enee = EL.mapAccum (\s ao -> (s+1, (s, ao))) 10
+		a <- E.joinI (enee $$ EL.head)
+		b <- EL.consume
+		return (a, b))
+	(\xs -> Right $ case xs of
+		[] -> (Nothing, [])
+		(x:xs') -> (Just (10, x), xs'))
+	(do
+		let enee = ET.mapAccum (\s ao -> (s+1, succ ao)) 10
+		a <- E.joinI (enee $$ EL.head)
+		b <- ET.consume
+		return (a, b))
+	(\text -> Right $ case TL.uncons text of
+		Nothing -> (Nothing, TL.empty)
+		Just (c, text') -> (Just (T.singleton (succ c)), text'))
+	(do
+		let enee = EB.mapAccum (\s ao -> (s+1, ao + s)) 10
+		a <- E.joinI (enee $$ EL.head)
+		b <- EB.consume
+		return (a, b))
+	(\bytes -> Right $ case BL.uncons bytes of
+		Nothing -> (Nothing, BL.empty)
+		Just (b, bytes') -> (Just (B.singleton (b + 10)), bytes'))
+
+
+test_MapAccumM :: F.Test
+test_MapAccumM = testListAnalogue "mapAccumM"
+	(do
+		let enee = EL.mapAccumM (\s ao -> return (s+1, (s, ao))) 10
+		a <- E.joinI (enee $$ EL.head)
+		b <- EL.consume
+		return (a, b))
+	(\xs -> Right $ case xs of
+		[] -> (Nothing, [])
+		(x:xs') -> (Just (10, x), xs'))
+	(do
+		let enee = ET.mapAccumM (\s ao -> return (s+1, succ ao)) 10
+		a <- E.joinI (enee $$ EL.head)
+		b <- ET.consume
+		return (a, b))
+	(\text -> Right $ case TL.uncons text of
+		Nothing -> (Nothing, TL.empty)
+		Just (c, text') -> (Just (T.singleton (succ c)), text'))
+	(do
+		let enee = EB.mapAccumM (\s ao -> return (s+1, ao + s)) 10
+		a <- E.joinI (enee $$ EL.head)
+		b <- EB.consume
+		return (a, b))
+	(\bytes -> Right $ case BL.uncons bytes of
+		Nothing -> (Nothing, BL.empty)
+		Just (b, bytes') -> (Just (B.singleton (b + 10)), bytes'))
+
+test_Filter :: F.Test
+test_Filter = test_Enumeratee "filter" (EL.filter (\_ -> True))
+
+test_FilterM :: F.Test
+test_FilterM = test_Enumeratee "filterM" (EL.filterM (\_ -> return True))
 
 -- }}}
 

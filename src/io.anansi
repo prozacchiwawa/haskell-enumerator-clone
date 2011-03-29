@@ -15,16 +15,13 @@ enumHandle :: MonadIO m
            => Integer -- ^ Buffer size
            -> IO.Handle
            -> Enumerator B.ByteString m b
-enumHandle bufferSize h = do
+enumHandle bufferSize h = checkContinue0 $ \loop k -> do
 	let intSize = fromInteger bufferSize
 	
-	fix $ \loop step -> case step of
-		Continue k -> do
-			bytes <- tryIO (getBytes h intSize)
-			if B.null bytes
-				then continue k
-				else k (Chunks [bytes]) >>== loop
-		_ -> returnI step
+	bytes <- tryIO (getBytes h intSize)
+	if B.null bytes
+		then continue k
+		else k (Chunks [bytes]) >>== loop
 :
 
 :d binary IO
@@ -41,19 +38,20 @@ enumHandleRange bufferSize offset count h s = seek >> enum where
 		Just off -> tryIO (IO.hSeek h IO.AbsoluteSeek off)
 	
 	enum = case count of
-		Just n -> loop n s
+		Just n -> enumRange n s
 		Nothing -> enumHandle bufferSize h s
 	
-	loop n (Continue k) =
-		let rem = fromInteger (min bufferSize n) in
-		if rem <= 0
+	enumRange = checkContinue1 $ \loop n k -> let
+		rem = fromInteger (min bufferSize n)
+		keepGoing = do
+			bytes <- tryIO (getBytes h rem)
+			if B.null bytes
+				then continue k
+				else feed bytes
+		feed bs = k (Chunks [bs]) >>== loop (n - (toInteger (B.length bs)))
+		in if rem <= 0
 			then continue k
-			else do
-				bytes <- tryIO (getBytes h rem)
-				if B.null bytes
-					then continue k
-					else k (Chunks [bytes]) >>== loop (n - (toInteger (B.length bytes)))
-	loop _ step = returnI step
+			else keepGoing
 :
 
 :d binary IO
@@ -110,19 +108,18 @@ such as Python's {\tt xreadlines()}.
 |apidoc Data.Enumerator.Text.enumHandle|
 enumHandle :: MonadIO m => IO.Handle
            -> Enumerator T.Text m b
-enumHandle h = loop where
-	loop (Continue k) = do
-		maybeText <- tryIO getText
-		case maybeText of
-			Nothing -> continue k
-			Just text -> k (Chunks [text]) >>== loop
-	
-	loop step = returnI step
-	getText = Exc.catch
+enumHandle h = checkContinue0 $ \loop k -> do
+	let getText = Exc.catch
 		(Just `fmap` TIO.hGetLine h)
 		(\err -> if isEOFError err
 			then return Nothing
 			else Exc.throwIO err)
+	
+	maybeText <- tryIO getText
+	case maybeText of
+		Nothing -> continue k
+		Just text -> k (Chunks [text]) >>== loop
+	
 :
 
 :d text IO
