@@ -111,6 +111,54 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.1.1
 :
 
+:d apidoc Data.Enumerator.($=)
+-- | @enum $= enee = 'joinE' enum enee@
+--
+-- &#x201c;Wraps&#x201d; an enumerator /inner/ in an enumeratee /wrapper/.
+-- The resulting enumerator will generate /wrapper/&#x2019;s output type.
+--
+-- As an example, consider an enumerator that yields line character counts
+-- for a text file (e.g. for source code readability checking):
+--
+-- > enumFileCounts :: FilePath -> Enumerator Int IO b
+--
+-- It could be written with either 'joinE' or '($=)':
+--
+-- > import Data.Text as T
+-- > import Data.Enumerator.List as EL
+-- > import Data.Enumerator.Text as ET
+-- >
+-- > enumFileCounts path = joinE (enumFile path) (EL.map T.length)
+-- > enumFileCounts path = enumFile path $= EL.map T.length
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.(=$)
+-- | @enum =$ iter = 'joinI' (enum $$ iter)
+--
+-- &#x201c;Wraps&#x201d; an iteratee /inner/ in an enumeratee /wrapper/.
+-- The resulting iteratee will consume /wrapper/&#x2019;s input type and
+-- yield /inner/&#x2019;s output type.
+--
+-- Note: if the inner iteratee yields leftover input when it finishes,
+-- that extra will be discarded.
+--
+-- As an example, consider an iteratee that converts a stream of UTF8-encoded
+-- bytes into a single 'TL.Text':
+--
+-- > consumeUTF8 :: Monad m => Iteratee ByteString m Text
+--
+-- It could be written with either 'joinI' or '(=$)':
+--
+-- > import Data.Enumerator.Text as ET
+-- >
+-- > consumeUTF8 = joinI (decode utf8 $$ ET.consume)
+-- > consumeUTF8 = decode utf8 =$ ET.consume
+--
+-- Since: 0.4.9
+:
+
 :d apidoc Data.Enumerator.(<==<)
 -- | @'(\<==\<)' = flip '(>==>)'@
 --

@@ -141,6 +141,8 @@ import Control.Monad (liftM)
 , ($$)
 , (>==>)
 , (<==<)
+, (=$)
+, ($=)
 
 -- ** Running iteratees
 , run
