@@ -214,6 +214,91 @@ concatMapM f = checkDone (continue . step) where
 			checkDoneEx (Chunks [T.pack xs]) (\k' -> loop k' xs)
 :
 
+\subsection{Accumulating maps}
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.mapAccum|
+mapAccum :: Monad m => (s -> ao -> (s, ai)) -> s -> Enumeratee ao ai m b
+mapAccum f s0 = checkDone (continue . step s0) where
+	step _ k EOF = yield (Continue k) EOF
+	step s k (Chunks xs) = loop s k xs
+	
+	loop s k [] = continue (step s k)
+	loop s k (x:xs) = case f s x of
+		(s', ai) -> k (Chunks [ai]) >>==
+			checkDoneEx (Chunks xs) (\k' -> loop s' k' xs)
+
+|apidoc Data.Enumerator.List.mapAccumM|
+mapAccumM :: Monad m => (s -> ao -> m (s, ai)) -> s -> Enumeratee ao ai m b
+mapAccumM f s0 = checkDone (continue . step s0) where
+	step _ k EOF = yield (Continue k) EOF
+	step s k (Chunks xs) = loop s k xs
+	
+	loop s k [] = continue (step s k)
+	loop s k (x:xs) = do
+		(s', ai) <- lift (f s x)
+		k (Chunks [ai]) >>==
+			checkDoneEx (Chunks xs) (\k' -> loop s' k' xs)
+:
+
+:d byte-oriented list analogues
+|apidoc Data.Enumerator.Binary.mapAccum|
+mapAccum :: Monad m => (s -> Word8 -> (s, Word8)) -> s -> Enumeratee B.ByteString B.ByteString m b
+mapAccum f s0 = checkDone (continue . step s0) where
+	step _ k EOF = yield (Continue k) EOF
+	step s k (Chunks xs) = loop s k xs
+	
+	loop s k [] = continue (step s k)
+	loop s k (x:xs) = case B.uncons x of
+		Nothing -> loop s k xs
+		Just (b, x') -> case f s b of
+			(s', ai) -> k (Chunks [B.singleton ai]) >>==
+				checkDoneEx (Chunks (x':xs)) (\k' -> loop s' k' (x':xs))
+
+|apidoc Data.Enumerator.Binary.mapAccumM|
+mapAccumM :: Monad m => (s -> Word8 -> m (s, Word8)) -> s -> Enumeratee B.ByteString B.ByteString m b
+mapAccumM f s0 = checkDone (continue . step s0) where
+	step _ k EOF = yield (Continue k) EOF
+	step s k (Chunks xs) = loop s k xs
+	
+	loop s k [] = continue (step s k)
+	loop s k (x:xs) = case B.uncons x of
+		Nothing -> loop s k xs
+		Just (b, x') -> do
+			(s', ai) <- lift (f s b)
+			k (Chunks [B.singleton ai]) >>==
+				checkDoneEx (Chunks (x':xs)) (\k' -> loop s' k' (x':xs))
+:
+
+:d text-oriented list analogues
+|apidoc Data.Enumerator.Text.mapAccum|
+mapAccum :: Monad m => (s -> Char -> (s, Char)) -> s -> Enumeratee T.Text T.Text m b
+mapAccum f s0 = checkDone (continue . step s0) where
+	step _ k EOF = yield (Continue k) EOF
+	step s k (Chunks xs) = loop s k xs
+	
+	loop s k [] = continue (step s k)
+	loop s k (x:xs) = case T.uncons x of
+		Nothing -> loop s k xs
+		Just (c, x') -> case f s c of
+			(s', ai) -> k (Chunks [T.singleton ai]) >>==
+				checkDoneEx (Chunks (x':xs)) (\k' -> loop s' k' (x':xs))
+
+|apidoc Data.Enumerator.Text.mapAccumM|
+mapAccumM :: Monad m => (s -> Char -> m (s, Char)) -> s -> Enumeratee T.Text T.Text m b
+mapAccumM f s0 = checkDone (continue . step s0) where
+	step _ k EOF = yield (Continue k) EOF
+	step s k (Chunks xs) = loop s k xs
+	
+	loop s k [] = continue (step s k)
+	loop s k (x:xs) = case T.uncons x of
+		Nothing -> loop s k xs
+		Just (c, x') -> do
+			(s', ai) <- lift (f s c)
+			k (Chunks [T.singleton ai]) >>==
+				checkDoneEx (Chunks (x':xs)) (\k' -> loop s' k' (x':xs))
+:
+
 \subsection{Infinite streams}
 
 {\tt iterate} and {\tt iterateM} apply a function repeatedly to the base

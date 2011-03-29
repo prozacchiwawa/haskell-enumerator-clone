@@ -659,6 +659,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.8
 :
 
+:d apidoc Data.Enumerator.Binary.mapAccum
+-- | Similar to 'map', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.Binary.mapAccumM
+-- | Similar to 'mapM', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
 :d apidoc Data.Enumerator.Binary.repeat
 -- | Enumerates an infinite stream of a single byte.
 --
@@ -853,6 +865,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.mapAccum
+-- | Similar to 'map', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.List.mapAccumM
+-- | Similar to 'mapM', but with a stateful step function.
+--
+-- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.List.repeat
@@ -1092,6 +1116,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.mapAccum
+-- | Similar to 'map', but with a stateful step function.
+--
+-- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.Text.mapAccumM
+-- | Similar to 'mapM', but with a stateful step function.
+--
+-- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.Text.repeat
