@@ -34,7 +34,6 @@ import           Test.Framework.Providers.QuickCheck2 (testProperty)
 tests :: [F.Test]
 tests =
 	[ test_StreamInstances
-	, test_Primitives
 	, test_Text
 	, test_ListAnalogues
 	, test_Other
@@ -129,38 +128,6 @@ test_Enumeratee name enee = F.testGroup name props where
 			EL.consume
 		
 		in result == xs
-
--- }}}
-
--- Primitives {{{
-
-test_Primitives :: F.Test
-test_Primitives = F.testGroup "Primitives"
-	[ test_Map
-	, test_ConcatMap
-	, test_MapM
-	, test_ConcatMapM
-	, test_Filter
-	, test_FilterM
-	]
-
-test_Map :: F.Test
-test_Map = test_Enumeratee "map" (EL.map id)
-
-test_ConcatMap :: F.Test
-test_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
-
-test_MapM :: F.Test
-test_MapM = test_Enumeratee "mapM" (EL.mapM return)
-
-test_ConcatMapM :: F.Test
-test_ConcatMapM = test_Enumeratee "concatMapM" (EL.concatMapM (\x -> return [x]))
-
-test_Filter :: F.Test
-test_Filter = test_Enumeratee "filter" (EL.filter (\_ -> True))
-
-test_FilterM :: F.Test
-test_FilterM = test_Enumeratee "filterM" (EL.filterM (\_ -> return True))
 
 -- }}}
 
@@ -435,6 +402,12 @@ test_ListAnalogues = F.testGroup "list analogues"
 	, test_Require
 	, test_Isolate
 	, test_SplitWhen
+	, test_Map
+	, test_ConcatMap
+	, test_MapM
+	, test_ConcatMapM
+	, test_Filter
+	, test_FilterM
 	]
 
 check :: Eq b => E.Iteratee a Identity b -> ([a] -> Either Exc.ErrorCall b) -> [a] -> Bool
@@ -616,6 +589,24 @@ test_SplitWhen = testListAnalogueX "splitWhen"
 		split = LS.split . LS.dropFinalBlank . LS.dropDelims . LS.whenElt
 		words = BL.unpack bytes
 		in Right (map B.pack (split (== x) words), []))
+
+test_Map :: F.Test
+test_Map = test_Enumeratee "map" (EL.map id)
+
+test_ConcatMap :: F.Test
+test_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
+
+test_MapM :: F.Test
+test_MapM = test_Enumeratee "mapM" (EL.mapM return)
+
+test_ConcatMapM :: F.Test
+test_ConcatMapM = test_Enumeratee "concatMapM" (EL.concatMapM (\x -> return [x]))
+
+test_Filter :: F.Test
+test_Filter = test_Enumeratee "filter" (EL.filter (\_ -> True))
+
+test_FilterM :: F.Test
+test_FilterM = test_Enumeratee "filterM" (EL.filterM (\_ -> return True))
 
 -- }}}
 
