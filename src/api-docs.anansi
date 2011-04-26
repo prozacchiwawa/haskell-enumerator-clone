@@ -55,6 +55,11 @@ This section just repeats literate documentation in Haddock syntax.
 -- Maintainer: jmillikin@gmail.com
 -- Portability: portable
 --
+-- Byte-oriented alternatives to "Data.Enumerator.List". Note that the
+-- enumeratees in this module must unpack their inputs to work properly. If
+-- you do not need to handle leftover input on a byte-by-byte basis, the
+-- chunk-oriented versions will be much faster.
+--
 -- This module is intended to be imported qualified:
 --
 -- @
@@ -75,6 +80,11 @@ This section just repeats literate documentation in Haddock syntax.
 --
 -- Maintainer: jmillikin@gmail.com
 -- Portability: portable
+--
+-- Character-oriented alternatives to "Data.Enumerator.List". Note that the
+-- enumeratees in this module must unpack their inputs to work properly. If
+-- you do not need to handle leftover input on a char-by-char basis, the
+-- chunk-oriented versions will be much faster.
 --
 -- This module is intended to be imported qualified:
 --
