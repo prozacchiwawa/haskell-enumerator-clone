@@ -19,7 +19,7 @@ fold step = continue . loop where
 	f = L.foldl' step
 	loop acc stream = case stream of
 		Chunks [] -> continue (loop acc)
-		Chunks xs -> continue (loop (f acc xs))
+		Chunks xs -> continue (loop $! f acc xs)
 		EOF -> yield acc EOF
 :
 
