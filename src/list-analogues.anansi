@@ -914,3 +914,12 @@ splitWhen p = loop where
 lines :: Monad m => Enumeratee T.Text T.Text m b
 lines = splitWhen (== '\n')
 :
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.unique|
+unique :: (Ord a, Monad m) => Enumeratee a a m b
+unique = concatMapAccum step Data.Set.empty where
+	step s x = if Data.Set.member x s
+		then (s, [])
+		else (Data.Set.insert x s, [x])
+:

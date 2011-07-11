@@ -91,6 +91,7 @@ import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad as CM
 import qualified Data.List as L
 import Control.Exception (ErrorCall(..))
+import qualified Data.Set
 :
 
 :d Data.Enumerator.Text imports
@@ -314,6 +315,7 @@ import Control.Monad (liftM)
 , require
 , isolate
 , splitWhen
+, unique
 :
 
 :d Data.Enumerator.Text exports

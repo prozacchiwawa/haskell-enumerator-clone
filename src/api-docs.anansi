@@ -1047,6 +1047,16 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.8
 :
 
+:d apidoc Data.Enumerator.List.unique
+-- | Remove duplicate elements from a stream, passing through the first
+-- instance of each value.
+--
+-- Similar to 'nub', but more efficient because it uses a 'Data.Set.Set'
+-- internally.
+--
+-- Since: 0.4.11
+:
+
 :d apidoc Data.Enumerator.Text.Codec
 -- | Since: 0.2
 :
