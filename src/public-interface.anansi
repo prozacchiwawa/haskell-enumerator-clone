@@ -66,7 +66,7 @@ import Data.List (genericLength)
 :
 
 :d Data.Enumerator.Binary imports
-import Prelude hiding (head, drop, takeWhile)
+import Prelude hiding (head, drop, takeWhile, mapM_)
 import Data.Enumerator hiding ( head, drop, iterateM, repeatM, replicateM
                               , generateM, filterM, consume, foldM
                               , concatMapM)
@@ -223,6 +223,7 @@ import Control.Monad (liftM)
 -- ** Maps
 , Data.Enumerator.Binary.map
 , Data.Enumerator.Binary.mapM
+, Data.Enumerator.Binary.mapM_
 , Data.Enumerator.Binary.concatMap
 , concatMapM
 
@@ -272,6 +273,7 @@ import Control.Monad (liftM)
 -- ** Maps
 , Data.Enumerator.List.map
 , Data.Enumerator.List.mapM
+, Data.Enumerator.List.mapM_
 , Data.Enumerator.List.concatMap
 , concatMapM
 
@@ -325,6 +327,7 @@ import Control.Monad (liftM)
 -- ** Maps
 , Data.Enumerator.Text.map
 , Data.Enumerator.Text.mapM
+, Data.Enumerator.Text.mapM_
 , Data.Enumerator.Text.concatMap
 , concatMapM
 

@@ -160,6 +160,10 @@ map f = Data.Enumerator.List.concatMap (\x -> [f x])
 mapM :: Monad m => (ao -> m ai)
      -> Enumeratee ao ai m b
 mapM f = concatMapM (\x -> Prelude.mapM f [x])
+
+|apidoc Data.Enumerator.List.mapM_|
+mapM_ :: Monad m => (a -> m b) -> Iteratee a m ()
+mapM_ f = foldM (\_ x -> f x >> return ()) ()
 :
 
 :d byte-oriented list analogues
@@ -170,6 +174,10 @@ map f = Data.Enumerator.Binary.concatMap (\x -> B.singleton (f x))
 |apidoc Data.Enumerator.Binary.mapM|
 mapM :: Monad m => (Word8 -> m Word8) -> Enumeratee B.ByteString B.ByteString m b
 mapM f = Data.Enumerator.Binary.concatMapM (\x -> liftM B.singleton (f x))
+
+|apidoc Data.Enumerator.Binary.mapM_|
+mapM_ :: Monad m => (Word8 -> m ()) -> Iteratee B.ByteString m ()
+mapM_ f = foldM (\_ x -> f x >> return ()) ()
 
 |apidoc Data.Enumerator.Binary.concatMap|
 concatMap :: Monad m => (Word8 -> B.ByteString) -> Enumeratee B.ByteString B.ByteString m b
@@ -196,6 +204,10 @@ map f = Data.Enumerator.Text.concatMap (\x -> T.singleton (f x))
 |apidoc Data.Enumerator.Text.mapM|
 mapM :: Monad m => (Char -> m Char) -> Enumeratee T.Text T.Text m b
 mapM f = Data.Enumerator.Text.concatMapM (\x -> liftM T.singleton (f x))
+
+|apidoc Data.Enumerator.Text.mapM_|
+mapM_ :: Monad m => (Char -> m ()) -> Iteratee T.Text m ()
+mapM_ f = foldM (\_ x -> f x >> return ()) ()
 
 |apidoc Data.Enumerator.Text.concatMap|
 concatMap :: Monad m => (Char -> T.Text) -> Enumeratee T.Text T.Text m b

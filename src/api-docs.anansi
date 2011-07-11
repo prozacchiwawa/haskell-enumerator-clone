@@ -717,6 +717,12 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.8
 :
 
+:d apidoc Data.Enumerator.Binary.mapM_
+-- | @'mapM_' f@ applies /f/ to each input byte, and discards the results.
+--
+-- Since: 0.4.11
+:
+
 :d apidoc Data.Enumerator.Binary.mapAccum
 -- | Similar to 'map', but with a stateful step function.
 --
@@ -923,6 +929,12 @@ This section just repeats literate documentation in Haddock syntax.
 -- resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.mapM_
+-- | @'mapM_' f@ applies /f/ to each input element, and discards the results.
+--
+-- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.List.mapAccum
@@ -1174,6 +1186,13 @@ This section just repeats literate documentation in Haddock syntax.
 -- resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.Text.mapM_
+-- | @'mapM_' f@ applies /f/ to each input character, and discards the
+-- results.
+--
+-- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.Text.mapAccum
