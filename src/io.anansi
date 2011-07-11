@@ -93,7 +93,7 @@ iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
 	step (Chunks bytes) = do
-		tryIO (mapM_ (B.hPut h) bytes)
+		tryIO (CM.mapM_ (B.hPut h) bytes)
 		continue step
 :
 
@@ -140,6 +140,6 @@ iterHandle h = continue step where
 	step EOF = yield () EOF
 	step (Chunks []) = continue step
 	step (Chunks chunks) = do
-		tryIO (mapM_ (TIO.hPutStr h) chunks)
+		tryIO (CM.mapM_ (TIO.hPutStr h) chunks)
 		continue step
 :

@@ -66,7 +66,7 @@ import Data.List (genericLength)
 :
 
 :d Data.Enumerator.Binary imports
-import Prelude hiding (head, drop, takeWhile)
+import Prelude hiding (head, drop, takeWhile, mapM_)
 import Data.Enumerator hiding ( head, drop, iterateM, repeatM, replicateM
                               , generateM, filterM, consume, foldM
                               , concatMapM)
@@ -91,6 +91,7 @@ import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad as CM
 import qualified Data.List as L
 import Control.Exception (ErrorCall(..))
+import qualified Data.Set
 :
 
 :d Data.Enumerator.Text imports
@@ -223,12 +224,15 @@ import Control.Monad (liftM)
 -- ** Maps
 , Data.Enumerator.Binary.map
 , Data.Enumerator.Binary.mapM
+, Data.Enumerator.Binary.mapM_
 , Data.Enumerator.Binary.concatMap
 , concatMapM
 
 -- ** Accumulating maps
 , mapAccum
 , mapAccumM
+, concatMapAccum
+, concatMapAccumM
 
 -- ** Infinite streams
 , Data.Enumerator.Binary.iterate
@@ -272,12 +276,15 @@ import Control.Monad (liftM)
 -- ** Maps
 , Data.Enumerator.List.map
 , Data.Enumerator.List.mapM
+, Data.Enumerator.List.mapM_
 , Data.Enumerator.List.concatMap
 , concatMapM
 
 -- ** Accumulating maps
 , mapAccum
 , mapAccumM
+, concatMapAccum
+, concatMapAccumM
 
 -- ** Infinite streams
 , Data.Enumerator.List.iterate
@@ -308,6 +315,7 @@ import Control.Monad (liftM)
 , require
 , isolate
 , splitWhen
+, unique
 :
 
 :d Data.Enumerator.Text exports
@@ -325,12 +333,15 @@ import Control.Monad (liftM)
 -- ** Maps
 , Data.Enumerator.Text.map
 , Data.Enumerator.Text.mapM
+, Data.Enumerator.Text.mapM_
 , Data.Enumerator.Text.concatMap
 , concatMapM
 
 -- ** Accumulating maps
 , mapAccum
 , mapAccumM
+, concatMapAccum
+, concatMapAccumM
 
 -- ** Infinite streams
 , Data.Enumerator.Text.iterate

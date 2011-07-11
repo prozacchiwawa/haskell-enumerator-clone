@@ -160,6 +160,10 @@ map f = Data.Enumerator.List.concatMap (\x -> [f x])
 mapM :: Monad m => (ao -> m ai)
      -> Enumeratee ao ai m b
 mapM f = concatMapM (\x -> Prelude.mapM f [x])
+
+|apidoc Data.Enumerator.List.mapM_|
+mapM_ :: Monad m => (a -> m b) -> Iteratee a m ()
+mapM_ f = foldM (\_ x -> f x >> return ()) ()
 :
 
 :d byte-oriented list analogues
@@ -170,6 +174,10 @@ map f = Data.Enumerator.Binary.concatMap (\x -> B.singleton (f x))
 |apidoc Data.Enumerator.Binary.mapM|
 mapM :: Monad m => (Word8 -> m Word8) -> Enumeratee B.ByteString B.ByteString m b
 mapM f = Data.Enumerator.Binary.concatMapM (\x -> liftM B.singleton (f x))
+
+|apidoc Data.Enumerator.Binary.mapM_|
+mapM_ :: Monad m => (Word8 -> m ()) -> Iteratee B.ByteString m ()
+mapM_ f = foldM (\_ x -> f x >> return ()) ()
 
 |apidoc Data.Enumerator.Binary.concatMap|
 concatMap :: Monad m => (Word8 -> B.ByteString) -> Enumeratee B.ByteString B.ByteString m b
@@ -197,6 +205,10 @@ map f = Data.Enumerator.Text.concatMap (\x -> T.singleton (f x))
 mapM :: Monad m => (Char -> m Char) -> Enumeratee T.Text T.Text m b
 mapM f = Data.Enumerator.Text.concatMapM (\x -> liftM T.singleton (f x))
 
+|apidoc Data.Enumerator.Text.mapM_|
+mapM_ :: Monad m => (Char -> m ()) -> Iteratee T.Text m ()
+mapM_ f = foldM (\_ x -> f x >> return ()) ()
+
 |apidoc Data.Enumerator.Text.concatMap|
 concatMap :: Monad m => (Char -> T.Text) -> Enumeratee T.Text T.Text m b
 concatMap f = Data.Enumerator.Text.concatMapM (return . f)
@@ -217,34 +229,44 @@ concatMapM f = checkDone (continue . step) where
 \subsection{Accumulating maps}
 
 :d element-oriented list analogues
-|apidoc Data.Enumerator.List.mapAccum|
-mapAccum :: Monad m => (s -> ao -> (s, ai)) -> s -> Enumeratee ao ai m b
-mapAccum f s0 = checkDone (continue . step s0) where
+|apidoc Data.Enumerator.List.concatMapAccum|
+concatMapAccum :: Monad m => (s -> ao -> (s, [ai])) -> s -> Enumeratee ao ai m b
+concatMapAccum f s0 = checkDone (continue . step s0) where
 	step _ k EOF = yield (Continue k) EOF
 	step s k (Chunks xs) = loop s k xs
 	
 	loop s k [] = continue (step s k)
 	loop s k (x:xs) = case f s x of
-		(s', ai) -> k (Chunks [ai]) >>==
+		(s', ai) -> k (Chunks ai) >>==
 			checkDoneEx (Chunks xs) (\k' -> loop s' k' xs)
 
-|apidoc Data.Enumerator.List.mapAccumM|
-mapAccumM :: Monad m => (s -> ao -> m (s, ai)) -> s -> Enumeratee ao ai m b
-mapAccumM f s0 = checkDone (continue . step s0) where
+|apidoc Data.Enumerator.List.concatMapAccumM|
+concatMapAccumM :: Monad m => (s -> ao -> m (s, [ai])) -> s -> Enumeratee ao ai m b
+concatMapAccumM f s0 = checkDone (continue . step s0) where
 	step _ k EOF = yield (Continue k) EOF
 	step s k (Chunks xs) = loop s k xs
 	
 	loop s k [] = continue (step s k)
 	loop s k (x:xs) = do
 		(s', ai) <- lift (f s x)
-		k (Chunks [ai]) >>==
+		k (Chunks ai) >>==
 			checkDoneEx (Chunks xs) (\k' -> loop s' k' xs)
+
+|apidoc Data.Enumerator.List.mapAccum|
+mapAccum :: Monad m => (s -> ao -> (s, ai)) -> s -> Enumeratee ao ai m b
+mapAccum f = concatMapAccum (\s ao -> case f s ao of (s', ai) -> (s', [ai]))
+
+|apidoc Data.Enumerator.List.mapAccumM|
+mapAccumM :: Monad m => (s -> ao -> m (s, ai)) -> s -> Enumeratee ao ai m b
+mapAccumM f = concatMapAccumM (\s ao -> do
+	(s', ai) <- f s ao
+	return (s', [ai]))
 :
 
 :d byte-oriented list analogues
-|apidoc Data.Enumerator.Binary.mapAccum|
-mapAccum :: Monad m => (s -> Word8 -> (s, Word8)) -> s -> Enumeratee B.ByteString B.ByteString m b
-mapAccum f s0 = checkDone (continue . step s0) where
+|apidoc Data.Enumerator.Binary.concatMapAccum|
+concatMapAccum :: Monad m => (s -> Word8 -> (s, B.ByteString)) -> s -> Enumeratee B.ByteString B.ByteString m b
+concatMapAccum f s0 = checkDone (continue . step s0) where
 	step _ k EOF = yield (Continue k) EOF
 	step s k (Chunks xs) = loop s k xs
 	
@@ -252,12 +274,12 @@ mapAccum f s0 = checkDone (continue . step s0) where
 	loop s k (x:xs) = case B.uncons x of
 		Nothing -> loop s k xs
 		Just (b, x') -> case f s b of
-			(s', ai) -> k (Chunks [B.singleton ai]) >>==
+			(s', ai) -> k (Chunks [ai]) >>==
 				checkDoneEx (Chunks (x':xs)) (\k' -> loop s' k' (x':xs))
 
-|apidoc Data.Enumerator.Binary.mapAccumM|
-mapAccumM :: Monad m => (s -> Word8 -> m (s, Word8)) -> s -> Enumeratee B.ByteString B.ByteString m b
-mapAccumM f s0 = checkDone (continue . step s0) where
+|apidoc Data.Enumerator.Binary.concatMapAccumM|
+concatMapAccumM :: Monad m => (s -> Word8 -> m (s, B.ByteString)) -> s -> Enumeratee B.ByteString B.ByteString m b
+concatMapAccumM f s0 = checkDone (continue . step s0) where
 	step _ k EOF = yield (Continue k) EOF
 	step s k (Chunks xs) = loop s k xs
 	
@@ -266,14 +288,24 @@ mapAccumM f s0 = checkDone (continue . step s0) where
 		Nothing -> loop s k xs
 		Just (b, x') -> do
 			(s', ai) <- lift (f s b)
-			k (Chunks [B.singleton ai]) >>==
+			k (Chunks [ai]) >>==
 				checkDoneEx (Chunks (x':xs)) (\k' -> loop s' k' (x':xs))
+
+|apidoc Data.Enumerator.Binary.mapAccum|
+mapAccum :: Monad m => (s -> Word8 -> (s, Word8)) -> s -> Enumeratee B.ByteString B.ByteString m b
+mapAccum f = concatMapAccum (\s w -> case f s w of (s', w') -> (s', B.singleton w'))
+
+|apidoc Data.Enumerator.Binary.mapAccumM|
+mapAccumM :: Monad m => (s -> Word8 -> m (s, Word8)) -> s -> Enumeratee B.ByteString B.ByteString m b
+mapAccumM f = concatMapAccumM (\s w -> do
+	(s', w') <- f s w
+	return (s', B.singleton w'))
 :
 
 :d text-oriented list analogues
-|apidoc Data.Enumerator.Text.mapAccum|
-mapAccum :: Monad m => (s -> Char -> (s, Char)) -> s -> Enumeratee T.Text T.Text m b
-mapAccum f s0 = checkDone (continue . step s0) where
+|apidoc Data.Enumerator.Text.concatMapAccum|
+concatMapAccum :: Monad m => (s -> Char -> (s, T.Text)) -> s -> Enumeratee T.Text T.Text m b
+concatMapAccum f s0 = checkDone (continue . step s0) where
 	step _ k EOF = yield (Continue k) EOF
 	step s k (Chunks xs) = loop s k xs
 	
@@ -281,12 +313,12 @@ mapAccum f s0 = checkDone (continue . step s0) where
 	loop s k (x:xs) = case T.uncons x of
 		Nothing -> loop s k xs
 		Just (c, x') -> case f s c of
-			(s', ai) -> k (Chunks [T.singleton ai]) >>==
+			(s', ai) -> k (Chunks [ai]) >>==
 				checkDoneEx (Chunks (x':xs)) (\k' -> loop s' k' (x':xs))
 
-|apidoc Data.Enumerator.Text.mapAccumM|
-mapAccumM :: Monad m => (s -> Char -> m (s, Char)) -> s -> Enumeratee T.Text T.Text m b
-mapAccumM f s0 = checkDone (continue . step s0) where
+|apidoc Data.Enumerator.Text.concatMapAccumM|
+concatMapAccumM :: Monad m => (s -> Char -> m (s, T.Text)) -> s -> Enumeratee T.Text T.Text m b
+concatMapAccumM f s0 = checkDone (continue . step s0) where
 	step _ k EOF = yield (Continue k) EOF
 	step s k (Chunks xs) = loop s k xs
 	
@@ -295,8 +327,18 @@ mapAccumM f s0 = checkDone (continue . step s0) where
 		Nothing -> loop s k xs
 		Just (c, x') -> do
 			(s', ai) <- lift (f s c)
-			k (Chunks [T.singleton ai]) >>==
+			k (Chunks [ai]) >>==
 				checkDoneEx (Chunks (x':xs)) (\k' -> loop s' k' (x':xs))
+
+|apidoc Data.Enumerator.Text.mapAccum|
+mapAccum :: Monad m => (s -> Char -> (s, Char)) -> s -> Enumeratee T.Text T.Text m b
+mapAccum f = concatMapAccum (\s c -> case f s c of (s', c') -> (s', T.singleton c'))
+
+|apidoc Data.Enumerator.Text.mapAccumM|
+mapAccumM :: Monad m => (s -> Char -> m (s, Char)) -> s -> Enumeratee T.Text T.Text m b
+mapAccumM f = concatMapAccumM (\s c -> do
+	(s', c') <- f s c
+	return (s', T.singleton c'))
 :
 
 \subsection{Infinite streams}
@@ -871,4 +913,13 @@ splitWhen p = loop where
 |apidoc Data.Enumerator.Text.lines|
 lines :: Monad m => Enumeratee T.Text T.Text m b
 lines = splitWhen (== '\n')
+:
+
+:d element-oriented list analogues
+|apidoc Data.Enumerator.List.unique|
+unique :: (Ord a, Monad m) => Enumeratee a a m b
+unique = concatMapAccum step Data.Set.empty where
+	step s x = if Data.Set.member x s
+		then (s, [])
+		else (Data.Set.insert x s, [x])
 :

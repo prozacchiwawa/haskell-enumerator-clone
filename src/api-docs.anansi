@@ -717,6 +717,12 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.8
 :
 
+:d apidoc Data.Enumerator.Binary.mapM_
+-- | @'mapM_' f@ applies /f/ to each input byte, and discards the results.
+--
+-- Since: 0.4.11
+:
+
 :d apidoc Data.Enumerator.Binary.mapAccum
 -- | Similar to 'map', but with a stateful step function.
 --
@@ -727,6 +733,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- | Similar to 'mapM', but with a stateful step function.
 --
 -- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.Binary.concatMapAccum
+-- | Similar to 'concatMap', but with a stateful step function.
+--
+-- Since: 0.4.11
+:
+
+:d apidoc Data.Enumerator.Binary.concatMapAccumM
+-- | Similar to 'concatMapM', but with a stateful step function.
+--
+-- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.Binary.repeat
@@ -925,6 +943,12 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.8
 :
 
+:d apidoc Data.Enumerator.List.mapM_
+-- | @'mapM_' f@ applies /f/ to each input element, and discards the results.
+--
+-- Since: 0.4.11
+:
+
 :d apidoc Data.Enumerator.List.mapAccum
 -- | Similar to 'map', but with a stateful step function.
 --
@@ -935,6 +959,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- | Similar to 'mapM', but with a stateful step function.
 --
 -- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.List.concatMapAccum
+-- | Similar to 'concatMap', but with a stateful step function.
+--
+-- Since: 0.4.11
+:
+
+:d apidoc Data.Enumerator.List.concatMapAccumM
+-- | Similar to 'concatMapM', but with a stateful step function.
+--
+-- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.List.repeat
@@ -1009,6 +1045,16 @@ This section just repeats literate documentation in Haddock syntax.
 -- Similar to 'iterateM'.
 --
 -- Since: 0.4.8
+:
+
+:d apidoc Data.Enumerator.List.unique
+-- | Remove duplicate elements from a stream, passing through the first
+-- instance of each value.
+--
+-- Similar to 'nub', but more efficient because it uses a 'Data.Set.Set'
+-- internally.
+--
+-- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.Text.Codec
@@ -1176,6 +1222,13 @@ This section just repeats literate documentation in Haddock syntax.
 -- Since: 0.4.8
 :
 
+:d apidoc Data.Enumerator.Text.mapM_
+-- | @'mapM_' f@ applies /f/ to each input character, and discards the
+-- results.
+--
+-- Since: 0.4.11
+:
+
 :d apidoc Data.Enumerator.Text.mapAccum
 -- | Similar to 'map', but with a stateful step function.
 --
@@ -1186,6 +1239,18 @@ This section just repeats literate documentation in Haddock syntax.
 -- | Similar to 'mapM', but with a stateful step function.
 --
 -- Since: 0.4.9
+:
+
+:d apidoc Data.Enumerator.Text.concatMapAccum
+-- | Similar to 'concatMap', but with a stateful step function.
+--
+-- Since: 0.4.11
+:
+
+:d apidoc Data.Enumerator.Text.concatMapAccumM
+-- | Similar to 'concatMapM', but with a stateful step function.
+--
+-- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.Text.repeat
