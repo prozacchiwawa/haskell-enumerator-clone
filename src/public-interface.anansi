@@ -230,6 +230,8 @@ import Control.Monad (liftM)
 -- ** Accumulating maps
 , mapAccum
 , mapAccumM
+, concatMapAccum
+, concatMapAccumM
 
 -- ** Infinite streams
 , Data.Enumerator.Binary.iterate
@@ -280,6 +282,8 @@ import Control.Monad (liftM)
 -- ** Accumulating maps
 , mapAccum
 , mapAccumM
+, concatMapAccum
+, concatMapAccumM
 
 -- ** Infinite streams
 , Data.Enumerator.List.iterate
@@ -334,6 +338,8 @@ import Control.Monad (liftM)
 -- ** Accumulating maps
 , mapAccum
 , mapAccumM
+, concatMapAccum
+, concatMapAccumM
 
 -- ** Infinite streams
 , Data.Enumerator.Text.iterate
