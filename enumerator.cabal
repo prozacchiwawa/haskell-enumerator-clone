@@ -1,5 +1,5 @@
 name: enumerator
-version: 0.4.11
+version: 0.4.12
 synopsis: Reliable, high-performance processing with left-fold enumerators
 license: MIT
 license-file: license.txt
