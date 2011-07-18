@@ -254,6 +254,16 @@ This section just repeats literate documentation in Haddock syntax.
 -- all errors to be represented by 'Exc.SomeException', libraries with
 -- varying error types can be easily composed.
 --
+-- WARNING: after a few rounds of "catchError doesn't work because X", this
+-- function has grown into a horrible monster. I have no concept of what
+-- unexpected behaviors lurk in its dark crevices. Users are strongly advised
+-- to wrap all uses of @catchError@ with an appropriate @isolate@, such as
+-- @Data.Enumerator.List.isolate@ or @Data.Enumerator.Binary.isolate@, which
+-- will handle input framing even in the face of unexpected errors.
+--
+-- Within the error handler, it is difficult or impossible to know how much
+-- input the original iteratee has consumed.
+--
 -- Since: 0.1.1
 :
 

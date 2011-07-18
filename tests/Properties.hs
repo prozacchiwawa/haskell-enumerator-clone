@@ -673,6 +673,7 @@ test_Other :: F.Test
 test_Other = F.testGroup "Other"
 	[ test_Sequence
 	, test_joinE
+	, test_CatchError_NotDivergent
 	]
 
 test_Sequence :: F.Test
@@ -692,6 +693,17 @@ test_joinE = testProperty "joinE" prop where
 		expected = map (* 10) xs
 		
 		iter = (E.joinE (E.enumList 1 xs) (EL.map (* 10))) $$ EL.consume
+
+test_CatchError_NotDivergent :: F.Test
+test_CatchError_NotDivergent = testProperty "catchError not divergent" test where
+	test = case runIdentity (E.run (E.enumList 1 [] $$ iter)) of
+		Left err -> Exc.fromException err == Just (Exc.ErrorCall "require: Unexpected EOF")
+		Right _ -> False
+	iter = E.catchError
+		(do
+			EL.head
+			E.throwError (Exc.ErrorCall "error"))
+		(\_ -> EL.require 1)
 
 -- misc
 

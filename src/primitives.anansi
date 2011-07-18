@@ -111,8 +111,27 @@ catchError :: Monad m
            => Iteratee a m b
            -> (Exc.SomeException -> Iteratee a m b)
            -> Iteratee a m b
-catchError iter h = iter >>== step where
-	step (Yield b as) = yield b as
-	step (Error err) = h err
-	step (Continue k) = continue (\s -> k s >>== step)
+catchError i h = continue (wrap i) where
+	wrap iter EOF = Iteratee $ do
+		res <- run iter
+		case res of
+			Left err -> runIteratee (enumEOF $$ h err)
+			Right b -> return (Yield b EOF)
+	
+	wrap iter stream = Iteratee $ do
+		step <- runIteratee iter
+		case step of
+			Yield b as -> return (Yield b (mappend as stream))
+			Error err -> do
+				step' <- runIteratee (h err)
+				case step' of
+					Yield b _ -> return (Yield b stream)
+					Error err' -> return (Error err')
+					Continue k -> runIteratee (k stream)
+			Continue k -> do
+				step' <- runIteratee (k stream)
+				case step' of
+					Yield b as -> return (Yield b as)
+					Error err -> runIteratee (h err)
+					Continue k' -> return (Continue (wrap (continue k')))
 :
