@@ -133,6 +133,6 @@ catchError i h = go i where
 				step' <- runIteratee (h err)
 				case step' of
 					Continue k' -> runIteratee (k' stream)
-					_ -> return step
+					_ -> return step'
 			Continue k' -> return (Continue (wrap k'))
 :
