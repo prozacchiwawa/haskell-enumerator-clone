@@ -3,7 +3,9 @@
 -- See license.txt for details
 module Main (tests, main) where
 
+import           Control.Concurrent
 import qualified Control.Exception as Exc
+import           Control.Monad.IO.Class (liftIO)
 import           Data.Bits ((.&.))
 import           Data.Char (chr)
 import qualified Data.List as L
@@ -13,7 +15,7 @@ import           Data.Functor.Identity (Identity, runIdentity)
 import           Data.String (IsString, fromString)
 import           Data.Word (Word8)
 
-import           Data.Enumerator (($$))
+import           Data.Enumerator (($$), (>>==))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.Text as ET
@@ -27,6 +29,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as TE
 
 import           Test.QuickCheck hiding ((.&.))
+import           Test.QuickCheck.Property (morallyDubiousIOProperty)
 import           Test.QuickCheck.Poly (A, B, C)
 import qualified Test.Framework as F
 import           Test.Framework.Providers.QuickCheck2 (testProperty)
@@ -673,7 +676,9 @@ test_Other :: F.Test
 test_Other = F.testGroup "Other"
 	[ test_Sequence
 	, test_joinE
+	, test_CatchError_WithoutContinue
 	, test_CatchError_NotDivergent
+	, test_CatchError_Interleaved
 	]
 
 test_Sequence :: F.Test
@@ -694,8 +699,17 @@ test_joinE = testProperty "joinE" prop where
 		
 		iter = (E.joinE (E.enumList 1 xs) (EL.map (* 10))) $$ EL.consume
 
+test_CatchError_WithoutContinue :: F.Test
+test_CatchError_WithoutContinue = testProperty "catchError/without-continue" test where
+	test = case runIdentity (E.run (E.enumList 1 [] $$ iter)) of
+		Left err -> Exc.fromException err == Just (Exc.ErrorCall "require: Unexpected EOF")
+		Right _ -> False
+	iter = E.catchError
+		(E.throwError (Exc.ErrorCall "error"))
+		(\_ -> EL.require 1)
+
 test_CatchError_NotDivergent :: F.Test
-test_CatchError_NotDivergent = testProperty "catchError not divergent" test where
+test_CatchError_NotDivergent = testProperty "catchError/not-divergent" test where
 	test = case runIdentity (E.run (E.enumList 1 [] $$ iter)) of
 		Left err -> Exc.fromException err == Just (Exc.ErrorCall "require: Unexpected EOF")
 		Right _ -> False
@@ -704,6 +718,23 @@ test_CatchError_NotDivergent = testProperty "catchError not divergent" test wher
 			EL.head
 			E.throwError (Exc.ErrorCall "error"))
 		(\_ -> EL.require 1)
+
+test_CatchError_Interleaved :: F.Test
+test_CatchError_Interleaved = testProperty "catchError/interleaved" prop where
+	prop = within 1000000 (morallyDubiousIOProperty io)
+	io = do
+		mvar <- newEmptyMVar
+		E.run_ (enumMVar mvar $$ E.catchError (iter mvar) onError)
+	enumMVar mvar = loop where
+		loop (E.Continue k) = do
+			x <- liftIO (takeMVar mvar)
+			k (E.Chunks [x]) >>== loop
+		loop step = E.returnI step
+	iter mvar = do
+		liftIO (putMVar mvar ())
+		EL.head
+		return True
+	onError err = return False
 
 -- misc
 
