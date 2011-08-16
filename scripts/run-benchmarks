@@ -13,7 +13,7 @@ require_cabal_dev
 
 clean_dev_install
 
-pushd tests
+pushd benchmarks
 rm -rf dist
 $CABAL_DEV -s ../cabal-dev install || exit 1
 popd
