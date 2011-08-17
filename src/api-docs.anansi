@@ -552,8 +552,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.concatMap
--- | @'concatMap' f@ applies /f/ to each input byte and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.Binary.concatMap' f@ applies /f/ to each input byte
+-- and feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
@@ -578,8 +578,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.dropWhile
--- | @'dropWhile' p@ ignores input from the stream until the first byte
--- which does not match the predicate.
+-- | @'Data.Enumerator.Binary.dropWhile' p@ ignores input from the stream
+-- until the first byte which does not match the predicate.
 --
 -- Since: 0.4.5
 :
@@ -688,8 +688,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.iterate
--- | @'iterate' f x@ enumerates an infinite stream of repeated applications
--- of /f/ to /x/.
+-- | @'Data.Enumerator.Binary.iterate' f x@ enumerates an infinite stream of
+-- repeated applications of /f/ to /x/.
 --
 -- Analogous to 'Prelude.iterate'.
 --
@@ -697,7 +697,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.iterateM
--- | Similar to 'iterate', except the iteration function is monadic.
+-- | Similar to 'Data.Enumerator.Binary.iterate', except the iteration
+-- function is monadic.
 --
 -- Since: 0.4.8
 :
@@ -714,39 +715,43 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.map
--- | @'map' f@ applies /f/ to each input byte and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.Binary.map' f@ applies /f/ to each input byte and
+-- feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.mapM
--- | @'mapM' f@ applies /f/ to each input byte and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.Binary.mapM' f@ applies /f/ to each input byte and
+-- feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Binary.mapM_
--- | @'mapM_' f@ applies /f/ to each input byte, and discards the results.
+-- | @'Data.Enumerator.Binary.mapM_' f@ applies /f/ to each input byte, and
+-- discards the results.
 --
 -- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.Binary.mapAccum
--- | Similar to 'map', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.Binary.map', but with a stateful step
+-- function.
 --
 -- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.Binary.mapAccumM
--- | Similar to 'mapM', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.Binary.mapM', but with a stateful step
+-- function.
 --
 -- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.Binary.concatMapAccum
--- | Similar to 'concatMap', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.Binary.concatMap', but with a stateful step
+-- function.
 --
 -- Since: 0.4.11
 :
@@ -773,7 +778,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.replicate
--- | @'replicate' n x@ enumerates a stream containing /n/ copies of /x/.
+-- | @'Data.Enumerator.Binary.replicate' n x@ enumerates a stream containing
+-- /n/ copies of /x/.
 --
 -- Since: 0.4.8
 :
@@ -799,7 +805,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Binary.take
--- | @'take' n@ extracts the next /n/ bytes from the stream, as a lazy
+-- | @'Data.Enumerator.Binary.take' n@ extracts the next /n/ bytes from the
+-- stream, as a lazy
 -- ByteString.
 --
 -- Since: 0.4.5
@@ -816,7 +823,7 @@ This section just repeats literate documentation in Haddock syntax.
 -- | Enumerates a stream of bytes by repeatedly applying a function to
 -- some state.
 --
--- Similar to 'iterate'.
+-- Similar to 'Data.Enumerator.Binary.iterate'.
 --
 -- Since: 0.4.8
 :
@@ -843,8 +850,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.concatMap
--- | @'concatMap' f@ applies /f/ to each input element and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.List.concatMap' f@ applies /f/ to each input element
+-- and feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
@@ -868,8 +875,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.dropWhile
--- | @'dropWhile' p@ ignores input from the stream until the first element
--- which does not match the predicate.
+-- | @'Data.Enumerator.List.dropWhile' p@ ignores input from the stream
+-- until the first element which does not match the predicate.
 --
 -- Since: 0.4.5
 :
@@ -925,8 +932,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.iterate
--- | @'iterate' f x@ enumerates an infinite stream of repeated applications
--- of /f/ to /x/.
+-- | @'Data.Enumerator.List.iterate' f x@ enumerates an infinite stream of
+-- repeated applications of /f/ to /x/.
 --
 -- Analogous to 'Prelude.iterate'.
 --
@@ -934,45 +941,48 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.iterateM
--- | Similar to 'iterate', except the iteration function is monadic.
+-- | Similar to 'Data.Enumerator.List.iterate', except the iteration
+-- function is monadic.
 --
 -- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.List.map
--- | @'map' f@ applies /f/ to each input element and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.List.map' f@ applies /f/ to each input element and
+-- feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.List.mapM
--- | @'mapM' f@ applies /f/ to each input element and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.List.mapM' f@ applies /f/ to each input element and
+-- feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.List.mapM_
--- | @'mapM_' f@ applies /f/ to each input element, and discards the results.
+-- | @'Data.Enumerator.List.mapM_' f@ applies /f/ to each input element, and
+-- discards the results.
 --
 -- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.List.mapAccum
--- | Similar to 'map', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.List.map', but with a stateful step function.
 --
 -- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.List.mapAccumM
--- | Similar to 'mapM', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.List.mapM', but with a stateful step function.
 --
 -- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.List.concatMapAccum
--- | Similar to 'concatMap', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.List.concatMap', but with a stateful step
+-- function.
 --
 -- Since: 0.4.11
 :
@@ -999,7 +1009,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.replicate
--- | @'replicate' n x@ enumerates a stream containing /n/ copies of /x/.
+-- | @'Data.Enumerator.List.replicate' n x@ enumerates a stream containing
+-- /n/ copies of /x/.
 --
 -- Analogous to 'Prelude.replicate'.
 --
@@ -1027,7 +1038,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.List.take
--- | @'take' n@ extracts the next /n/ elements from the stream, as a list.
+-- | @'Data.Enumerator.List.take' n@ extracts the next /n/ elements from the
+-- stream, as a list.
 --
 -- Since: 0.4.5
 :
@@ -1043,7 +1055,7 @@ This section just repeats literate documentation in Haddock syntax.
 -- | Enumerates a stream of elements by repeatedly applying a function to
 -- some state.
 --
--- Similar to 'iterate'.
+-- Similar to 'Data.Enumerator.List.iterate'.
 --
 -- Since: 0.4.8
 :
@@ -1072,8 +1084,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.concatMap
--- | @'concatMap' f@ applies /f/ to each input character and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.Text.concatMap' f@ applies /f/ to each input
+-- character and feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
@@ -1105,8 +1117,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.dropWhile
--- | @'dropWhile' p@ ignores input from the stream until the first character
--- which does not match the predicate.
+-- | @'Data.Enumerator.Text.dropWhile' p@ ignores input from the stream
+-- until the first character which does not match the predicate.
 --
 -- Since: 0.4.5
 :
@@ -1187,8 +1199,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.iterate
--- | @'iterate' f x@ enumerates an infinite stream of repeated applications
--- of /f/ to /x/.
+-- | @'Data.Enumerator.Text.iterate' f x@ enumerates an infinite stream of
+-- repeated applications of /f/ to /x/.
 --
 -- Analogous to 'Prelude.iterate'.
 --
@@ -1196,7 +1208,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.iterateM
--- | Similar to 'iterate', except the iteration function is monadic.
+-- | Similar to 'Data.Enumerator.Text.iterate', except the iteration
+-- function is monadic.
 --
 -- Since: 0.4.8
 :
@@ -1219,40 +1232,43 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.map
--- | @'map' f@ applies /f/ to each input character and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.Text.map' f@ applies /f/ to each input character and
+-- feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Text.mapM
--- | @'mapM' f@ applies /f/ to each input character and feeds the
--- resulting outputs to the inner iteratee.
+-- | @'Data.Enumerator.Text.mapM' f@ applies /f/ to each input character
+-- and feeds the resulting outputs to the inner iteratee.
 --
 -- Since: 0.4.8
 :
 
 :d apidoc Data.Enumerator.Text.mapM_
--- | @'mapM_' f@ applies /f/ to each input character, and discards the
--- results.
+-- | @'Data.Enumerator.Text.mapM_' f@ applies /f/ to each input character,
+-- and discards the results.
 --
 -- Since: 0.4.11
 :
 
 :d apidoc Data.Enumerator.Text.mapAccum
--- | Similar to 'map', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.Text.map', but with a stateful step
+-- function.
 --
 -- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.Text.mapAccumM
--- | Similar to 'mapM', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.Text.mapM', but with a stateful step
+-- function.
 --
 -- Since: 0.4.9
 :
 
 :d apidoc Data.Enumerator.Text.concatMapAccum
--- | Similar to 'concatMap', but with a stateful step function.
+-- | Similar to 'Data.Enumerator.Text.concatMap', but with a stateful step
+-- function.
 --
 -- Since: 0.4.11
 :
@@ -1279,7 +1295,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.replicate
--- | @'replicate' n x@ enumerates a stream containing /n/ copies of /x/.
+-- | @'Data.Enumerator.Text.replicate' n x@ enumerates a stream containing
+-- /n/ copies of /x/.
 --
 -- Since: 0.4.8
 :
@@ -1305,8 +1322,8 @@ This section just repeats literate documentation in Haddock syntax.
 :
 
 :d apidoc Data.Enumerator.Text.take
--- | @'take' n@ extracts the next /n/ characters from the stream, as a lazy
--- Text.
+-- | @'Data.Enumerator.Text.take' n@ extracts the next /n/ characters from
+-- the stream, as a lazy Text.
 --
 -- Since: 0.4.5
 :
@@ -1322,7 +1339,7 @@ This section just repeats literate documentation in Haddock syntax.
 -- | Enumerates a stream of characters by repeatedly applying a function to
 -- some state.
 --
--- Similar to 'iterate'.
+-- Similar to 'Data.Enumerator.Text.iterate'.
 --
 -- Since: 0.4.8
 :
