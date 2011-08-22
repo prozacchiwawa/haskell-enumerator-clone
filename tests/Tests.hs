@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
 --
 -- See license.txt for details
@@ -28,38 +30,38 @@ import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as TE
 
-import           Test.QuickCheck hiding ((.&.))
+import           Test.Chell
+import           Test.Chell.QuickCheck
+import           Test.QuickCheck hiding ((.&.), property)
 import           Test.QuickCheck.Property (morallyDubiousIOProperty)
 import           Test.QuickCheck.Poly (A, B, C)
-import qualified Test.Framework as F
-import           Test.Framework.Providers.QuickCheck2 (testProperty)
 
-tests :: [F.Test]
+tests :: [Suite]
 tests =
-	[ test_StreamInstances
-	, test_Text
-	, test_ListAnalogues
-	, test_Other
+	[ suite_StreamInstances
+	, suite_Text
+	, suite_ListAnalogues
+	, suite_Other
 	]
 
 main :: IO ()
-main = F.defaultMain tests
+main = Test.Chell.defaultMain tests
 
 -- Stream instances {{{
 
-test_StreamInstances :: F.Test
-test_StreamInstances = F.testGroup "Stream Instances"
-	[ test_StreamMonoid
-	, test_StreamFunctor
-	, test_StreamMonad
+suite_StreamInstances :: Suite
+suite_StreamInstances = suite "stream-instances"
+	[ suite_StreamMonoid
+	, suite_StreamFunctor
+	, suite_StreamMonad
 	]
 
-test_StreamMonoid :: F.Test
-test_StreamMonoid = F.testGroup "Monoid Stream" props where
-	props = [ testProperty "law 1" prop_law1
-	        , testProperty "law 2" prop_law2
-	        , testProperty "law 3" prop_law3
-	        , testProperty "law 4" prop_law4
+suite_StreamMonoid :: Suite
+suite_StreamMonoid = suite "monoid" props where
+	props = [ property "law-1" prop_law1
+	        , property "law-2" prop_law2
+	        , property "law-3" prop_law3
+	        , property "law-4" prop_law4
 	        ]
 	
 	prop_law1 :: E.Stream A -> Bool
@@ -74,10 +76,10 @@ test_StreamMonoid = F.testGroup "Monoid Stream" props where
 	prop_law4 :: [E.Stream A] -> Bool
 	prop_law4 xs = mconcat xs == foldr mappend mempty xs
 
-test_StreamFunctor :: F.Test
-test_StreamFunctor = F.testGroup "Functor Stream" props where
-	props = [ testProperty "law 1" prop_law1
-	        , testProperty "law 2" prop_law2
+suite_StreamFunctor :: Suite
+suite_StreamFunctor = suite "functor" props where
+	props = [ property "law-1" prop_law1
+	        , property "law-2" prop_law2
 	        ]
 	
 	prop_law1 :: E.Stream A -> Bool
@@ -86,11 +88,11 @@ test_StreamFunctor = F.testGroup "Functor Stream" props where
 	prop_law2 :: E.Stream A -> Blind (B -> C) -> Blind (A -> B) -> Bool
 	prop_law2 x (Blind f) (Blind g) = fmap (f . g) x == (fmap f . fmap g) x
 
-test_StreamMonad :: F.Test
-test_StreamMonad = F.testGroup "Monad Stream" props where
-	props = [ testProperty "law 1" prop_law1
-	        , testProperty "law 2" prop_law2
-	        , testProperty "law 3" prop_law3
+suite_StreamMonad :: Suite
+suite_StreamMonad = suite "Monad Stream" props where
+	props = [ property "law-1" prop_law1
+	        , property "law-2" prop_law2
+	        , property "law-3" prop_law3
 	        ]
 	
 	prop_law1 :: A -> Blind (A -> E.Stream B) -> Bool
@@ -106,10 +108,10 @@ test_StreamMonad = F.testGroup "Monad Stream" props where
 
 -- Generic properties {{{
 
-test_Enumeratee :: String -> E.Enumeratee A A Identity (Maybe A) -> F.Test
-test_Enumeratee name enee = F.testGroup name props where
-	props = [ testProperty "incremental" prop_incremental
-	        , testProperty "nest errors" prop_nest_errors
+test_Enumeratee :: T.Text -> E.Enumeratee A A Identity (Maybe A) -> Suite
+test_Enumeratee name enee = suite name props where
+	props = [ property "incremental" prop_incremental
+	        , property "nest-errors" prop_nest_errors
 	        ]
 	
 	prop_incremental (Positive n) (NonEmpty xs) = let
@@ -136,23 +138,23 @@ test_Enumeratee name enee = F.testGroup name props where
 
 -- Text encoding / decoding {{{
 
-test_Text :: F.Test
-test_Text = F.testGroup "Text"
-	[ test_Encoding
-	, test_Decoding
+suite_Text :: Suite
+suite_Text = suite "text"
+	[ suite_Encoding
+	, suite_Decoding
 	]
 
-test_Encoding :: F.Test
-test_Encoding = F.testGroup "Encoding"
-	[ test_Encode_ASCII
-	, test_Encode_ISO8859
+suite_Encoding :: Suite
+suite_Encoding = suite "encoding"
+	[ suite_Encode_ASCII
+	, suite_Encode_ISO8859
 	]
 
-test_Encode_ASCII :: F.Test
-test_Encode_ASCII = F.testGroup "ASCII" props where
-	props = [ testProperty "works" (forAll genASCII prop_works)
-	        , testProperty "error" prop_error
-	        , testProperty "lazy" prop_lazy
+suite_Encode_ASCII :: Suite
+suite_Encode_ASCII = suite "ascii" props where
+	props = [ property "works" (forAll genASCII prop_works)
+	        , property "error" prop_error
+	        , property "lazy" prop_lazy
 	        ]
 	
 	encode iter input =
@@ -175,11 +177,11 @@ test_Encode_ASCII = F.testGroup "ASCII" props where
 		input = [T.pack "\x61\xFF"]
 		expected = Just (B.singleton 0x61)
 
-test_Encode_ISO8859 :: F.Test
-test_Encode_ISO8859 = F.testGroup "ISO-8859-1" props where
-	props = [ testProperty "works" (forAll genISO8859 prop_works)
-	        , testProperty "error" prop_error
-	        , testProperty "lazy" prop_lazy
+suite_Encode_ISO8859 :: Suite
+suite_Encode_ISO8859 = suite "iso-8859-1" props where
+	props = [ property "works" (forAll genISO8859 prop_works)
+	        , property "error" prop_error
+	        , property "lazy" prop_lazy
 	        ]
 	
 	encode iter input =
@@ -202,21 +204,21 @@ test_Encode_ISO8859 = F.testGroup "ISO-8859-1" props where
 		input = [T.pack "\x61\xFF5E"]
 		expected = Just (B.singleton 0x61)
 
-test_Decoding :: F.Test
-test_Decoding = F.testGroup "Decoding"
-	[ test_Decode_ASCII
-	, test_Decode_UTF8
-	, test_Decode_UTF16_BE
-	, test_Decode_UTF16_LE
-	, test_Decode_UTF32_BE
-	, test_Decode_UTF32_LE
+suite_Decoding :: Suite
+suite_Decoding = suite "decoding"
+	[ suite_Decode_ASCII
+	, suite_Decode_UTF8
+	, suite_Decode_UTF16_BE
+	, suite_Decode_UTF16_LE
+	, suite_Decode_UTF32_BE
+	, suite_Decode_UTF32_LE
 	]
 
-test_Decode_ASCII :: F.Test
-test_Decode_ASCII = F.testGroup "ASCII" props where
-	props = [ testProperty "works" (forAll genASCII prop_works)
-	        , testProperty "error" prop_error
-	        , testProperty "lazy" prop_lazy
+suite_Decode_ASCII :: Suite
+suite_Decode_ASCII = suite "ascii" props where
+	props = [ property "works" (forAll genASCII prop_works)
+	        , property "error" prop_error
+	        , property "lazy" prop_lazy
 	        ]
 	
 	decode iter input =
@@ -239,12 +241,12 @@ test_Decode_ASCII = F.testGroup "ASCII" props where
 		input = [B.pack [0x61, 0xFF]]
 		expected = Just (T.pack "a")
 
-test_Decode_UTF8 :: F.Test
-test_Decode_UTF8 = F.testGroup "UTF-8" props where
-	props = [ testProperty "works" prop_works
-	        , testProperty "error" prop_error
-	        , testProperty "lazy" prop_lazy
-	        , testProperty "incremental" prop_incremental
+suite_Decode_UTF8 :: Suite
+suite_Decode_UTF8 = suite "utf-8" props where
+	props = [ property "works" prop_works
+	        , property "error" prop_error
+	        , property "lazy" prop_lazy
+	        , property "incremental" prop_incremental
 	        ]
 	
 	decode iter input =
@@ -272,12 +274,12 @@ test_Decode_UTF8 = F.testGroup "UTF-8" props where
 		input = [B.pack [0x61, 0xC2, 0xC2]]
 		expected = Just (T.pack "a")
 
-test_Decode_UTF16_BE :: F.Test
-test_Decode_UTF16_BE = F.testGroup "UTF-16-BE" props where
-	props = [ testProperty "works" prop_works
-	        , testProperty "lazy" prop_lazy
-	        , testProperty "error" prop_error
-	        , testProperty "incremental" prop_incremental
+suite_Decode_UTF16_BE :: Suite
+suite_Decode_UTF16_BE = suite "utf-16-be" props where
+	props = [ property "works" prop_works
+	        , property "lazy" prop_lazy
+	        , property "error" prop_error
+	        , property "incremental" prop_incremental
 	        ]
 	
 	decode iter input =
@@ -305,12 +307,12 @@ test_Decode_UTF16_BE = F.testGroup "UTF-16-BE" props where
 		input = [B.pack [0x00, 0x61, 0xD8, 0x34, 0xD8, 0xD8]]
 		expected = Just (T.pack "a")
 
-test_Decode_UTF16_LE :: F.Test
-test_Decode_UTF16_LE = F.testGroup "UTF-16-LE" props where
-	props = [ testProperty "works" prop_works
-	        , testProperty "lazy" prop_lazy
-	        , testProperty "error" prop_error
-	        , testProperty "incremental" prop_incremental
+suite_Decode_UTF16_LE :: Suite
+suite_Decode_UTF16_LE = suite "utf-16-le" props where
+	props = [ property "works" prop_works
+	        , property "lazy" prop_lazy
+	        , property "error" prop_error
+	        , property "incremental" prop_incremental
 	        ]
 	
 	decode iter input =
@@ -338,11 +340,11 @@ test_Decode_UTF16_LE = F.testGroup "UTF-16-LE" props where
 		input = [B.pack [0x61, 0x00, 0x34, 0xD8, 0xD8, 0xD8]]
 		expected = Just (T.pack "a")
 
-test_Decode_UTF32_BE :: F.Test
-test_Decode_UTF32_BE = F.testGroup "UTF-32-BE" props where
-	props = [ testProperty "works" prop_works
-	        , testProperty "lazy" prop_lazy
-	        , testProperty "error" prop_error
+suite_Decode_UTF32_BE :: Suite
+suite_Decode_UTF32_BE = suite "utf-32-be" props where
+	props = [ property "works" prop_works
+	        , property "lazy" prop_lazy
+	        , property "error" prop_error
 	        ]
 	
 	decode iter input =
@@ -365,11 +367,11 @@ test_Decode_UTF32_BE = F.testGroup "UTF-32-BE" props where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0xFF, 0xFF, 0xFF, 0xFF]]
 
-test_Decode_UTF32_LE :: F.Test
-test_Decode_UTF32_LE = F.testGroup "UTF-32-LE" props where
-	props = [ testProperty "works" prop_works
-	        , testProperty "lazy" prop_lazy
-	        , testProperty "error" prop_error
+suite_Decode_UTF32_LE :: Suite
+suite_Decode_UTF32_LE = suite "utf-32-le" props where
+	props = [ property "works" prop_works
+	        , property "lazy" prop_lazy
+	        , property "error" prop_error
 	        ]
 	
 	decode iter input =
@@ -396,23 +398,23 @@ test_Decode_UTF32_LE = F.testGroup "UTF-32-LE" props where
 
 -- List analogues {{{
 
-test_ListAnalogues :: F.Test
-test_ListAnalogues = F.testGroup "list analogues"
-	[ test_Consume
-	, test_Head
-	, test_Drop
-	, test_Take
-	, test_Require
-	, test_Isolate
-	, test_SplitWhen
-	, test_Map
-	, test_ConcatMap
-	, test_MapM
-	, test_ConcatMapM
-	, test_MapAccum
-	, test_MapAccumM
-	, test_Filter
-	, test_FilterM
+suite_ListAnalogues :: Suite
+suite_ListAnalogues = suite "list-analogues"
+	[ suite_Consume
+	, suite_Head
+	, suite_Drop
+	, suite_Take
+	, suite_Require
+	, suite_Isolate
+	, suite_SplitWhen
+	, suite_Map
+	, suite_ConcatMap
+	, suite_MapM
+	, suite_ConcatMapM
+	, suite_MapAccum
+	, suite_MapAccumM
+	, suite_Filter
+	, suite_FilterM
 	]
 
 check :: Eq b => E.Iteratee a Identity b -> ([a] -> Either Exc.ErrorCall b) -> [a] -> Bool
@@ -425,10 +427,10 @@ check iter plain xs = expected == run iter xs where
 		Left exc -> Left (Exc.fromException exc)
 		Right x -> Right x
 
-testListAnalogue name iterList plainList iterText plainText iterBytes plainBytes = F.testGroup name tests where
-	tests = [ testProperty "list" prop_List
-	        , testProperty "text" prop_Text
-	        , testProperty "bytes" prop_Bytes
+testListAnalogue name iterList plainList iterText plainText iterBytes plainBytes = suite name tests where
+	tests = [ property "list" prop_List
+	        , property "text" prop_Text
+	        , property "bytes" prop_Bytes
 	        ]
 	
 	prop_List :: [A] -> Bool
@@ -437,10 +439,10 @@ testListAnalogue name iterList plainList iterText plainText iterBytes plainBytes
 	prop_Text xs = check iterText (plainText . TL.fromChunks) xs
 	prop_Bytes xs = check iterBytes (plainBytes . BL.fromChunks) xs
 
-testListAnalogueN name iterList plainList iterText plainText iterBytes plainBytes = F.testGroup name tests where
-	tests = [ testProperty "list" prop_List
-	        , testProperty "text" prop_Text
-	        , testProperty "bytes" prop_Bytes
+testListAnalogueN name iterList plainList iterText plainText iterBytes plainBytes = suite name tests where
+	tests = [ property "list" prop_List
+	        , property "text" prop_Text
+	        , property "bytes" prop_Bytes
 	        ]
 	
 	prop_List :: Positive Integer -> [A] -> Bool
@@ -449,10 +451,10 @@ testListAnalogueN name iterList plainList iterText plainText iterBytes plainByte
 	prop_Text (Positive n) xs = check (iterText n) (plainText n . TL.fromChunks) xs
 	prop_Bytes (Positive n) xs = check (iterBytes n) (plainBytes n . BL.fromChunks) xs
 
-testListAnalogueX name iterList plainList iterText plainText iterBytes plainBytes = F.testGroup name tests where
-	tests = [ testProperty "list" prop_List
-	        , testProperty "text" prop_Text
-	        , testProperty "bytes" prop_Bytes
+testListAnalogueX name iterList plainList iterText plainText iterBytes plainBytes = suite name tests where
+	tests = [ property "list" prop_List
+	        , property "text" prop_Text
+	        , property "bytes" prop_Bytes
 	        ]
 	
 	prop_List :: A -> [A] -> Bool
@@ -461,14 +463,14 @@ testListAnalogueX name iterList plainList iterText plainText iterBytes plainByte
 	prop_Text x xs = check (iterText x) (plainText x . TL.fromChunks) xs
 	prop_Bytes x xs = check (iterBytes x) (plainBytes x . BL.fromChunks) xs
 
-test_Consume :: F.Test
-test_Consume = testListAnalogue "consume"
+suite_Consume :: Suite
+suite_Consume = testListAnalogue "consume"
 	EL.consume Right
 	ET.consume Right
 	EB.consume Right
 
-test_Head :: F.Test
-test_Head = testListAnalogue "head"
+suite_Head :: Suite
+suite_Head = testListAnalogue "head"
 	(do
 		x <- EL.head
 		extra <- EL.consume
@@ -494,8 +496,8 @@ test_Head = testListAnalogue "head"
 		Nothing -> (Nothing, BL.empty)
 		Just (x, extra) -> (Just x, extra))
 
-test_Drop :: F.Test
-test_Drop = testListAnalogueN "drop"
+suite_Drop :: Suite
+suite_Drop = testListAnalogueN "drop"
 	(\n -> EL.drop n >> EL.consume)
 	(\n -> Right . L.genericDrop n)
 	(\n -> ET.drop n >> ET.consume)
@@ -503,8 +505,8 @@ test_Drop = testListAnalogueN "drop"
 	(\n -> EB.drop n >> EB.consume)
 	(\n -> Right . BL.drop (fromInteger n))
 
-test_Take :: F.Test
-test_Take = testListAnalogueN "take"
+suite_Take :: Suite
+suite_Take = testListAnalogueN "take"
 	(\n -> do
 		xs <- EL.take n
 		extra <- EL.consume
@@ -521,8 +523,8 @@ test_Take = testListAnalogueN "take"
 		return (xs, extra))
 	(\n -> Right . BL.splitAt (fromInteger n))
 
-test_Require :: F.Test
-test_Require = testListAnalogueN "require"
+suite_Require :: Suite
+suite_Require = testListAnalogueN "require"
 	(\n -> do
 		EL.require n
 		EL.consume)
@@ -542,8 +544,8 @@ test_Require = testListAnalogueN "require"
 		then Left (Exc.ErrorCall "require: Unexpected EOF")
 		else Right xs)
 
-test_Isolate :: F.Test
-test_Isolate = testListAnalogue "isolate"
+suite_Isolate :: Suite
+suite_Isolate = testListAnalogue "isolate"
 	(do
 		x <- E.joinI (EL.isolate 2 $$ EL.head)
 		extra <- EL.consume
@@ -569,8 +571,8 @@ test_Isolate = testListAnalogue "isolate"
 		(x:[]) -> (Just x, BL.empty)
 		(x:_:xs) -> (Just x, BL.pack xs))
 
-test_SplitWhen :: F.Test
-test_SplitWhen = testListAnalogueX "splitWhen"
+suite_SplitWhen :: Suite
+suite_SplitWhen = testListAnalogueX "splitWhen"
 	(\x -> do
 		xs <- E.joinI (EL.splitWhen (== x) $$ EL.consume)
 		extra <- EL.consume
@@ -595,20 +597,20 @@ test_SplitWhen = testListAnalogueX "splitWhen"
 		words = BL.unpack bytes
 		in Right (map B.pack (split (== x) words), []))
 
-test_Map :: F.Test
-test_Map = test_Enumeratee "map" (EL.map id)
+suite_Map :: Suite
+suite_Map = test_Enumeratee "map" (EL.map id)
 
-test_ConcatMap :: F.Test
-test_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
+suite_ConcatMap :: Suite
+suite_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
 
-test_MapM :: F.Test
-test_MapM = test_Enumeratee "mapM" (EL.mapM return)
+suite_MapM :: Suite
+suite_MapM = test_Enumeratee "mapM" (EL.mapM return)
 
-test_ConcatMapM :: F.Test
-test_ConcatMapM = test_Enumeratee "concatMapM" (EL.concatMapM (\x -> return [x]))
+suite_ConcatMapM :: Suite
+suite_ConcatMapM = test_Enumeratee "concatMapM" (EL.concatMapM (\x -> return [x]))
 
-test_MapAccum :: F.Test
-test_MapAccum = testListAnalogue "mapAccum"
+suite_MapAccum :: Suite
+suite_MapAccum = testListAnalogue "mapAccum"
 	(do
 		let enee = EL.mapAccum (\s ao -> (s+1, (s, ao))) 10
 		a <- E.joinI (enee $$ EL.head)
@@ -635,8 +637,8 @@ test_MapAccum = testListAnalogue "mapAccum"
 		Just (b, bytes') -> (Just (B.singleton (b + 10)), bytes'))
 
 
-test_MapAccumM :: F.Test
-test_MapAccumM = testListAnalogue "mapAccumM"
+suite_MapAccumM :: Suite
+suite_MapAccumM = testListAnalogue "mapAccumM"
 	(do
 		let enee = EL.mapAccumM (\s ao -> return (s+1, (s, ao))) 10
 		a <- E.joinI (enee $$ EL.head)
@@ -662,18 +664,18 @@ test_MapAccumM = testListAnalogue "mapAccumM"
 		Nothing -> (Nothing, BL.empty)
 		Just (b, bytes') -> (Just (B.singleton (b + 10)), bytes'))
 
-test_Filter :: F.Test
-test_Filter = test_Enumeratee "filter" (EL.filter (\_ -> True))
+suite_Filter :: Suite
+suite_Filter = test_Enumeratee "filter" (EL.filter (\_ -> True))
 
-test_FilterM :: F.Test
-test_FilterM = test_Enumeratee "filterM" (EL.filterM (\_ -> return True))
+suite_FilterM :: Suite
+suite_FilterM = test_Enumeratee "filterM" (EL.filterM (\_ -> return True))
 
 -- }}}
 
 -- Specific functions
 
-test_Other :: F.Test
-test_Other = F.testGroup "Other"
+suite_Other :: Suite
+suite_Other = suite "other"
 	[ test_Sequence
 	, test_joinE
 	, test_CatchError_WithoutContinue
@@ -681,8 +683,8 @@ test_Other = F.testGroup "Other"
 	, test_CatchError_Interleaved
 	]
 
-test_Sequence :: F.Test
-test_Sequence = testProperty "sequence" prop where
+test_Sequence :: Suite
+test_Sequence = property "sequence" prop where
 	prop :: Positive Integer -> [A] -> Bool
 	prop (Positive n) xs = result == expected where
 		result = runIdentity (E.run_ iter)
@@ -690,8 +692,8 @@ test_Sequence = testProperty "sequence" prop where
 		
 		iter = E.enumList n xs $$ E.joinI (E.sequence EL.head $$ EL.consume)
 
-test_joinE :: F.Test
-test_joinE = testProperty "joinE" prop where
+test_joinE :: Suite
+test_joinE = property "joinE" prop where
 	prop :: [Integer] -> Bool
 	prop xs = result == expected where
 		result = runIdentity (E.run_ iter)
@@ -699,8 +701,8 @@ test_joinE = testProperty "joinE" prop where
 		
 		iter = (E.joinE (E.enumList 1 xs) (EL.map (* 10))) $$ EL.consume
 
-test_CatchError_WithoutContinue :: F.Test
-test_CatchError_WithoutContinue = testProperty "catchError/without-continue" test where
+test_CatchError_WithoutContinue :: Suite
+test_CatchError_WithoutContinue = property "catchError/without-continue" test where
 	test = case runIdentity (E.run (E.enumList 1 [] $$ iter)) of
 		Left err -> Exc.fromException err == Just (Exc.ErrorCall "require: Unexpected EOF")
 		Right _ -> False
@@ -708,8 +710,8 @@ test_CatchError_WithoutContinue = testProperty "catchError/without-continue" tes
 		(E.throwError (Exc.ErrorCall "error"))
 		(\_ -> EL.require 1)
 
-test_CatchError_NotDivergent :: F.Test
-test_CatchError_NotDivergent = testProperty "catchError/not-divergent" test where
+test_CatchError_NotDivergent :: Suite
+test_CatchError_NotDivergent = property "catchError/not-divergent" test where
 	test = case runIdentity (E.run (E.enumList 1 [] $$ iter)) of
 		Left err -> Exc.fromException err == Just (Exc.ErrorCall "require: Unexpected EOF")
 		Right _ -> False
@@ -719,8 +721,8 @@ test_CatchError_NotDivergent = testProperty "catchError/not-divergent" test wher
 			E.throwError (Exc.ErrorCall "error"))
 		(\_ -> EL.require 1)
 
-test_CatchError_Interleaved :: F.Test
-test_CatchError_Interleaved = testProperty "catchError/interleaved" prop where
+test_CatchError_Interleaved :: Suite
+test_CatchError_Interleaved = property "catchError/interleaved" prop where
 	prop = within 1000000 (morallyDubiousIOProperty io)
 	io = do
 		mvar <- newEmptyMVar
