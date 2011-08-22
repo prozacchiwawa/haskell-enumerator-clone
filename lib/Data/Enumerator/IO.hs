@@ -1,6 +1,6 @@
 -- |
 -- Module: Data.Enumerator.IO
--- Copyright: 2010 John Millikin
+-- Copyright: 2010-2011 John Millikin
 -- License: MIT
 --
 -- Maintainer: jmillikin@gmail.com
