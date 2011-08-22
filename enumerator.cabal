@@ -54,27 +54,11 @@ description:
   transformed data to an /inner/ iteratee.
 
 extra-source-files:
-  readme.txt
-  --
-  src/api-docs.anansi
-  src/compatibility.anansi
-  src/enumerator.anansi
-  src/io.anansi
-  src/list-analogues.anansi
-  src/primitives.anansi
-  src/public-interface.anansi
-  src/summary.anansi
-  src/text-codecs.anansi
-  src/types.anansi
-  src/utilities.anansi
-  --
   examples/cat.hs
   examples/wc.hs
   --
   scripts/common.bash
   scripts/dist
-  scripts/haddock
-  scripts/latex
   scripts/run-benchmarks
   scripts/run-tests
   --
@@ -88,7 +72,7 @@ source-repository head
 
 library
   ghc-options: -Wall -O2
-  hs-source-dirs: hs
+  hs-source-dirs: lib
 
   build-depends:
       transformers >= 0.2 && < 0.3

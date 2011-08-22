@@ -8,13 +8,11 @@ fi
 
 . scripts/common.bash
 
-require_anansi
 require_cabal_dev
 
 echo "Building dist for enumerator_$VERSION using $CABAL_DEV"
 
-rm -rf hs dist
-$ANANSI --noline -o hs src/enumerator.anansi || exit 1
+rm -rf dist
 $CABAL_DEV configure || exit 1
 $CABAL_DEV build || exit 1
 $CABAL_DEV sdist || exit 1
@@ -26,16 +24,9 @@ if [ -n "$XZ" ]; then
 	xz -f -C sha256 -9 "enumerator_$VERSION.tar"
 fi
 
-if [ -n "$XELATEX" ]; then
-	make_pdf
-fi
-
 echo ""
 echo "============================================================"
-if [ -n "$XELATEX" ]; then
-	echo "  woven source        : enumerator_$VERSION.pdf"
-fi
-echo "  source tarball (gz) : enumerator_$VERSION.tar.gz"
+echo "  source archive (gz) : enumerator_$VERSION.tar.gz"
 if [ -n "$XZ" ]; then
 	echo "  source archive (xz) : enumerator_$VERSION.tar.xz"
 fi

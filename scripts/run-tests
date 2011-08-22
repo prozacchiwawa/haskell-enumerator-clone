@@ -8,7 +8,6 @@ fi
 
 . scripts/common.bash
 
-require_anansi
 require_cabal_dev
 
 clean_dev_install
