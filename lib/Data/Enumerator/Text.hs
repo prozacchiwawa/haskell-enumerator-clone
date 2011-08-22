@@ -65,6 +65,8 @@ module Data.Enumerator.Text
 	, filterM
 	
 	-- ** Consumers
+	, Data.Enumerator.Text.head
+	, head_
 	, Data.Enumerator.Text.take
 	, takeWhile
 	, consume
@@ -84,7 +86,6 @@ module Data.Enumerator.Text
 	, zipWith7
 	
 	-- ** Unsorted
-	, Data.Enumerator.Text.head
 	, require
 	, isolate
 	, splitWhen
@@ -637,6 +638,15 @@ head = continue loop where
 		Just (char, extra) -> yield (Just char) (toChunks extra)
 		Nothing -> head
 	loop EOF = yield Nothing EOF
+
+-- | Get the next element from the stream, or raise an error if the stream
+-- has ended.
+--
+-- Since: 0.4.14
+head_ :: Monad m => Iteratee T.Text m Char
+head_ = head >>= \x -> case x of
+	Just x' -> return x'
+	Nothing -> throwError (Exc.ErrorCall "head_: stream has ended")
 
 -- | @'drop' n@ ignores /n/ characters of input from the stream.
 --

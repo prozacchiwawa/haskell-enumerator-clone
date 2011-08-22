@@ -67,6 +67,8 @@ module Data.Enumerator.Binary
 	, filterM
 	
 	-- ** Consumers
+	, Data.Enumerator.Binary.head
+	, head_
 	, Data.Enumerator.Binary.take
 	, takeWhile
 	, consume
@@ -86,7 +88,6 @@ module Data.Enumerator.Binary
 	, zipWith7
 	
 	-- ** Unsorted
-	, Data.Enumerator.Binary.head
 	, require
 	, isolate
 	, splitWhen
@@ -616,6 +617,15 @@ head = continue loop where
 		Just (char, extra) -> yield (Just char) (toChunks extra)
 		Nothing -> head
 	loop EOF = yield Nothing EOF
+
+-- | Get the next element from the stream, or raise an error if the stream
+-- has ended.
+--
+-- Since: 0.4.14
+head_ :: Monad m => Iteratee B.ByteString m Word8
+head_ = head >>= \x -> case x of
+	Just x' -> return x'
+	Nothing -> throwError (Exc.ErrorCall "head_: stream has ended")
 
 -- | @'drop' n@ ignores /n/ bytes of input from the stream.
 --

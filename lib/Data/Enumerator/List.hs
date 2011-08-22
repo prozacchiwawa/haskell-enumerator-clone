@@ -56,6 +56,8 @@ module Data.Enumerator.List
 	, unique
 	
 	-- ** Consumers
+	, head
+	, head_
 	, Data.Enumerator.List.take
 	, takeWhile
 	, consume
@@ -75,7 +77,6 @@ module Data.Enumerator.List
 	, zipWith7
 	
 	-- ** Unsorted
-	, head
 	, require
 	, isolate
 	, splitWhen
@@ -613,6 +614,15 @@ head = continue loop where
 	loop (Chunks []) = head
 	loop (Chunks (x:xs)) = yield (Just x) (Chunks xs)
 	loop EOF = yield Nothing EOF
+
+-- | Get the next element from the stream, or raise an error if the stream
+-- has ended.
+--
+-- Since: 0.4.14
+head_ :: Monad m => Iteratee a m a
+head_ = head >>= \x -> case x of
+	Just x' -> return x'
+	Nothing -> throwError (ErrorCall "head_: stream has ended")
 
 -- | @'drop' n@ ignores /n/ input elements from the stream.
 --
