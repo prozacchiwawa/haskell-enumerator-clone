@@ -683,6 +683,8 @@ suite_Other = suite "other"
 	, test_CatchError_NotDivergent
 	, test_CatchError_Interleaved
 	, test test_Zip
+	, test test_ZipBytes
+	, test test_ZipText
 	]
 
 test_Sequence :: Suite
@@ -742,14 +744,14 @@ test_CatchError_Interleaved = property "catchError/interleaved" prop where
 
 test_Zip :: Test
 test_Zip = assertions "zip" $ do
-	let iterAdd = do
+	let iterTup = do
 		Just x <- EL.head
 		Just y <- EL.head
-		return (x + y)
-	let iterSub = do
+		return (x, y)
+	let iterTupFlip = do
 		Just x <- EL.head
 		Just y <- EL.head
-		return (x - y)
+		return (y, x)
 	
 	let check i1 i2 = E.run_ (E.enumList 4 [1, 2, 3, 4, 5] $$ do
 		(x, y) <- EL.zip i1 i2
@@ -757,22 +759,90 @@ test_Zip = assertions "zip" $ do
 		return (x, y, extra))
 	
 	-- Both sides have same behavior
-	(added, subbed, extra) <- check iterAdd iterSub
-	$expect (equal added 3)
-	$expect (equal subbed (- 1))
+	(tup, tup2, extra) <- check iterTup iterTupFlip
+	$expect (equal tup (1, 2))
+	$expect (equal tup2 (2, 1))
 	$expect (equal extra [3, 4, 5])
 	
 	-- First side has more extra data
-	(took, added, extra) <- check (EL.take 1) iterAdd
+	(took, tup, extra) <- check (EL.take 1) iterTup
 	$expect (equal took [1])
-	$expect (equal added 3)
+	$expect (equal tup (1, 2))
 	$expect (equal extra [3, 4, 5])
 	
 	-- Second side has more extra data
-	(added, took, extra) <- check iterAdd (EL.take 1)
-	$expect (equal added 3)
+	(tup, took, extra) <- check iterTup (EL.take 1)
+	$expect (equal tup (1, 2))
 	$expect (equal took [1])
 	$expect (equal extra [3, 4, 5])
+
+test_ZipBytes :: Test
+test_ZipBytes = assertions "zip-bytes" $ do
+	let iterTup = do
+		Just x <- EB.head
+		Just y <- EB.head
+		return (x, y)
+	let iterTupFlip = do
+		Just x <- EB.head
+		Just y <- EB.head
+		return (y, x)
+	
+	let check i1 i2 = E.run_ (E.enumList 2 ["abc", "def", "ghi"] $$ do
+		(x, y) <- EB.zip i1 i2
+		extra <- EL.consume
+		return (x, y, extra))
+	
+	-- Both sides have same behavior
+	(tup, tup2, extra) <- check iterTup iterTupFlip
+	$expect (equal tup (0x61, 0x62))
+	$expect (equal tup2 (0x62, 0x61))
+	$expect (equal extra ["c", "def", "ghi"])
+	
+	-- First side has more extra data
+	(took, tup, extra) <- check (EB.take 1) iterTup
+	$expect (equal took "a")
+	$expect (equal tup (0x61, 0x62))
+	$expect (equal extra ["c", "def", "ghi"])
+	
+	-- Second side has more extra data
+	(tup, took, extra) <- check iterTup (EB.take 1)
+	$expect (equal tup (0x61, 0x62))
+	$expect (equal took "a")
+	$expect (equal extra ["c", "def", "ghi"])
+
+test_ZipText :: Test
+test_ZipText = assertions "zip-text" $ do
+	let iterTup = do
+		Just x <- ET.head
+		Just y <- ET.head
+		return (x, y)
+	let iterTupFlip = do
+		Just x <- ET.head
+		Just y <- ET.head
+		return (y, x)
+	
+	let check i1 i2 = E.run_ (E.enumList 2 ["abc", "def", "ghi"] $$ do
+		(x, y) <- ET.zip i1 i2
+		extra <- EL.consume
+		return (x, y, extra))
+	
+	-- Both sides have same behavior
+	(tup, tup2, extra) <- check iterTup iterTupFlip
+	$expect (equal tup ('a', 'b'))
+	$expect (equal tup2 ('b', 'a'))
+	$expect (equal extra ["c", "def", "ghi"])
+	
+	-- First side has more extra data
+	(took, tup, extra) <- check (ET.take 1) iterTup
+	$expect (equal took "a")
+	$expect (equal tup ('a', 'b'))
+	$expect (equal extra ["c", "def", "ghi"])
+	
+	-- Second side has more extra data
+	(tup, took, extra) <- check iterTup (ET.take 1)
+	$expect (equal tup ('a', 'b'))
+	$expect (equal took "a")
+	$expect (equal extra ["c", "def", "ghi"])
 
 -- misc
 

@@ -69,6 +69,20 @@ module Data.Enumerator.Binary
 	, takeWhile
 	, consume
 	
+	-- ** Zipping
+	, zip
+	, zip3
+	, zip4
+	, zip5
+	, zip6
+	, zip7
+	, zipWith
+	, zipWith3
+	, zipWith4
+	, zipWith5
+	, zipWith6
+	, zipWith7
+	
 	-- ** Unsorted
 	, Data.Enumerator.Binary.head
 	, Data.Enumerator.Binary.drop
@@ -79,7 +93,7 @@ module Data.Enumerator.Binary
 	
 	) where
 
-import           Prelude hiding (head, drop, takeWhile, mapM_)
+import           Prelude hiding (head, drop, takeWhile, mapM_, zip, zip3, zipWith, zipWith3)
 import qualified Control.Exception as Exc
 import qualified Control.Monad as CM
 import           Control.Monad (liftM)
@@ -87,6 +101,7 @@ import           Control.Monad.IO.Class (MonadIO)
 import           Control.Monad.Trans.Class (lift)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
+import           Data.Monoid (mappend)
 import           Data.Word (Word8)
 
 import qualified System.IO as IO
@@ -341,6 +356,255 @@ consume = continue (loop id) where
 		lazy = BL.fromChunks xs
 		iter = continue (loop (acc . (BL.append lazy)))
 	loop acc EOF = yield (acc BL.empty) EOF
+
+-- | Pass input from a stream through two iteratees at once. Excess input is
+-- yielded if it was not consumed by either iteratee.
+--
+-- Analogous to 'Data.List.zip'.
+--
+-- Since: 0.4.14
+zip :: Monad m
+    => Iteratee B.ByteString m b1
+    -> Iteratee B.ByteString m b2
+    -> Iteratee B.ByteString m (b1, b2)
+zip i1 i2 = continue step where
+	step (Chunks []) = continue step
+	step stream@(Chunks _) = do
+		let enumStream s = case s of
+			Continue k -> k stream
+			Yield b extra -> yield b (mappend extra stream)
+			Error err -> throwError err
+		
+		s1 <- lift (runIteratee (enumStream ==<< i1))
+		s2 <- lift (runIteratee (enumStream ==<< i2))
+		
+		case (s1, s2) of
+			(Continue k1, Continue k2) -> zip (continue k1) (continue k2)
+			(Yield b1 _, Continue k2) -> zip (yield b1 (Chunks [])) (continue k2)
+			(Continue k1, Yield b2 _) -> zip (continue k1) (yield b2 (Chunks []))
+			(Yield b1 ex1, Yield b2 ex2) -> yield (b1, b2) (shorter ex1 ex2)
+			(Error err, _) -> throwError err
+			(_, Error err) -> throwError err
+	
+	step EOF = do
+		b1 <- enumEOF =<< lift (runIteratee i1)
+		b2 <- enumEOF =<< lift (runIteratee i2)
+		return (b1, b2)
+	
+	shorter c1@(Chunks xs) c2@(Chunks ys) = let
+		xs' = B.concat xs
+		ys' = B.concat ys
+		in if B.length xs' < B.length ys'
+			then c1
+			else c2
+	shorter _ _ = EOF
+
+-- | Pass input from a stream through three iteratees at once. Excess input is
+-- yielded if it was not consumed by any iteratee.
+--
+-- Analogous to 'Data.List.zip3'.
+--
+-- Since: 0.4.14
+zip3 :: Monad m
+     => Iteratee B.ByteString m b1
+     -> Iteratee B.ByteString m b2
+     -> Iteratee B.ByteString m b3
+     -> Iteratee B.ByteString m (b1, b2, b3)
+zip3 i1 i2 i3 = do
+	(b1, (b2, b3)) <- zip i1 (zip i2 i3)
+	return (b1, b2, b3)
+{-# INLINE zip3 #-}
+
+-- | Pass input from a stream through four iteratees at once. Excess input is
+-- yielded if it was not consumed by any iteratee.
+--
+-- Analogous to 'Data.List.zip4'.
+--
+-- Since: 0.4.14
+zip4 :: Monad m
+     => Iteratee B.ByteString m b1
+     -> Iteratee B.ByteString m b2
+     -> Iteratee B.ByteString m b3
+     -> Iteratee B.ByteString m b4
+     -> Iteratee B.ByteString m (b1, b2, b3, b4)
+zip4 i1 i2 i3 i4 = do
+	(b1, (b2, b3, b4)) <- zip i1 (zip3 i2 i3 i4)
+	return (b1, b2, b3, b4)
+{-# INLINE zip4 #-}
+
+-- | Pass input from a stream through five iteratees at once. Excess input is
+-- yielded if it was not consumed by any iteratee.
+--
+-- Analogous to 'Data.List.zip5'.
+--
+-- Since: 0.4.14
+zip5 :: Monad m
+     => Iteratee B.ByteString m b1
+     -> Iteratee B.ByteString m b2
+     -> Iteratee B.ByteString m b3
+     -> Iteratee B.ByteString m b4
+     -> Iteratee B.ByteString m b5
+     -> Iteratee B.ByteString m (b1, b2, b3, b4, b5)
+zip5 i1 i2 i3 i4 i5 = do
+	(b1, (b2, b3, b4, b5)) <- zip i1 (zip4 i2 i3 i4 i5)
+	return (b1, b2, b3, b4, b5)
+{-# INLINE zip5 #-}
+
+-- | Pass input from a stream through six iteratees at once. Excess input is
+-- yielded if it was not consumed by any iteratee.
+--
+-- Analogous to 'Data.List.zip6'.
+--
+-- Since: 0.4.14
+zip6 :: Monad m
+     => Iteratee B.ByteString m b1
+     -> Iteratee B.ByteString m b2
+     -> Iteratee B.ByteString m b3
+     -> Iteratee B.ByteString m b4
+     -> Iteratee B.ByteString m b5
+     -> Iteratee B.ByteString m b6
+     -> Iteratee B.ByteString m (b1, b2, b3, b4, b5, b6)
+zip6 i1 i2 i3 i4 i5 i6 = do
+	(b1, (b2, b3, b4, b5, b6)) <- zip i1 (zip5 i2 i3 i4 i5 i6)
+	return (b1, b2, b3, b4, b5, b6)
+{-# INLINE zip6 #-}
+
+-- | Pass input from a stream through seven iteratees at once. Excess input is
+-- yielded if it was not consumed by any iteratee.
+--
+-- Analogous to 'Data.List.zip7'.
+--
+-- Since: 0.4.14
+zip7 :: Monad m
+     => Iteratee B.ByteString m b1
+     -> Iteratee B.ByteString m b2
+     -> Iteratee B.ByteString m b3
+     -> Iteratee B.ByteString m b4
+     -> Iteratee B.ByteString m b5
+     -> Iteratee B.ByteString m b6
+     -> Iteratee B.ByteString m b7
+     -> Iteratee B.ByteString m (b1, b2, b3, b4, b5, b6, b7)
+zip7 i1 i2 i3 i4 i5 i6 i7 = do
+	(b1, (b2, b3, b4, b5, b6, b7)) <- zip i1 (zip6 i2 i3 i4 i5 i6 i7)
+	return (b1, b2, b3, b4, b5, b6, b7)
+{-# INLINE zip7 #-}
+
+-- | Pass input from a stream through two iteratees at once. Excess input is
+-- yielded if it was not consumed by either iteratee. Output from the
+-- iteratees is combined with a user-provided function.
+--
+-- Analogous to 'Data.List.zipWith'.
+--
+-- Since: 0.4.14
+zipWith :: Monad m
+        => (b1 -> b2 -> c)
+        -> Iteratee B.ByteString m b1
+        -> Iteratee B.ByteString m b2
+        -> Iteratee B.ByteString m c
+zipWith f i1 i2 = do
+	(b1, b2) <- zip i1 i2
+	return (f b1 b2)
+{-# INLINE zipWith #-}
+
+-- | Pass input from a stream through two iteratees at once. Excess input is
+-- yielded if it was not consumed by either iteratee. Output from the
+-- iteratees is combined with a user-provided function.
+--
+-- Analogous to 'Data.List.zipWith3'.
+--
+-- Since: 0.4.14
+zipWith3 :: Monad m
+         => (b1 -> b2 -> b3 -> c)
+         -> Iteratee B.ByteString m b1
+         -> Iteratee B.ByteString m b2
+         -> Iteratee B.ByteString m b3
+         -> Iteratee B.ByteString m c
+zipWith3 f i1 i2 i3 = do
+	(b1, b2, b3) <- zip3 i1 i2 i3
+	return (f b1 b2 b3)
+{-# INLINE zipWith3 #-}
+
+-- | Pass input from a stream through two iteratees at once. Excess input is
+-- yielded if it was not consumed by either iteratee. Output from the
+-- iteratees is combined with a user-provided function.
+--
+-- Analogous to 'Data.List.zipWith4'.
+--
+-- Since: 0.4.14
+zipWith4 :: Monad m
+         => (b1 -> b2 -> b3 -> b4 -> c)
+         -> Iteratee B.ByteString m b1
+         -> Iteratee B.ByteString m b2
+         -> Iteratee B.ByteString m b3
+         -> Iteratee B.ByteString m b4
+         -> Iteratee B.ByteString m c
+zipWith4 f i1 i2 i3 i4 = do
+	(b1, b2, b3, b4) <- zip4 i1 i2 i3 i4
+	return (f b1 b2 b3 b4)
+{-# INLINE zipWith4 #-}
+
+-- | Pass input from a stream through two iteratees at once. Excess input is
+-- yielded if it was not consumed by either iteratee. Output from the
+-- iteratees is combined with a user-provided function.
+--
+-- Analogous to 'Data.List.zipWith5'.
+--
+-- Since: 0.4.14
+zipWith5 :: Monad m
+         => (b1 -> b2 -> b3 -> b4 -> b5 -> c)
+         -> Iteratee B.ByteString m b1
+         -> Iteratee B.ByteString m b2
+         -> Iteratee B.ByteString m b3
+         -> Iteratee B.ByteString m b4
+         -> Iteratee B.ByteString m b5
+         -> Iteratee B.ByteString m c
+zipWith5 f i1 i2 i3 i4 i5 = do
+	(b1, b2, b3, b4, b5) <- zip5 i1 i2 i3 i4 i5
+	return (f b1 b2 b3 b4 b5)
+{-# INLINE zipWith5 #-}
+
+-- | Pass input from a stream through two iteratees at once. Excess input is
+-- yielded if it was not consumed by either iteratee. Output from the
+-- iteratees is combined with a user-provided function.
+--
+-- Analogous to 'Data.List.zipWith6'.
+--
+-- Since: 0.4.14
+zipWith6 :: Monad m
+         => (b1 -> b2 -> b3 -> b4 -> b5 -> b6 -> c)
+         -> Iteratee B.ByteString m b1
+         -> Iteratee B.ByteString m b2
+         -> Iteratee B.ByteString m b3
+         -> Iteratee B.ByteString m b4
+         -> Iteratee B.ByteString m b5
+         -> Iteratee B.ByteString m b6
+         -> Iteratee B.ByteString m c
+zipWith6 f i1 i2 i3 i4 i5 i6 = do
+	(b1, b2, b3, b4, b5, b6) <- zip6 i1 i2 i3 i4 i5 i6
+	return (f b1 b2 b3 b4 b5 b6)
+{-# INLINE zipWith6 #-}
+
+-- | Pass input from a stream through two iteratees at once. Excess input is
+-- yielded if it was not consumed by either iteratee. Output from the
+-- iteratees is combined with a user-provided function.
+--
+-- Analogous to 'Data.List.zipWith7'.
+--
+-- Since: 0.4.14
+zipWith7 :: Monad m
+         => (b1 -> b2 -> b3 -> b4 -> b5 -> b6 -> b7 -> c)
+         -> Iteratee B.ByteString m b1
+         -> Iteratee B.ByteString m b2
+         -> Iteratee B.ByteString m b3
+         -> Iteratee B.ByteString m b4
+         -> Iteratee B.ByteString m b5
+         -> Iteratee B.ByteString m b6
+         -> Iteratee B.ByteString m b7
+         -> Iteratee B.ByteString m c
+zipWith7 f i1 i2 i3 i4 i5 i6 i7 = do
+	(b1, b2, b3, b4, b5, b6, b7) <- zip7 i1 i2 i3 i4 i5 i6 i7
+	return (f b1 b2 b3 b4 b5 b6 b7)
+{-# INLINE zipWith7 #-}
 
 -- | Get the next byte from the stream, or 'Nothing' if the stream has
 -- ended.
