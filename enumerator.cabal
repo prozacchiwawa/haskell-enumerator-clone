@@ -54,6 +54,9 @@ description:
   transformed data to an /inner/ iteratee.
 
 extra-source-files:
+  benchmarks/enumerator-benchmarks.cabal
+  benchmarks/Benchmarks.hs
+  --
   examples/cat.hs
   examples/wc.hs
   --
@@ -62,7 +65,6 @@ extra-source-files:
   scripts/run-benchmarks
   scripts/run-tests
   --
-  tests/Benchmarks.hs
   tests/enumerator-tests.cabal
   tests/Properties.hs
 
