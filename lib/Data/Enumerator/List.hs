@@ -48,9 +48,12 @@ module Data.Enumerator.List
 	, unfold
 	, unfoldM
 	
-	-- ** Filters
+	-- ** Dropping input
+	, drop
+	, Data.Enumerator.List.dropWhile
 	, Data.Enumerator.List.filter
 	, filterM
+	, unique
 	
 	-- ** Consumers
 	, Data.Enumerator.List.take
@@ -73,12 +76,9 @@ module Data.Enumerator.List
 	
 	-- ** Unsorted
 	, head
-	, drop
-	, Data.Enumerator.List.dropWhile
 	, require
 	, isolate
 	, splitWhen
-	, unique
 	
 	) where
 

@@ -60,7 +60,9 @@ module Data.Enumerator.Binary
 	, unfold
 	, unfoldM
 	
-	-- ** Filters
+	-- ** Dropping input
+	, Data.Enumerator.Binary.drop
+	, Data.Enumerator.Binary.dropWhile
 	, Data.Enumerator.Binary.filter
 	, filterM
 	
@@ -85,8 +87,6 @@ module Data.Enumerator.Binary
 	
 	-- ** Unsorted
 	, Data.Enumerator.Binary.head
-	, Data.Enumerator.Binary.drop
-	, Data.Enumerator.Binary.dropWhile
 	, require
 	, isolate
 	, splitWhen

@@ -58,7 +58,9 @@ module Data.Enumerator.Text
 	, unfold
 	, unfoldM
 	
-	-- ** Filters
+	-- ** Dropping input
+	, Data.Enumerator.Text.drop
+	, Data.Enumerator.Text.dropWhile
 	, Data.Enumerator.Text.filter
 	, filterM
 	
@@ -83,8 +85,6 @@ module Data.Enumerator.Text
 	
 	-- ** Unsorted
 	, Data.Enumerator.Text.head
-	, Data.Enumerator.Text.drop
-	, Data.Enumerator.Text.dropWhile
 	, require
 	, isolate
 	, splitWhen
