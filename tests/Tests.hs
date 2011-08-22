@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
 --
@@ -681,6 +682,7 @@ suite_Other = suite "other"
 	, test_CatchError_WithoutContinue
 	, test_CatchError_NotDivergent
 	, test_CatchError_Interleaved
+	, test test_Zip
 	]
 
 test_Sequence :: Suite
@@ -737,6 +739,40 @@ test_CatchError_Interleaved = property "catchError/interleaved" prop where
 		EL.head
 		return True
 	onError err = return False
+
+test_Zip :: Test
+test_Zip = assertions "zip" $ do
+	let iterAdd = do
+		Just x <- EL.head
+		Just y <- EL.head
+		return (x + y)
+	let iterSub = do
+		Just x <- EL.head
+		Just y <- EL.head
+		return (x - y)
+	
+	let check i1 i2 = E.run_ (E.enumList 4 [1, 2, 3, 4, 5] $$ do
+		(x, y) <- EL.zip i1 i2
+		extra <- EL.consume
+		return (x, y, extra))
+	
+	-- Both sides have same behavior
+	(added, subbed, extra) <- check iterAdd iterSub
+	$expect (equal added 3)
+	$expect (equal subbed (- 1))
+	$expect (equal extra [3, 4, 5])
+	
+	-- First side has more extra data
+	(took, added, extra) <- check (EL.take 1) iterAdd
+	$expect (equal took [1])
+	$expect (equal added 3)
+	$expect (equal extra [3, 4, 5])
+	
+	-- Second side has more extra data
+	(added, took, extra) <- check iterAdd (EL.take 1)
+	$expect (equal added 3)
+	$expect (equal took [1])
+	$expect (equal extra [3, 4, 5])
 
 -- misc
 
