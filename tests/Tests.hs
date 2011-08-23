@@ -10,32 +10,31 @@ import           Control.Concurrent
 import qualified Control.Exception as Exc
 import           Control.Monad.IO.Class (liftIO)
 import           Data.Bits ((.&.))
+import qualified Data.ByteString as B
+import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Lazy as BL
 import           Data.Char (chr)
+import           Data.Functor.Identity (Identity, runIdentity)
 import qualified Data.List as L
 import qualified Data.List.Split as LS
 import           Data.Monoid (mappend, mempty, mconcat)
-import           Data.Functor.Identity (Identity, runIdentity)
 import           Data.String (IsString, fromString)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Lazy as TL
 import           Data.Word (Word8)
+import           System.Timeout (timeout)
+
+import           Test.Chell
+import           Test.Chell.QuickCheck
+import           Test.QuickCheck hiding ((.&.), property, within)
+import           Test.QuickCheck.Poly (A, B, C)
 
 import           Data.Enumerator (($$), (>>==))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.Text as ET
 import qualified Data.Enumerator.List as EL
-
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Char8 as B8
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Encoding as TE
-
-import           Test.Chell
-import           Test.Chell.QuickCheck
-import           Test.QuickCheck hiding ((.&.), property)
-import           Test.QuickCheck.Property (morallyDubiousIOProperty)
-import           Test.QuickCheck.Poly (A, B, C)
 
 tests :: [Suite]
 tests =
@@ -679,9 +678,11 @@ suite_Other :: Suite
 suite_Other = suite "other"
 	[ test_Sequence
 	, test_joinE
-	, test_CatchError_WithoutContinue
-	, test_CatchError_NotDivergent
-	, test_CatchError_Interleaved
+	, suite "catchError"
+		[ test test_CatchError_WithoutContinue
+		, test test_CatchError_NotDivergent
+		, test test_CatchError_Interleaved
+		]
 	, test test_Zip
 	, test test_ZipBytes
 	, test test_ZipText
@@ -705,42 +706,43 @@ test_joinE = property "joinE" prop where
 		
 		iter = (E.joinE (E.enumList 1 xs) (EL.map (* 10))) $$ EL.consume
 
-test_CatchError_WithoutContinue :: Suite
-test_CatchError_WithoutContinue = property "catchError/without-continue" test where
-	test = case runIdentity (E.run (E.enumList 1 [] $$ iter)) of
-		Left err -> Exc.fromException err == Just (Exc.ErrorCall "require: Unexpected EOF")
-		Right _ -> False
-	iter = E.catchError
-		(E.throwError (Exc.ErrorCall "error"))
-		(\_ -> EL.require 1)
+test_CatchError_WithoutContinue :: Test
+test_CatchError_WithoutContinue = assertions "without-continue" $ do
+	let iter = E.catchError
+	    	(E.throwError (Exc.ErrorCall "error"))
+	    	(\_ -> EL.require 1)
+	
+	res <- E.run (E.enumList 1 [] $$ iter)
+	$assert (left res)
+	
+	let Left err = res
+	$assert $ equal (Exc.fromException err) (Just (Exc.ErrorCall "require: Unexpected EOF"))
 
-test_CatchError_NotDivergent :: Suite
-test_CatchError_NotDivergent = property "catchError/not-divergent" test where
-	test = case runIdentity (E.run (E.enumList 1 [] $$ iter)) of
-		Left err -> Exc.fromException err == Just (Exc.ErrorCall "require: Unexpected EOF")
-		Right _ -> False
-	iter = E.catchError
-		(do
-			EL.head
-			E.throwError (Exc.ErrorCall "error"))
-		(\_ -> EL.require 1)
+test_CatchError_NotDivergent :: Test
+test_CatchError_NotDivergent = assertions "not-divergent" $ do
+	let iter = E.catchError
+	    	(do
+	    		EL.head
+	    		E.throwError (Exc.ErrorCall "error"))
+	    	(\_ -> EL.require 1)
+	
+	res <- E.run (E.enumList 1 [] $$ iter)
+	$assert (left res)
+	
+	let Left err = res
+	$assert $ equal (Exc.fromException err) (Just (Exc.ErrorCall "require: Unexpected EOF"))
 
-test_CatchError_Interleaved :: Suite
-test_CatchError_Interleaved = property "catchError/interleaved" prop where
-	prop = within 1000000 (morallyDubiousIOProperty io)
-	io = do
-		mvar <- newEmptyMVar
-		E.run_ (enumMVar mvar $$ E.catchError (iter mvar) onError)
-	enumMVar mvar = loop where
-		loop (E.Continue k) = do
-			x <- liftIO (takeMVar mvar)
-			k (E.Chunks [x]) >>== loop
-		loop step = E.returnI step
-	iter mvar = do
-		liftIO (putMVar mvar ())
-		EL.head
-		return True
-	onError err = return False
+test_CatchError_Interleaved :: Test
+test_CatchError_Interleaved = within 1000 $ assertions "interleaved" $ do
+	let enumMVar mvar = EL.repeatM (liftIO (takeMVar mvar))
+	let iter mvar = do
+	    	liftIO (putMVar mvar ())
+	    	EL.head
+	    	return True
+	let onError err = return False
+	
+	mvar <- liftIO newEmptyMVar
+	E.run_ (enumMVar mvar $$ E.catchError (iter mvar) onError)
 
 test_Zip :: Test
 test_Zip = assertions "zip" $ do
@@ -924,3 +926,11 @@ instance Arbitrary B.ByteString where
 
 instance Eq Exc.ErrorCall where
 	(Exc.ErrorCall s1) == (Exc.ErrorCall s2) = s1 == s2
+
+-- | Require a test to complete within /n/ milliseconds.
+within :: Int -> Test -> Test
+within time (Test name io) = Test name $ \opts -> do
+	res <- timeout (time * 1000) (io opts)
+	case res of
+		Just res' -> return res'
+		Nothing -> return (TestAborted [] (T.pack ("Test timed out after " ++ show time ++ " milliseconds")))
