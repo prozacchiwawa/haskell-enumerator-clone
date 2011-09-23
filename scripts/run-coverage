@@ -1,0 +1,21 @@
+#!/bin/bash
+if [ ! -f 'enumerator.cabal' ]; then
+	echo -n "Can't find enumerator.cabal; please run this script as"
+	echo -n " ./scripts/run-coverage from within the enumerator source"
+	echo " directory"
+	exit 1
+fi
+
+. scripts/common.bash
+
+require_cabal_dev
+
+pushd tests
+$CABAL_DEV -s ../cabal-dev install --flags="coverage" || exit 1
+popd
+
+rm -f enumerator_tests.tix
+cabal-dev/bin/enumerator_tests
+
+hpc markup --srcdir=src/ --srcdir=tests/ enumerator_tests.tix --destdir=hpc-markup --exclude=Main > /dev/null
+hpc report --srcdir=src/ --srcdir=tests/ enumerator_tests.tix --exclude=Main
