@@ -15,7 +15,47 @@ $CABAL_DEV -s ../cabal-dev install --flags="coverage" || exit 1
 popd
 
 rm -f enumerator_tests.tix
-cabal-dev/bin/enumerator_tests
+cabal-dev/bin/enumerator_tests $@
 
-hpc markup --srcdir=src/ --srcdir=tests/ enumerator_tests.tix --destdir=hpc-markup --exclude=Main > /dev/null
-hpc report --srcdir=src/ --srcdir=tests/ enumerator_tests.tix --exclude=Main
+EXCLUDES="\
+--exclude=Main \
+--exclude=EnumeratorTests.Binary \
+--exclude=EnumeratorTests.Binary.Consume \
+--exclude=EnumeratorTests.Binary.Drop \
+--exclude=EnumeratorTests.Binary.Isolate \
+--exclude=EnumeratorTests.Binary.Map \
+--exclude=EnumeratorTests.Binary.MapAccum \
+--exclude=EnumeratorTests.Binary.Require \
+--exclude=EnumeratorTests.Binary.Split \
+--exclude=EnumeratorTests.Binary.Util \
+--exclude=EnumeratorTests.Binary.Zip \
+--exclude=EnumeratorTests.CatchError \
+--exclude=EnumeratorTests.Compatibility \
+--exclude=EnumeratorTests.Join \
+--exclude=EnumeratorTests.List \
+--exclude=EnumeratorTests.List.Consume \
+--exclude=EnumeratorTests.List.Drop \
+--exclude=EnumeratorTests.List.Isolate  \
+--exclude=EnumeratorTests.List.Map \
+--exclude=EnumeratorTests.List.MapAccum \
+--exclude=EnumeratorTests.List.Require \
+--exclude=EnumeratorTests.List.Split \
+--exclude=EnumeratorTests.List.Util \
+--exclude=EnumeratorTests.List.Zip \
+--exclude=EnumeratorTests.Sequence \
+--exclude=EnumeratorTests.Stream \
+--exclude=EnumeratorTests.Text \
+--exclude=EnumeratorTests.Text.Codecs \
+--exclude=EnumeratorTests.Text.Consume \
+--exclude=EnumeratorTests.Text.Drop \
+--exclude=EnumeratorTests.Text.Isolate \
+--exclude=EnumeratorTests.Text.Map \
+--exclude=EnumeratorTests.Text.MapAccum \
+--exclude=EnumeratorTests.Text.Require \
+--exclude=EnumeratorTests.Text.Split \
+--exclude=EnumeratorTests.Text.Util \
+--exclude=EnumeratorTests.Text.Zip \
+--exclude=EnumeratorTests.Util"
+
+hpc markup --srcdir=src/ --srcdir=tests/ enumerator_tests.tix --destdir=hpc-markup $EXCLUDES > /dev/null
+hpc report --srcdir=src/ --srcdir=tests/ enumerator_tests.tix $EXCLUDES

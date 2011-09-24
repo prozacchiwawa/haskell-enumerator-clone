@@ -8,7 +8,7 @@ flag coverage
   manual: True
 
 executable enumerator_tests
-  main-is: Tests.hs
+  main-is: EnumeratorTests.hs
   ghc-options: -Wall
   hs-source-dirs: ../lib,.
 
