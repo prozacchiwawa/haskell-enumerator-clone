@@ -16,7 +16,7 @@ import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.List as EL
 
 test_Zip :: Suite
-test_Zip = test $ assertions "zip" $ do
+test_Zip = assertions "zip" $ do
 	let iterTup = do
 		Just x <- EB.head
 		Just y <- EB.head

@@ -22,12 +22,12 @@ import           EnumeratorTests.Util (within)
 
 test_CatchError :: Suite
 test_CatchError = suite "catchError"
-	[ test test_CatchError_WithoutContinue
-	, test test_CatchError_NotDivergent
-	, test test_CatchError_Interleaved
+	[ test_CatchError_WithoutContinue
+	, test_CatchError_NotDivergent
+	, test_CatchError_Interleaved
 	]
 
-test_CatchError_WithoutContinue :: Test
+test_CatchError_WithoutContinue :: Suite
 test_CatchError_WithoutContinue = assertions "without-continue" $ do
 	let iter = E.catchError
 	    	(E.throwError (Exc.ErrorCall "error"))
@@ -39,7 +39,7 @@ test_CatchError_WithoutContinue = assertions "without-continue" $ do
 	let Left err = res
 	$assert $ equal (Exc.fromException err) (Just (Exc.ErrorCall "require: Unexpected EOF"))
 
-test_CatchError_NotDivergent :: Test
+test_CatchError_NotDivergent :: Suite
 test_CatchError_NotDivergent = assertions "not-divergent" $ do
 	let iter = E.catchError
 	    	(do
@@ -53,7 +53,7 @@ test_CatchError_NotDivergent = assertions "not-divergent" $ do
 	let Left err = res
 	$assert $ equal (Exc.fromException err) (Just (Exc.ErrorCall "require: Unexpected EOF"))
 
-test_CatchError_Interleaved :: Test
+test_CatchError_Interleaved :: Suite
 test_CatchError_Interleaved = within 1000 $ assertions "interleaved" $ do
 	let enumMVar mvar = EL.repeatM (liftIO (takeMVar mvar))
 	let iter mvar = do

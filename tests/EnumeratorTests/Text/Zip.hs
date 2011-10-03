@@ -16,7 +16,7 @@ import qualified Data.Enumerator.List as EL
 import qualified Data.Enumerator.Text as ET
 
 test_Zip :: Suite
-test_Zip = test $ assertions "zip" $ do
+test_Zip = assertions "zip" $ do
 	let iterTup = do
 		Just x <- ET.head
 		Just y <- ET.head

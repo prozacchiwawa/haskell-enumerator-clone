@@ -38,7 +38,7 @@ check iter plain xs = expected == run where
 		Right x -> Right x
 
 todo :: T.Text -> Suite
-todo name = test (skipIf True (assertions name (return ())))
+todo name = skipIf True (assertions name (return ()))
 
 genASCII :: IsString a => Gen a
 genASCII = fmap fromString string where
@@ -120,9 +120,10 @@ instance Eq Exc.ErrorCall where
 	(Exc.ErrorCall s1) == (Exc.ErrorCall s2) = s1 == s2
 
 -- | Require a test to complete within /n/ milliseconds.
-within :: Int -> Test -> Test
-within time (Test name io) = Test name $ \opts -> do
-	res <- timeout (time * 1000) (io opts)
-	case res of
-		Just res' -> return res'
-		Nothing -> return (TestAborted [] (T.pack ("Test timed out after " ++ show time ++ " milliseconds")))
+within :: Int -> Suite -> Suite
+within time s = suite (suiteName s) (map wrapTest (suiteTests s)) where
+	wrapTest (Test name io) = test $ Test name $ \opts -> do
+		res <- timeout (time * 1000) (io opts)
+		case res of
+			Just res' -> return res'
+			Nothing -> return (TestAborted [] (T.pack ("Test timed out after " ++ show time ++ " milliseconds")))
