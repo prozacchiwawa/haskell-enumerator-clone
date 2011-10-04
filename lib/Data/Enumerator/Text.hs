@@ -844,7 +844,10 @@ decode codec = checkDone (continue . step B.empty) where
 	loop acc k [] = continue (step acc k)
 	loop acc k (x:xs) = let
 		(text, extra) = codecDecode codec (B.append acc x)
-		extraChunks = Chunks (either snd id extra : xs)
+		extraChunks = Chunks $ case extra of
+			Right text | B.null text -> xs
+			Right text -> text:xs
+			Left (_, text) -> text:xs
 		
 		checkError k' = case extra of
 			Left (exc, _) -> throwError exc

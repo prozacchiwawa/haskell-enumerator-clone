@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
 --
@@ -9,10 +10,15 @@ module EnumeratorTests.Text.Codecs
 
 import           Prelude hiding (words)
 
+import           Control.Exception (ErrorCall(..))
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
+import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy.Char8 as BL8
+import           Data.Char (ord)
 import           Data.Functor.Identity (Identity, runIdentity)
 import qualified Data.Text as T
+import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as TE
 
 import           Test.Chell
@@ -21,6 +27,7 @@ import           Test.QuickCheck hiding (property)
 
 import           Data.Enumerator (($$))
 import qualified Data.Enumerator as E
+import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.Text as ET
 import qualified Data.Enumerator.List as EL
 
@@ -37,15 +44,112 @@ test_TextCodecs = suite "codecs"
 
 test_ASCII :: Suite
 test_ASCII = suite "ascii"
-	[ test_Encode_ASCII
-	, test_Decode_ASCII
+	[ property "encode" (forAll genASCII (prop_Encode ET.ascii encodeASCII))
+	, property "decode" (forAll genASCII (prop_Decode ET.ascii decodeASCII))
+	
+	, assertions "show" $ do
+	  	$expect $ equal
+	  		"Codec \"ASCII\""
+	  		(show ET.ascii)
+	
+	, assertions "encode-invalid" $ do
+	  	$expect $ throwsEq
+	  		(ErrorCall "Codec \"ASCII\" can't encode character U+00FF")
+	  		(runList ["\xFF"] (E.joinI (ET.encode ET.ascii $$ EB.consume)))
+	
+	, assertions "decode-invalid" $ do
+	  	$expect $ throwsEq
+	  		(ErrorCall "Codec \"ASCII\" can't decode byte 0xFF")
+	  		(runList ["\xFF"] (E.joinI (ET.decode ET.ascii $$ ET.consume)))
+	
+	, assertions "lazy" $ do
+	  	{-
+	  	$expect $ equal
+	  		(Just 0x61, ["b"])
+	  		(runListI ["", "ab"] (do
+	  			x <- E.joinI (ET.encode ET.ascii $$ EB.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	-}
+	  	$expect $ equal
+	  		(Just 0x61, ["b"])
+	  		(runListI ["", "a", "b"] (do
+	  			x <- E.joinI (ET.encode ET.ascii $$ EB.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 0x61, ["\xFF"])
+	  		(runListI ["", "a\xFF"] (do
+	  			x <- E.joinI (ET.encode ET.ascii $$ EB.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 'a', ["b"])
+	  		(runListI ["", "a", "b"] (do
+	  			x <- E.joinI (ET.decode ET.ascii $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 'a', ["\xFF"])
+	  		(runListI ["", "a\xFF"] (do
+	  			x <- E.joinI (ET.decode ET.ascii $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
 	]
+
+encodeASCII :: T.Text -> BL.ByteString
+encodeASCII text = if T.any (\c -> ord c > 127) text
+	then error "encodeASCII: input contains non-ASCII characters."
+	else BL8.pack (T.unpack text)
+
+decodeASCII :: B.ByteString -> TL.Text
+decodeASCII bytes = if B.any (> 127) bytes
+	then error "decodeASCII: input contains non-ASCII characters."
+	else TL.pack (B8.unpack bytes)
 
 test_ISO8859_1 :: Suite
 test_ISO8859_1 = suite "iso8859-1"
-	[ test_Encode_ISO8859_1
-	, test_Decode_ISO8859_1
+	[ property "encode" (forAll genISO8859_1 (prop_Encode ET.iso8859_1 encodeISO8859_1))
+	, property "decode" (forAll genISO8859_1 (prop_Decode ET.iso8859_1 decodeISO8859_1))
+	
+	, assertions "show" $ do
+	  	$expect $ equal
+	  		"Codec \"ISO-8859-1\""
+	  		(show ET.iso8859_1)
+	
+	, assertions "encode-invalid" $ do
+	  	$expect $ throwsEq
+	  		(ErrorCall "Codec \"ISO-8859-1\" can't encode character U+01FF")
+	  		(runList ["\x1FF"] (E.joinI (ET.encode ET.iso8859_1 $$ EB.consume)))
+	
+	, assertions "lazy" $ do
+	  	$expect $ equal
+	  		(Just 0x61, ["b"])
+	  		(runListI ["", "a", "b"] (do
+	  			x <- E.joinI (ET.encode ET.iso8859_1 $$ EB.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 0x61, ["\x1FF"])
+	  		(runListI ["", "a\x1FF"] (do
+	  			x <- E.joinI (ET.encode ET.iso8859_1 $$ EB.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 'a', ["b"])
+	  		(runListI ["", "a", "b"] (do
+	  			x <- E.joinI (ET.decode ET.iso8859_1 $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
 	]
+
+encodeISO8859_1 :: T.Text -> BL.ByteString
+encodeISO8859_1 text = if T.any (\c -> ord c > 255) text
+	then error "encodeASCII: input contains non-ISO8859-1 characters."
+	else BL8.pack (T.unpack text)
+
+decodeISO8859_1 :: B.ByteString -> TL.Text
+decodeISO8859_1 bytes = TL.pack (B8.unpack bytes)
 
 test_UTF8 :: Suite
 test_UTF8 = suite "utf8"
@@ -68,6 +172,8 @@ test_UTF32 = suite "utf32"
 	, test_Decode_UTF32_BE
 	, test_Decode_UTF32_LE
 	]
+
+{-
 
 test_Encode_ASCII :: Suite
 test_Encode_ASCII = suite "encode" props where
@@ -122,6 +228,8 @@ test_Decode_ASCII = suite "decode" props where
 		result = decode EL.head input
 		input = [B.pack [0x61, 0xFF]]
 		expected = Just (T.pack "a")
+
+-}
 
 test_Encode_ISO8859_1 :: Suite
 test_Encode_ISO8859_1 = suite "encode" props where
@@ -320,3 +428,17 @@ test_Decode_UTF32_LE = suite "decode" props where
 	prop_error = isLeft (decode EL.consume input)  where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0xFF, 0xFF, 0xFF, 0xFF]]
+
+prop_Encode :: ET.Codec -> (T.Text -> BL.ByteString) -> T.Text -> Bool
+prop_Encode codec model text = encoded == model text where
+	encoded = runListI [text] (E.joinI (ET.encode codec $$ EB.consume))
+
+prop_Decode :: ET.Codec -> (B.ByteString -> TL.Text) -> B.ByteString -> Bool
+prop_Decode codec model bytes = decoded == model bytes where
+	decoded = runListI [bytes] (E.joinI (ET.decode codec $$ ET.consume))
+
+runList :: Monad m => [a] -> E.Iteratee a m b -> m b
+runList xs iter = E.run_ (E.enumList 1 xs $$ iter)
+
+runListI :: [a] -> E.Iteratee a Identity b -> b
+runListI xs iter = runIdentity (runList xs iter)
