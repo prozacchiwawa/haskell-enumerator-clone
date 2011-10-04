@@ -40,7 +40,8 @@ test_TextCodecs = suite "codecs"
 	, test_UTF8
 	, test_UTF16_BE
 	, test_UTF16_LE
-	, test_UTF32
+	, test_UTF32_BE
+	, test_UTF32_LE
 	]
 
 test_ASCII :: Suite
@@ -245,73 +246,71 @@ test_UTF16_LE = suite "utf16-le"
 	  			return (x, y)))
 	]
 
-test_UTF32 :: Suite
-test_UTF32 = suite "utf32"
-	[ test_Encode_UTF32_BE
-	, test_Encode_UTF32_LE
-	, test_Decode_UTF32_BE
-	, test_Decode_UTF32_LE
+test_UTF32_BE :: Suite
+test_UTF32_BE = suite "utf32-be"
+	[ property "encode" (prop_Encode ET.utf32_be TE.encodeUtf32BE)
+	, property "decode" (prop_Decode ET.utf32_be TE.decodeUtf32BE . TE.encodeUtf32BE)
+	
+	, assertions "show" $ do
+	  	$expect $ equal
+	  		"Codec \"UTF-32-BE\""
+	  		(show ET.utf32_be)
+	
+	, assertions "decode-invalid" $ do
+	  	$expect $ throwsEq
+	  		(TE.DecodeError "Data.Text.Encoding.Fusion.streamUtf32BE: Invalid UTF-32BE stream" Nothing)
+	  		(runList ["\xFF\xFF\xFF\xFF"] (E.joinI (ET.decode ET.utf32_be $$ ET.consume)))
+	  	$expect $ throwsEq
+	  		(ErrorCall "Unexpected EOF while decoding")
+	  		(runList ["\x00\x00"] (E.joinI (ET.decode ET.utf32_be $$ ET.consume)))
+	
+	, assertions "lazy" $ do
+	  	$expect $ equal
+	  		(Just 'a', ["\x00"])
+	  		(runListI ["\x00\x00\x00\x61\x00"] (do
+	  			x <- E.joinI (ET.decode ET.utf32_be $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 'a', ["\xFF\xFF\xFF\xFF"])
+	  		(runListI ["\x00\x00\x00\x61\xFF\xFF\xFF\xFF"] (do
+	  			x <- E.joinI (ET.decode ET.utf32_be $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
 	]
 
-test_Encode_UTF32_BE :: Suite
-test_Encode_UTF32_BE = todo "encode"
-
-test_Decode_UTF32_BE :: Suite
-test_Decode_UTF32_BE = suite "decode" props where
-	props = [ property "works" prop_works
-	        , property "lazy" prop_lazy
-	        , property "error" prop_error
-	        ]
+test_UTF32_LE :: Suite
+test_UTF32_LE = suite "utf32-le"
+	[ property "encode" (prop_Encode ET.utf32_le TE.encodeUtf32LE)
+	, property "decode" (prop_Decode ET.utf32_le TE.decodeUtf32LE . TE.encodeUtf32LE)
 	
-	decode iter input =
-		runIdentity . E.run $
-		E.enumList 1 input $$
-		E.joinI (ET.decode ET.utf32_be $$ iter)
+	, assertions "show" $ do
+	  	$expect $ equal
+	  		"Codec \"UTF-32-LE\""
+	  		(show ET.utf32_le)
 	
-	prop_works text = result == map T.singleton chars where
-		Right result = decode EL.consume (map B.singleton bytes)
-		
-		bytes = B.unpack (TE.encodeUtf32BE text)
-		chars = T.unpack text
+	, assertions "decode-invalid" $ do
+	  	$expect $ throwsEq
+	  		(TE.DecodeError "Data.Text.Encoding.Fusion.streamUtf32LE: Invalid UTF-32LE stream" Nothing)
+	  		(runList ["\xFF\xFF\xFF\xFF"] (E.joinI (ET.decode ET.utf32_le $$ ET.consume)))
+	  	$expect $ throwsEq
+	  		(ErrorCall "Unexpected EOF while decoding")
+	  		(runList ["\x00\x00"] (E.joinI (ET.decode ET.utf32_le $$ ET.consume)))
 	
-	prop_lazy = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x00, 0x00, 0x00, 0x61, 0xFF, 0xFF]]
-		expected = Just (T.pack "a")
-	
-	prop_error = isLeft (decode EL.consume input)  where
-		isLeft = either (const True) (const False)
-		input = [B.pack [0xFF, 0xFF, 0xFF, 0xFF]]
-
-test_Encode_UTF32_LE :: Suite
-test_Encode_UTF32_LE = todo "encode"
-
-test_Decode_UTF32_LE :: Suite
-test_Decode_UTF32_LE = suite "decode" props where
-	props = [ property "works" prop_works
-	        , property "lazy" prop_lazy
-	        , property "error" prop_error
-	        ]
-	
-	decode iter input =
-		runIdentity . E.run $
-		E.enumList 1 input $$
-		E.joinI (ET.decode ET.utf32_le $$ iter)
-	
-	prop_works text = result == map T.singleton chars where
-		Right result = decode EL.consume (map B.singleton bytes)
-		
-		bytes = B.unpack (TE.encodeUtf32LE text)
-		chars = T.unpack text
-	
-	prop_lazy = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x61, 0x00, 0x00, 0x00, 0xFF, 0xFF]]
-		expected = Just (T.pack "a")
-	
-	prop_error = isLeft (decode EL.consume input)  where
-		isLeft = either (const True) (const False)
-		input = [B.pack [0xFF, 0xFF, 0xFF, 0xFF]]
+	, assertions "lazy" $ do
+	  	$expect $ equal
+	  		(Just 'a', ["\x00"])
+	  		(runListI ["\x61\x00\x00\x00\x00"] (do
+	  			x <- E.joinI (ET.decode ET.utf32_le $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 'a', ["\xFF\xFF\xFF\xFF"])
+	  		(runListI ["\x61\x00\x00\x00\xFF\xFF\xFF\xFF"] (do
+	  			x <- E.joinI (ET.decode ET.utf32_le $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	]
 
 prop_Encode :: ET.Codec -> (T.Text -> B.ByteString) -> T.Text -> Bool
 prop_Encode codec model text = encoded == model text where
