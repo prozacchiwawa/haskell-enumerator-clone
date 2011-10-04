@@ -38,7 +38,8 @@ test_TextCodecs = suite "codecs"
 	[ test_ASCII
 	, test_ISO8859_1
 	, test_UTF8
-	, test_UTF16
+	, test_UTF16_BE
+	, test_UTF16_LE
 	, test_UTF32
 	]
 
@@ -178,12 +179,70 @@ test_UTF8 = suite "utf8"
 	  			return (x, y)))
 	]
 
-test_UTF16 :: Suite
-test_UTF16 = suite "utf16"
-	[ test_Encode_UTF16_BE
-	, test_Encode_UTF16_LE
-	, test_Decode_UTF16_BE
-	, test_Decode_UTF16_LE
+test_UTF16_BE :: Suite
+test_UTF16_BE = suite "utf16-be"
+	[ property "encode" (prop_Encode ET.utf16_be TE.encodeUtf16BE)
+	, property "decode" (prop_Decode ET.utf16_be TE.decodeUtf16BE . TE.encodeUtf16BE)
+	
+	, assertions "show" $ do
+	  	$expect $ equal
+	  		"Codec \"UTF-16-BE\""
+	  		(show ET.utf16_be)
+	
+	, assertions "decode-invalid" $ do
+	  	$expect $ throwsEq
+	  		(TE.DecodeError "Data.Text.Encoding.Fusion.streamUtf16BE: Invalid UTF-16BE stream" Nothing)
+	  		(runList ["\xDD\x1E"] (E.joinI (ET.decode ET.utf16_be $$ ET.consume)))
+	  	$expect $ throwsEq
+	  		(ErrorCall "Unexpected EOF while decoding")
+	  		(runList ["\xD8\x00"] (E.joinI (ET.decode ET.utf16_be $$ ET.consume)))
+	
+	, assertions "lazy" $ do
+	  	$expect $ equal
+	  		(Just 'a', ["\x00"])
+	  		(runListI ["\x00\x61\x00"] (do
+	  			x <- E.joinI (ET.decode ET.utf16_be $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 'a', ["\xDD\x1E"])
+	  		(runListI ["\x00\x61\xDD\x1E"] (do
+	  			x <- E.joinI (ET.decode ET.utf16_be $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	]
+
+test_UTF16_LE :: Suite
+test_UTF16_LE = suite "utf16-le"
+	[ property "encode" (prop_Encode ET.utf16_le TE.encodeUtf16LE)
+	, property "decode" (prop_Decode ET.utf16_le TE.decodeUtf16LE . TE.encodeUtf16LE)
+	
+	, assertions "show" $ do
+	  	$expect $ equal
+	  		"Codec \"UTF-16-LE\""
+	  		(show ET.utf16_le)
+	
+	, assertions "decode-invalid" $ do
+	  	$expect $ throwsEq
+	  		(TE.DecodeError "Data.Text.Encoding.Fusion.streamUtf16LE: Invalid UTF-16LE stream" Nothing)
+	  		(runList ["\x1E\xDD"] (E.joinI (ET.decode ET.utf16_le $$ ET.consume)))
+	  	$expect $ throwsEq
+	  		(ErrorCall "Unexpected EOF while decoding")
+	  		(runList ["\x00\xD8"] (E.joinI (ET.decode ET.utf16_le $$ ET.consume)))
+	
+	, assertions "lazy" $ do
+	  	$expect $ equal
+	  		(Just 'a', ["\x00"])
+	  		(runListI ["\x61\x00\x00"] (do
+	  			x <- E.joinI (ET.decode ET.utf16_le $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
+	  	$expect $ equal
+	  		(Just 'a', ["\x1E\xDD"])
+	  		(runListI ["\x61\x00\x1E\xDD"] (do
+	  			x <- E.joinI (ET.decode ET.utf16_le $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
 	]
 
 test_UTF32 :: Suite
@@ -193,78 +252,6 @@ test_UTF32 = suite "utf32"
 	, test_Decode_UTF32_BE
 	, test_Decode_UTF32_LE
 	]
-
-test_Encode_UTF16_BE :: Suite
-test_Encode_UTF16_BE = todo "encode"
-
-test_Decode_UTF16_BE :: Suite
-test_Decode_UTF16_BE = suite "decode" props where
-	props = [ property "works" prop_works
-	        , property "lazy" prop_lazy
-	        , property "error" prop_error
-	        , property "incremental" prop_incremental
-	        ]
-	
-	decode iter input =
-		runIdentity . E.run $
-		E.enumList 1 input $$
-		E.joinI (ET.decode ET.utf16_be $$ iter)
-	
-	prop_works text = result == map T.singleton chars where
-		Right result = decode EL.consume (map B.singleton bytes)
-		
-		bytes = B.unpack (TE.encodeUtf16BE text)
-		chars = T.unpack text
-	
-	prop_lazy = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x00, 0x61, 0xDD, 0x1E]]
-		expected = Just (T.pack "a")
-	
-	prop_error = isLeft (decode EL.consume input)  where
-		isLeft = either (const True) (const False)
-		input = [B.pack [0x00, 0x61, 0xDD, 0x1E]]
-	
-	prop_incremental = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x00, 0x61, 0xD8, 0x34, 0xD8, 0xD8]]
-		expected = Just (T.pack "a")
-
-test_Encode_UTF16_LE :: Suite
-test_Encode_UTF16_LE = todo "encode"
-
-test_Decode_UTF16_LE :: Suite
-test_Decode_UTF16_LE = suite "decode" props where
-	props = [ property "works" prop_works
-	        , property "lazy" prop_lazy
-	        , property "error" prop_error
-	        , property "incremental" prop_incremental
-	        ]
-	
-	decode iter input =
-		runIdentity . E.run $
-		E.enumList 1 input $$
-		E.joinI (ET.decode ET.utf16_le $$ iter)
-	
-	prop_works text = result == map T.singleton chars where
-		Right result = decode EL.consume (map B.singleton bytes)
-		
-		bytes = B.unpack (TE.encodeUtf16LE text)
-		chars = T.unpack text
-	
-	prop_lazy = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x61, 0x00, 0x1E, 0xDD]]
-		expected = Just (T.pack "a")
-	
-	prop_error = isLeft (decode EL.consume input)  where
-		isLeft = either (const True) (const False)
-		input = [B.pack [0x61, 0x00, 0x1E, 0xDD]]
-	
-	prop_incremental = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x61, 0x00, 0x34, 0xD8, 0xD8, 0xD8]]
-		expected = Just (T.pack "a")
 
 test_Encode_UTF32_BE :: Suite
 test_Encode_UTF32_BE = todo "encode"

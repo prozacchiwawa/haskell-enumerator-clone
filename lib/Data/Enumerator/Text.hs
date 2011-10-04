@@ -838,7 +838,7 @@ encode codec = checkDone (continue . step) where
 decode :: Monad m => Codec
        -> Enumeratee B.ByteString T.Text m b
 decode codec = checkDone (continue . step B.empty) where
-	step acc   k EOF = if B.null acc
+	step acc k EOF = if B.null acc
 		then yield (Continue k) EOF
 		else throwError (Exc.ErrorCall "Unexpected EOF while decoding")
 	step acc k (Chunks xs) = loop acc k xs
@@ -932,8 +932,8 @@ utf16_le = Codec name enc dec where
 		       | (n + 1) == maxN = decodeTo n
 		loop n = let
 			req = utf16Required
-				(B.index bytes 0)
-				(B.index bytes 1)
+				(B.index bytes n)
+				(B.index bytes (n + 1))
 			decodeMore = loop $! n + req
 			in if n + req > maxN
 				then decodeTo n
@@ -957,8 +957,8 @@ utf16_be = Codec name enc dec where
 		       | (n + 1) == maxN = decodeTo n
 		loop n = let
 			req = utf16Required
-				(B.index bytes 1)
-				(B.index bytes 0)
+				(B.index bytes (n + 1))
+				(B.index bytes n)
 			decodeMore = loop $! n + req
 			in if n + req > maxN
 				then decodeTo n
