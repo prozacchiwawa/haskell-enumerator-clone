@@ -838,16 +838,18 @@ encode codec = checkDone (continue . step) where
 decode :: Monad m => Codec
        -> Enumeratee B.ByteString T.Text m b
 decode codec = checkDone (continue . step B.empty) where
-	step _   k EOF = yield (Continue k) EOF
+	step acc   k EOF = if B.null acc
+		then yield (Continue k) EOF
+		else throwError (Exc.ErrorCall "Unexpected EOF while decoding")
 	step acc k (Chunks xs) = loop acc k xs
 	
 	loop acc k [] = continue (step acc k)
 	loop acc k (x:xs) = let
 		(text, extra) = codecDecode codec (B.append acc x)
 		extraChunks = Chunks $ case extra of
-			Right text | B.null text -> xs
-			Right text -> text:xs
-			Left (_, text) -> text:xs
+			Right bytes | B.null bytes -> xs
+			Right bytes -> bytes:xs
+			Left (_, bytes) -> bytes:xs
 		
 		checkError k' = case extra of
 			Left (exc, _) -> throwError exc

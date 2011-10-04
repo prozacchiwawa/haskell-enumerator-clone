@@ -14,12 +14,12 @@ import           Control.Exception (ErrorCall(..))
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as BL8
 import           Data.Char (ord)
 import           Data.Functor.Identity (Identity, runIdentity)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as TE
+import qualified Data.Text.Encoding.Error as TE
 
 import           Test.Chell
 import           Test.Chell.QuickCheck
@@ -97,15 +97,15 @@ test_ASCII = suite "ascii"
 	  			return (x, y)))
 	]
 
-encodeASCII :: T.Text -> BL.ByteString
+encodeASCII :: T.Text -> B.ByteString
 encodeASCII text = if T.any (\c -> ord c > 127) text
 	then error "encodeASCII: input contains non-ASCII characters."
-	else BL8.pack (T.unpack text)
+	else B8.pack (T.unpack text)
 
-decodeASCII :: B.ByteString -> TL.Text
+decodeASCII :: B.ByteString -> T.Text
 decodeASCII bytes = if B.any (> 127) bytes
 	then error "decodeASCII: input contains non-ASCII characters."
-	else TL.pack (B8.unpack bytes)
+	else T.pack (B8.unpack bytes)
 
 test_ISO8859_1 :: Suite
 test_ISO8859_1 = suite "iso8859-1"
@@ -143,18 +143,39 @@ test_ISO8859_1 = suite "iso8859-1"
 	  			return (x, y)))
 	]
 
-encodeISO8859_1 :: T.Text -> BL.ByteString
+encodeISO8859_1 :: T.Text -> B.ByteString
 encodeISO8859_1 text = if T.any (\c -> ord c > 255) text
 	then error "encodeASCII: input contains non-ISO8859-1 characters."
-	else BL8.pack (T.unpack text)
+	else B8.pack (T.unpack text)
 
-decodeISO8859_1 :: B.ByteString -> TL.Text
-decodeISO8859_1 bytes = TL.pack (B8.unpack bytes)
+decodeISO8859_1 :: B.ByteString -> T.Text
+decodeISO8859_1 bytes = T.pack (B8.unpack bytes)
 
 test_UTF8 :: Suite
 test_UTF8 = suite "utf8"
-	[ test_Encode_UTF8
-	, test_Decode_UTF8
+	[ property "encode" (prop_Encode ET.utf8 TE.encodeUtf8)
+	, property "decode" (prop_Decode ET.utf8 TE.decodeUtf8 . TE.encodeUtf8)
+	
+	, assertions "show" $ do
+	  	$expect $ equal
+	  		"Codec \"UTF-8\""
+	  		(show ET.utf8)
+	
+	, assertions "decode-invalid" $ do
+	  	$expect $ throwsEq
+	  		(TE.DecodeError "Data.Text.Encoding.decodeUtf8: Invalid UTF-8 stream" (Just 0xFF))
+	  		(runList ["\xFF"] (E.joinI (ET.decode ET.utf8 $$ ET.consume)))
+	  	$expect $ throwsEq
+	  		(ErrorCall "Unexpected EOF while decoding")
+	  		(runList ["\xF0"] (E.joinI (ET.decode ET.utf8 $$ ET.consume)))
+	
+	, assertions "lazy" $ do
+	  	$expect $ equal
+	  		(Just 'a', ["\xEF\xBD"])
+	  		(runListI ["a\xEF\xBD"] (do
+	  			x <- E.joinI (ET.decode ET.utf8 $$ ET.head)
+	  			y <- EL.consume
+	  			return (x, y)))
 	]
 
 test_UTF16 :: Suite
@@ -172,130 +193,6 @@ test_UTF32 = suite "utf32"
 	, test_Decode_UTF32_BE
 	, test_Decode_UTF32_LE
 	]
-
-{-
-
-test_Encode_ASCII :: Suite
-test_Encode_ASCII = suite "encode" props where
-	props = [ property "works" (forAll genASCII prop_works)
-	        , property "error" prop_error
-	        , property "lazy" prop_lazy
-	        ]
-	
-	encode iter input =
-		runIdentity . E.run $
-		E.enumList 1 input $$
-		E.joinI (ET.encode ET.ascii $$ iter)
-	
-	prop_works bytes = result == map B.singleton words where
-		Right result = encode EL.consume (map T.singleton chars)
-		
-		chars = B8.unpack bytes
-		words = B.unpack bytes
-	
-	prop_error = isLeft (encode EL.consume input)  where
-		isLeft = either (const True) (const False)
-		input = [T.pack "\x61\xFF"]
-	
-	prop_lazy = either (const False) (== expected) result where
-		result = encode EL.head input
-		input = [T.pack "\x61\xFF"]
-		expected = Just (B.singleton 0x61)
-
-test_Decode_ASCII :: Suite
-test_Decode_ASCII = suite "decode" props where
-	props = [ property "works" (forAll genASCII prop_works)
-	        , property "error" prop_error
-	        , property "lazy" prop_lazy
-	        ]
-	
-	decode iter input =
-		runIdentity . E.run $
-		E.enumList 1 input $$
-		E.joinI (ET.decode ET.ascii $$ iter)
-	
-	prop_works text = result == map T.singleton chars where
-		Right result = decode EL.consume (map B.singleton bytes)
-		
-		bytes = B.unpack (TE.encodeUtf8 text)
-		chars = T.unpack text
-	
-	prop_error = isLeft (decode EL.consume input)  where
-		isLeft = either (const True) (const False)
-		input = [B.pack [0xFF]]
-	
-	prop_lazy = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x61, 0xFF]]
-		expected = Just (T.pack "a")
-
--}
-
-test_Encode_ISO8859_1 :: Suite
-test_Encode_ISO8859_1 = suite "encode" props where
-	props = [ property "works" (forAll genISO8859_1 prop_works)
-	        , property "error" prop_error
-	        , property "lazy" prop_lazy
-	        ]
-	
-	encode iter input =
-		runIdentity . E.run $
-		E.enumList 1 input $$
-		E.joinI (ET.encode ET.iso8859_1 $$ iter)
-	
-	prop_works bytes = result == map B.singleton words where
-		Right result = encode EL.consume (map T.singleton chars)
-		
-		chars = B8.unpack bytes
-		words = B.unpack bytes
-	
-	prop_error = isLeft (encode EL.consume input)  where
-		isLeft = either (const True) (const False)
-		input = [T.pack "\x61\xFF5E"]
-	
-	prop_lazy = either (const False) (== expected) result where
-		result = encode EL.head input
-		input = [T.pack "\x61\xFF5E"]
-		expected = Just (B.singleton 0x61)
-
-test_Decode_ISO8859_1 :: Suite
-test_Decode_ISO8859_1 = todo "decode"
-
-test_Encode_UTF8 :: Suite
-test_Encode_UTF8 = todo "encode"
-
-test_Decode_UTF8 :: Suite
-test_Decode_UTF8 = suite "decode" props where
-	props = [ property "works" prop_works
-	        , property "error" prop_error
-	        , property "lazy" prop_lazy
-	        , property "incremental" prop_incremental
-	        ]
-	
-	decode iter input =
-		runIdentity . E.run $
-		E.enumList 1 input $$
-		E.joinI (ET.decode ET.utf8 $$ iter)
-	
-	prop_works text = result == map T.singleton chars where
-		Right result = decode EL.consume (map B.singleton bytes)
-		
-		bytes = B.unpack (TE.encodeUtf8 text)
-		chars = T.unpack text
-	
-	prop_error = isLeft (decode EL.consume input)  where
-		isLeft = either (const True) (const False)
-		input = [B.pack [0x61, 0x80]]
-	
-	prop_lazy = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x61, 0x80]]
-		expected = Just (T.pack "a")
-	
-	prop_incremental = either (const False) (== expected) result where
-		result = decode EL.head input
-		input = [B.pack [0x61, 0xC2, 0xC2]]
-		expected = Just (T.pack "a")
 
 test_Encode_UTF16_BE :: Suite
 test_Encode_UTF16_BE = todo "encode"
@@ -429,13 +326,15 @@ test_Decode_UTF32_LE = suite "decode" props where
 		isLeft = either (const True) (const False)
 		input = [B.pack [0xFF, 0xFF, 0xFF, 0xFF]]
 
-prop_Encode :: ET.Codec -> (T.Text -> BL.ByteString) -> T.Text -> Bool
+prop_Encode :: ET.Codec -> (T.Text -> B.ByteString) -> T.Text -> Bool
 prop_Encode codec model text = encoded == model text where
-	encoded = runListI [text] (E.joinI (ET.encode codec $$ EB.consume))
+	lazy = runListI [text] (E.joinI (ET.encode codec $$ EB.consume))
+	encoded = B.concat (BL.toChunks lazy)
 
-prop_Decode :: ET.Codec -> (B.ByteString -> TL.Text) -> B.ByteString -> Bool
+prop_Decode :: ET.Codec -> (B.ByteString -> T.Text) -> B.ByteString -> Bool
 prop_Decode codec model bytes = decoded == model bytes where
-	decoded = runListI [bytes] (E.joinI (ET.decode codec $$ ET.consume))
+	lazy = runListI [bytes] (E.joinI (ET.decode codec $$ ET.consume))
+	decoded = TL.toStrict lazy
 
 runList :: Monad m => [a] -> E.Iteratee a m b -> m b
 runList xs iter = E.run_ (E.enumList 1 xs $$ iter)
