@@ -11,6 +11,7 @@ import           Test.Chell
 
 import           EnumeratorTests.List.Consume
 import           EnumeratorTests.List.Drop
+import           EnumeratorTests.List.Fold
 import           EnumeratorTests.List.Isolate
 import           EnumeratorTests.List.Map
 import           EnumeratorTests.List.Require
@@ -23,6 +24,8 @@ test_List = suite "list"
 	, test_ConcatMap
 	, test_ConcatMapM
 	, test_Drop
+	, test_Fold
+	, test_FoldM
 	, test_Filter
 	, test_FilterM
 	, test_Head

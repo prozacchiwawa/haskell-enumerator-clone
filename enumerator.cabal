@@ -82,6 +82,7 @@ extra-source-files:
   tests/EnumeratorTests/Join.hs
   tests/EnumeratorTests/List/Consume.hs
   tests/EnumeratorTests/List/Drop.hs
+  tests/EnumeratorTests/List/Fold.hs
   tests/EnumeratorTests/List.hs
   tests/EnumeratorTests/List/Isolate.hs
   tests/EnumeratorTests/List/Map.hs
