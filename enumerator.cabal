@@ -101,10 +101,15 @@ extra-source-files:
   tests/EnumeratorTests/Text/Codecs.hs
   tests/EnumeratorTests/Text/Consume.hs
   tests/EnumeratorTests/Text/Drop.hs
+  tests/EnumeratorTests/Text/Fold.hs
   tests/EnumeratorTests/Text/Isolate.hs
+  tests/EnumeratorTests/Text/Iterate.hs
   tests/EnumeratorTests/Text/Map.hs
+  tests/EnumeratorTests/Text/Repeat.hs
+  tests/EnumeratorTests/Text/Replicate.hs
   tests/EnumeratorTests/Text/Require.hs
   tests/EnumeratorTests/Text/Split.hs
+  tests/EnumeratorTests/Text/Unfold.hs
   tests/EnumeratorTests/Text/Util.hs
   tests/EnumeratorTests/Text/Zip.hs
   tests/EnumeratorTests/Util.hs
