@@ -19,6 +19,14 @@ import qualified Data.Enumerator.List as EL
 
 import           EnumeratorTests.List.Util ()
 
+test_ZipN :: (Eq b, Show b) => Text -> E.Iteratee Char Identity b -> b -> Suite
+test_ZipN name iter expected = assertions name $ do
+	$expect $ equal
+		expected
+		(runIdentity (E.run_ (E.enumList 1 ['A', 'B'] $$ iter)))
+
+$([d||])
+
 test_Zip :: Suite
 test_Zip = suite "zip"
 	[ test_ContinueContinue
@@ -152,9 +160,3 @@ test_ZipWith7 :: Suite
 test_ZipWith7 = test_ZipN "zipWith7"
 	(EL.zipWith7 (,,,,,,) EL.head EL.head EL.head EL.head EL.head EL.head EL.head)
 	(Just 'A', Just 'A', Just 'A', Just 'A', Just 'A', Just 'A', Just 'A')
-
-test_ZipN :: (Eq b, Show b) => Text -> E.Iteratee Char Identity b -> b -> Suite
-test_ZipN name iter expected = assertions name $ do
-	$expect $ equal
-		expected
-		(runIdentity (E.run_ (E.enumList 1 ['A', 'B'] $$ iter)))
