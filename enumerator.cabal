@@ -68,9 +68,9 @@ extra-source-files:
   --
   tests/enumerator-tests.cabal
   tests/EnumeratorTests.hs
+  tests/EnumeratorTests/Binary.hs
   tests/EnumeratorTests/Binary/Consume.hs
   tests/EnumeratorTests/Binary/Drop.hs
-  tests/EnumeratorTests/Binary.hs
   tests/EnumeratorTests/Binary/Isolate.hs
   tests/EnumeratorTests/Binary/Map.hs
   tests/EnumeratorTests/Binary/Require.hs
@@ -80,22 +80,27 @@ extra-source-files:
   tests/EnumeratorTests/CatchError.hs
   tests/EnumeratorTests/Compatibility.hs
   tests/EnumeratorTests/Join.hs
+  tests/EnumeratorTests/List.hs
   tests/EnumeratorTests/List/Consume.hs
   tests/EnumeratorTests/List/Drop.hs
   tests/EnumeratorTests/List/Fold.hs
-  tests/EnumeratorTests/List.hs
   tests/EnumeratorTests/List/Isolate.hs
+  tests/EnumeratorTests/List/Iterate.hs
   tests/EnumeratorTests/List/Map.hs
+  tests/EnumeratorTests/List/Repeat.hs
+  tests/EnumeratorTests/List/Replicate.hs
   tests/EnumeratorTests/List/Require.hs
   tests/EnumeratorTests/List/Split.hs
+  tests/EnumeratorTests/List/Unfold.hs
+  tests/EnumeratorTests/List/Unique.hs
   tests/EnumeratorTests/List/Util.hs
   tests/EnumeratorTests/List/Zip.hs
   tests/EnumeratorTests/Sequence.hs
   tests/EnumeratorTests/Stream.hs
+  tests/EnumeratorTests/Text.hs
   tests/EnumeratorTests/Text/Codecs.hs
   tests/EnumeratorTests/Text/Consume.hs
   tests/EnumeratorTests/Text/Drop.hs
-  tests/EnumeratorTests/Text.hs
   tests/EnumeratorTests/Text/Isolate.hs
   tests/EnumeratorTests/Text/Map.hs
   tests/EnumeratorTests/Text/Require.hs

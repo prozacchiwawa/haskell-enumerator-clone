@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
 --
@@ -6,12 +7,14 @@
 module EnumeratorTests.List.Map
 	( test_Map
 	, test_MapM
+	, test_MapM_
 	, test_ConcatMap
 	, test_ConcatMapM
 	, test_MapAccum
 	, test_MapAccumM
 	) where
 
+import           Control.Monad.Trans.Writer
 import           Test.Chell
 import           Test.Chell.QuickCheck
 
@@ -26,6 +29,12 @@ test_Map = test_Enumeratee "map" (EL.map id)
 
 test_MapM :: Suite
 test_MapM = test_Enumeratee "mapM" (EL.mapM return)
+
+test_MapM_ :: Suite
+test_MapM_ = assertions "mapM_" $ do
+	$expect $ equal
+		['A', 'B', 'C']
+		(execWriter (E.run_ (E.enumList 1 ['A', 'B', 'C'] $$ EL.mapM_ (\x -> tell [x]))))
 
 test_ConcatMap :: Suite
 test_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
