@@ -72,6 +72,7 @@ extra-source-files:
   tests/EnumeratorTests/Binary/Consume.hs
   tests/EnumeratorTests/Binary/Drop.hs
   tests/EnumeratorTests/Binary/Fold.hs
+  tests/EnumeratorTests/Binary/Handle.hs
   tests/EnumeratorTests/Binary/Isolate.hs
   tests/EnumeratorTests/Binary/Iterate.hs
   tests/EnumeratorTests/Binary/Map.hs
@@ -107,6 +108,7 @@ extra-source-files:
   tests/EnumeratorTests/Text/Consume.hs
   tests/EnumeratorTests/Text/Drop.hs
   tests/EnumeratorTests/Text/Fold.hs
+  tests/EnumeratorTests/Text/Handle.hs
   tests/EnumeratorTests/Text/Isolate.hs
   tests/EnumeratorTests/Text/Iterate.hs
   tests/EnumeratorTests/Text/Map.hs

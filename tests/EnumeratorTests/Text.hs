@@ -13,6 +13,7 @@ import           EnumeratorTests.Text.Codecs
 import           EnumeratorTests.Text.Consume
 import           EnumeratorTests.Text.Drop
 import           EnumeratorTests.Text.Fold
+import           EnumeratorTests.Text.Handle
 import           EnumeratorTests.Text.Isolate
 import           EnumeratorTests.Text.Iterate
 import           EnumeratorTests.Text.Map
@@ -31,6 +32,7 @@ test_Text = suite "text"
 	, test_ConcatMapM
 	, test_Drop
 	, test_DropWhile
+	, test_EnumHandle
 	, test_Filter
 	, test_FilterM
 	, test_Fold
@@ -41,6 +43,7 @@ test_Text = suite "text"
 	, test_Isolate
 	, test_Iterate
 	, test_IterateM
+	, test_IterHandle
 	, test_Lines
 	, test_Map
 	, test_MapM

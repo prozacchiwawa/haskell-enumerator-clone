@@ -21,6 +21,7 @@ executable enumerator_tests
     , chell >= 0.2 && < 0.3
     , chell-quickcheck >= 0.1 && < 0.2
     , containers
+    , knob >= 0.1 && < 0.2
     , QuickCheck
     , split
     , text

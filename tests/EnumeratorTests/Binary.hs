@@ -12,6 +12,7 @@ import           Test.Chell
 import           EnumeratorTests.Binary.Consume
 import           EnumeratorTests.Binary.Drop
 import           EnumeratorTests.Binary.Fold
+import           EnumeratorTests.Binary.Handle
 import           EnumeratorTests.Binary.Isolate
 import           EnumeratorTests.Binary.Iterate
 import           EnumeratorTests.Binary.Map
@@ -29,6 +30,8 @@ test_Binary = suite "binary"
 	, test_ConcatMapM
 	, test_Drop
 	, test_DropWhile
+	, test_EnumHandle
+	, test_EnumHandleRange
 	, test_Filter
 	, test_FilterM
 	, test_Fold
@@ -39,6 +42,7 @@ test_Binary = suite "binary"
 	, test_Isolate
 	, test_Iterate
 	, test_IterateM
+	, test_IterHandle
 	, test_Map
 	, test_MapM
 	, test_MapAccum
