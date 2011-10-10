@@ -71,10 +71,15 @@ extra-source-files:
   tests/EnumeratorTests/Binary.hs
   tests/EnumeratorTests/Binary/Consume.hs
   tests/EnumeratorTests/Binary/Drop.hs
+  tests/EnumeratorTests/Binary/Fold.hs
   tests/EnumeratorTests/Binary/Isolate.hs
+  tests/EnumeratorTests/Binary/Iterate.hs
   tests/EnumeratorTests/Binary/Map.hs
+  tests/EnumeratorTests/Binary/Repeat.hs
+  tests/EnumeratorTests/Binary/Replicate.hs
   tests/EnumeratorTests/Binary/Require.hs
   tests/EnumeratorTests/Binary/Split.hs
+  tests/EnumeratorTests/Binary/Unfold.hs
   tests/EnumeratorTests/Binary/Util.hs
   tests/EnumeratorTests/Binary/Zip.hs
   tests/EnumeratorTests/CatchError.hs

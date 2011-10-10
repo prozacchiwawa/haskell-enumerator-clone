@@ -11,10 +11,15 @@ import           Test.Chell
 
 import           EnumeratorTests.Binary.Consume
 import           EnumeratorTests.Binary.Drop
+import           EnumeratorTests.Binary.Fold
 import           EnumeratorTests.Binary.Isolate
+import           EnumeratorTests.Binary.Iterate
 import           EnumeratorTests.Binary.Map
+import           EnumeratorTests.Binary.Repeat
+import           EnumeratorTests.Binary.Replicate
 import           EnumeratorTests.Binary.Require
 import           EnumeratorTests.Binary.Split
+import           EnumeratorTests.Binary.Unfold
 import           EnumeratorTests.Binary.Zip
 
 test_Binary :: Suite
@@ -23,16 +28,29 @@ test_Binary = suite "binary"
 	, test_ConcatMap
 	, test_ConcatMapM
 	, test_Drop
+	, test_DropWhile
 	, test_Filter
 	, test_FilterM
+	, test_Fold
+	, test_FoldM
+	, test_GenerateM
 	, test_Head
+	, test_Head_
 	, test_Isolate
+	, test_Iterate
+	, test_IterateM
 	, test_Map
 	, test_MapM
 	, test_MapAccum
 	, test_MapAccumM
+	, test_Repeat
+	, test_RepeatM
+	, test_Replicate
+	, test_ReplicateM
 	, test_Require
 	, test_SplitWhen
 	, test_Take
+	, test_Unfold
+	, test_UnfoldM
 	, test_Zip
 	]
