@@ -101,6 +101,7 @@ extra-source-files:
   tests/EnumeratorTests/List/Unique.hs
   tests/EnumeratorTests/List/Util.hs
   tests/EnumeratorTests/List/Zip.hs
+  tests/EnumeratorTests/Misc.hs
   tests/EnumeratorTests/Sequence.hs
   tests/EnumeratorTests/Stream.hs
   tests/EnumeratorTests/Text.hs

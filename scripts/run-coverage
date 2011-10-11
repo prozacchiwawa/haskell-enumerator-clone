@@ -52,6 +52,7 @@ EXCLUDES="\
 --exclude=EnumeratorTests.List.Unique \
 --exclude=EnumeratorTests.List.Util \
 --exclude=EnumeratorTests.List.Zip \
+--exclude=EnumeratorTests.Misc \
 --exclude=EnumeratorTests.Sequence \
 --exclude=EnumeratorTests.Stream \
 --exclude=EnumeratorTests.Text \
