@@ -18,6 +18,7 @@ import           EnumeratorTests.List (test_List)
 import           EnumeratorTests.Sequence (test_Sequence)
 import           EnumeratorTests.Stream (test_Stream)
 import           EnumeratorTests.Text (test_Text)
+import           EnumeratorTests.Typeable (test_Typeable)
 
 tests :: [Suite]
 tests =
@@ -29,6 +30,7 @@ tests =
 	, test_Sequence
 	, test_Stream
 	, test_Text
+	, test_Typeable
 	]
 
 main :: IO ()
