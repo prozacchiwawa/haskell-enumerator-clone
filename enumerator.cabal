@@ -85,6 +85,7 @@ extra-source-files:
   tests/EnumeratorTests/Binary/Zip.hs
   tests/EnumeratorTests/CatchError.hs
   tests/EnumeratorTests/Compatibility.hs
+  tests/EnumeratorTests/Instances.hs
   tests/EnumeratorTests/Join.hs
   tests/EnumeratorTests/List.hs
   tests/EnumeratorTests/List/Consume.hs
@@ -120,7 +121,6 @@ extra-source-files:
   tests/EnumeratorTests/Text/Unfold.hs
   tests/EnumeratorTests/Text/Util.hs
   tests/EnumeratorTests/Text/Zip.hs
-  tests/EnumeratorTests/Typeable.hs
   tests/EnumeratorTests/Util.hs
 
 source-repository head

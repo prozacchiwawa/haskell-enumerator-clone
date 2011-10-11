@@ -4,17 +4,26 @@
 -- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
 --
 -- See license.txt for details
-module EnumeratorTests.Typeable
-	( test_Typeable
+module EnumeratorTests.Instances
+	( test_Instances
 	) where
 
+import           Control.Applicative (pure, (<*>))
+import           Data.Functor.Identity (runIdentity)
 import           Data.Typeable (typeOf)
 import           Test.Chell
 
 import           Data.Enumerator
 
+test_Instances :: Suite
+test_Instances = suite "instances"
+	[ test_Typeable
+	, test_Functor
+	, test_Applicative
+	]
+
 test_Typeable :: Suite
-test_Typeable = suite "instance-typeable"
+test_Typeable = suite "typeable"
 	[ test_TypeableStream
 	, test_TypeableIteratee
 	, test_TypeableStep
@@ -40,3 +49,18 @@ test_TypeableStep = assertions "step" $ do
 	$expect $ equal
 		"Data.Enumerator.Step Char Maybe Int"
 		(show (typeOf x))
+
+test_Functor :: Suite
+test_Functor = assertions "functor" $ do
+	$expect $ equal
+		'B'
+		(runIdentity (run_ (fmap succ (return 'A'))))
+
+test_Applicative :: Suite
+test_Applicative = assertions "applicative" $ do
+	$expect $ equal
+		'A'
+		(runIdentity (run_ (pure 'A')))
+	$expect $ equal
+		'B'
+		(runIdentity (run_ (pure succ <*> pure 'A')))

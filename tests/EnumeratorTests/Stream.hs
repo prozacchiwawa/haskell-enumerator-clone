@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 --
@@ -7,6 +8,7 @@ module EnumeratorTests.Stream
 	( test_Stream
 	) where
 
+import           Control.Applicative (pure, (<*>))
 import           Data.Monoid (mappend, mempty, mconcat)
 
 import           Test.Chell
@@ -23,6 +25,7 @@ test_Stream = suite "stream"
 	[ test_Monoid
 	, test_Functor
 	, test_Monad
+	, test_Applicative
 	]
 
 test_Monoid :: Suite
@@ -72,3 +75,8 @@ prop_MonadLaw2 m = (m >>= return) == m
 
 prop_MonadLaw3 :: E.Stream A -> Blind (A -> E.Stream B) -> Blind (B -> E.Stream C) -> Bool
 prop_MonadLaw3 m (Blind f) (Blind g) = ((m >>= f) >>= g) == (m >>= (\x -> f x >>= g))
+
+test_Applicative :: Suite
+test_Applicative = assertions "applicative" $ do
+	$expect (equal (E.Chunks ['A']) (pure 'A'))
+	$expect (equal (E.Chunks ['B']) (pure succ <*> E.Chunks ['A']))
