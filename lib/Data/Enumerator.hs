@@ -468,7 +468,7 @@ joinE enum enee s = Iteratee $ do
 		Yield x _ -> return x
 		Continue _ -> error "joinE: divergent iteratee"
 
-infixr 0 $=
+infixl 1 $=
 
 -- | @enum $= enee = 'joinE' enum enee@
 --

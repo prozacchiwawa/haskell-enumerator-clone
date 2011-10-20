@@ -14,7 +14,7 @@ import           EnumeratorTests.Binary (test_Binary)
 import           EnumeratorTests.CatchError (test_CatchError)
 import           EnumeratorTests.Compatibility (test_Compatibility)
 import           EnumeratorTests.Instances (test_Instances)
-import           EnumeratorTests.Join (test_JoinE)
+import           EnumeratorTests.Join
 import           EnumeratorTests.List (test_List)
 import           EnumeratorTests.Misc
 import           EnumeratorTests.Sequence (test_Sequence)
@@ -29,6 +29,7 @@ tests =
 	, test_ConcatEnums
 	, test_Instances
 	, test_JoinE
+	, test_JoinOperatorAssociativity
 	, test_Last
 	, test_Length
 	, test_LiftTrans
