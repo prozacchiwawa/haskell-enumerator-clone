@@ -17,35 +17,6 @@ import qualified Data.Enumerator as E
 import           Data.Enumerator (($$), (=$))
 import qualified Data.Enumerator.List as EL
 
-test_Compatibility :: Suite
-test_Compatibility = suite "compatibility"
-	[ test_Head
-	, test_Drop
-	, test_DropWhile
-	, test_Span
-	, test_Break
-	, test_Consume
-	, test_Foldl
-	, test_Foldl'
-	, test_FoldM
-	, test_Iterate
-	, test_IterateM
-	, test_Repeat
-	, test_RepeatM
-	, test_Replicate
-	, test_ReplicateM
-	, test_GenerateM
-	, test_Map
-	, test_MapM
-	, test_ConcatMap
-	, test_ConcatMapM
-	, test_Filter
-	, test_FilterM
-	, test_LiftFoldL
-	, test_LiftFoldL'
-	, test_LiftFoldM
-	]
-
 compatIter :: (Eq a, Show a)
            => Text
            -> E.Iteratee Char Identity a
@@ -75,6 +46,37 @@ compatEnee :: (Eq ai, Show ai)
 compatEnee name e1 e2 = assertions name $ do
 	let run e = runIdentity (E.run_ (E.enumList 1 ['A'..'Z'] $$ e =$ EL.consume))
 	$expect (equal (run e1) (run e2))
+
+$([d||])
+
+test_Compatibility :: Suite
+test_Compatibility = suite "compatibility"
+	[ test_Head
+	, test_Drop
+	, test_DropWhile
+	, test_Span
+	, test_Break
+	, test_Consume
+	, test_Foldl
+	, test_Foldl'
+	, test_FoldM
+	, test_Iterate
+	, test_IterateM
+	, test_Repeat
+	, test_RepeatM
+	, test_Replicate
+	, test_ReplicateM
+	, test_GenerateM
+	, test_Map
+	, test_MapM
+	, test_ConcatMap
+	, test_ConcatMapM
+	, test_Filter
+	, test_FilterM
+	, test_LiftFoldL
+	, test_LiftFoldL'
+	, test_LiftFoldM
+	]
 
 test_Head :: Suite
 test_Head = compatIter "head" E.head EL.head
