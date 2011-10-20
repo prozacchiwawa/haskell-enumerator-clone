@@ -7,6 +7,9 @@ flag coverage
   default: False
   manual: True
 
+flag test-io-functions
+  default: True
+
 executable enumerator_tests
   main-is: EnumeratorTests.hs
   ghc-options: -Wall
@@ -15,13 +18,19 @@ executable enumerator_tests
   if flag(coverage)
     ghc-options: -fhpc
 
+  if flag(test-io-functions)
+    build-depends:
+        base >= 4.2 && < 5.0
+      , knob >= 0.1 && < 0.2
+  else
+    build-depends:
+        base >= 4.0 && < 5.0
+
   build-depends:
-      base > 3 && < 5
-    , bytestring
+      bytestring
     , chell >= 0.2 && < 0.3
     , chell-quickcheck >= 0.1 && < 0.2
     , containers
-    , knob >= 0.1 && < 0.2
     , QuickCheck
     , split
     , text

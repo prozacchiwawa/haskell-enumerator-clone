@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -10,9 +11,12 @@ module EnumeratorTests.Binary.Handle
 	, test_IterHandle
 	) where
 
+import           Test.Chell
+
+#ifdef MIN_VERSION_knob
+
 import           Data.Knob
 import qualified System.IO as IO
-import           Test.Chell
 
 import qualified Data.Enumerator as E
 import           Data.Enumerator (($$))
@@ -61,3 +65,18 @@ test_IterHandle = assertions "iterHandle" $ do
 		E.run_ (E.enumList 1 ["A", "B", "C"] $$ EB.iterHandle h)
 	bytes <- Data.Knob.getContents knob
 	$expect (equal bytes "ABC")
+
+#else
+
+import           EnumeratorTests.Util (todo)
+
+test_EnumHandle :: Suite
+test_EnumHandle = todo "enumHandle"
+
+test_EnumHandleRange :: Suite
+test_EnumHandleRange = todo "enumHandleRange"
+
+test_IterHandle :: Suite
+test_IterHandle = todo "iterHandle"
+
+#endif
