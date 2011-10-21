@@ -24,7 +24,7 @@ test_Replicate = assertions "replicate" $ do
 		(runIdentity (E.run_ (EL.replicate 3 'A' $$ EL.consume)))
 
 test_ReplicateM :: Suite
-test_ReplicateM = assertions "repeatM" $ do
+test_ReplicateM = assertions "replicateM" $ do
 	let step = do
 		c <- get
 		put (succ c)
