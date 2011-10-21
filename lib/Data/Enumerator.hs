@@ -51,6 +51,9 @@ module Data.Enumerator
 	-- ** Testing and debugging
 	, printChunks
 	, enumList
+	, enumLists
+	, runLists
+	, runLists_
 	
 	-- ** Obsolete and pointless
 	, peek
@@ -73,6 +76,7 @@ import qualified Control.Exception as Exc
 import qualified Control.Monad as CM
 import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Trans.Class (MonadTrans, lift)
+import           Data.Functor.Identity (Identity, runIdentity)
 import           Data.List (genericLength, genericSplitAt)
 
 import           Data.Enumerator.Compatibility
@@ -172,6 +176,26 @@ enumList n = loop where
 		in k (Chunks s1) >>== loop s2
 	loop _ step = returnI step
 
+-- | @'enumLists' xs@ enumerates /xs/ as a stream, where each element is a
+-- separate chunk. This is primarily useful for testing and debugging.
+--
+-- Since: 0.4.15
+enumLists :: Monad m => [[a]] -> Enumerator a m b
+enumLists (xs:xss) (Continue k) = k (Chunks xs) >>== enumLists xss
+enumLists _ step = returnI step
+
+-- | Run an iteratee with the given input, and return either the final value
+-- (if it succeeded) or the error (if it failed).
+--
+-- Since: 0.4.15
+runLists :: [[a]] -> Iteratee a Identity b -> Either Exc.SomeException b
+runLists lists iter = runIdentity (run (enumLists lists $$ iter))
+
+-- | Like 'runLists', except errors are converted to exceptions and thrown.
+--
+-- Since: 0.4.15
+runLists_ :: [[a]] -> Iteratee a Identity b -> b
+runLists_ lists iter = runIdentity (run_ (enumLists lists $$ iter))
 
 -- | Compose a list of 'Enumerator's using @('>==>').@
 concatEnums :: Monad m => [Enumerator a m b]

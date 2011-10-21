@@ -52,6 +52,7 @@ test_List = suite "list"
 	, test_Require
 	, test_SplitWhen
 	, test_Take
+	, test_TakeWhile
 	, test_Unfold
 	, test_UnfoldM
 	, test_Unique

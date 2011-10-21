@@ -5,6 +5,7 @@
 -- See license.txt for details
 module EnumeratorTests.Util
 	( check
+	, equalExc
 	, todo
 	, within
 	, genASCII
@@ -127,3 +128,15 @@ within time s = suite (suiteName s) (map wrapTest (suiteTests s)) where
 		case res of
 			Just res' -> return res'
 			Nothing -> return (TestAborted [] (T.pack ("Test timed out after " ++ show time ++ " milliseconds")))
+
+equalExc :: (Eq exc, Exc.Exception exc) => exc -> Either Exc.SomeException a -> Assertion
+equalExc expected funResult = Assertion (return result) where
+	failed :: String -> AssertionResult
+	failed str = AssertionFailed (T.pack ("equalExc: " ++ show str))
+	result = case funResult of
+		Right _ -> failed "received Right"
+		Left exc -> case Exc.fromException exc of
+			Nothing -> failed ("received unexpected exception: " ++ show exc)
+			Just exc' -> if expected == exc'
+				then AssertionPassed
+				else failed (show expected ++ " /= " ++ show exc')
