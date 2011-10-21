@@ -1,3 +1,5 @@
+{-# OPTIONS_HADDOCK hide #-}
+
 -- |
 -- Module: Data.Enumerator.IO
 -- Copyright: 2010-2011 John Millikin

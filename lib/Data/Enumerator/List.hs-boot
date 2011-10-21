@@ -1,5 +1,5 @@
 module Data.Enumerator.List where
-import {-# SOURCE #-} Data.Enumerator
+import Data.Enumerator.Internal
 head :: Monad m => Iteratee a m (Maybe a)
 drop :: Monad m => Integer -> Iteratee a m ()
 dropWhile :: Monad m => (a -> Bool) -> Iteratee a m ()

@@ -108,9 +108,8 @@ import           Data.Word (Word8)
 import qualified System.IO as IO
 import           System.IO.Error (isEOFError)
 
-import           Data.Enumerator hiding ( head, drop, iterateM, repeatM, replicateM
-                                        , generateM, filterM, consume, foldM
-                                        , concatMapM)
+import           Data.Enumerator.Internal
+import           Data.Enumerator (isEOF, throwError, tryIO)
 import qualified Data.Enumerator.List as EL
 
 -- | Consume the entire input stream with a strict left fold, one byte

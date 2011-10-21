@@ -146,9 +146,11 @@ library
   exposed-modules:
     Data.Enumerator
     Data.Enumerator.Binary
-    Data.Enumerator.Text
-    Data.Enumerator.List
+    Data.Enumerator.Internal
     Data.Enumerator.IO
+    Data.Enumerator.List
+    Data.Enumerator.Text
 
   other-modules:
+    Data.Enumerator.Compatibility
     Data.Enumerator.Util

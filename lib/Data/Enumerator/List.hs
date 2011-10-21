@@ -91,9 +91,8 @@ import qualified Data.List as L
 import           Data.Monoid (mappend)
 import qualified Data.Set
 
-import           Data.Enumerator hiding ( concatMapM, iterateM, replicateM, head, drop
-                                        , foldM, repeatM, generateM, filterM, consume
-                                        , length)
+import           Data.Enumerator (sequence, throwError)
+import           Data.Enumerator.Internal
 
 -- | Consume the entire input stream with a strict left fold, one element
 -- at a time.

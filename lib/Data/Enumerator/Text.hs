@@ -129,9 +129,8 @@ import qualified System.IO as IO
 import           System.IO.Error (isEOFError)
 import           System.IO.Unsafe (unsafePerformIO)
 
-import           Data.Enumerator hiding ( head, drop, generateM, filterM, consume
-                                        , concatMapM, iterateM, repeatM, replicateM
-                                        , foldM)
+import           Data.Enumerator.Internal
+import           Data.Enumerator (isEOF, tryIO, throwError)
 import qualified Data.Enumerator.List as EL
 import           Data.Enumerator.Util (tSpanBy, tlSpanBy, reprWord, reprChar, textToStrict)
 
