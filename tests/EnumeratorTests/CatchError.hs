@@ -76,15 +76,21 @@ test_YieldImmediately = assertions "yield-immediately" $ do
 
 test_HandleError :: Suite
 test_HandleError = assertions "handle-error" $ do
-	res <- E.run_ (E.enumList 1 ['A'] $$ E.catchError
-		(E.throwError (Exc.ErrorCall "error"))
-		(\err -> return (show err)))
-	$expect $ equal "error" res
-	
-	res <- E.run_ (E.enumList 1 [] $$ E.catchError
-		(EL.head >> E.throwError (Exc.ErrorCall "error"))
-		(\err -> return (show err)))
-	$expect $ equal "error" res
+	do
+		res <- E.run_ (E.enumList 1 [] $$ E.catchError
+			(EL.head >> E.throwError (Exc.ErrorCall "error"))
+			(\err -> return (show err)))
+		$expect $ equal "error" res
+	do
+		res <- E.run_ (E.enumList 1 ['A'] $$ E.catchError
+			(E.throwError (Exc.ErrorCall "error"))
+			(\err -> return (show err)))
+		$expect $ equal "error" res
+	do
+		res <- E.run_ (E.enumList 1 ['A', 'B', 'C'] $$ E.catchError
+			(EL.drop 1 >> E.throwError (Exc.ErrorCall "error"))
+			(\err -> return (show err)))
+		$expect $ equal "error" res
 
 test_HandleEOF :: Suite
 test_HandleEOF = assertions "handle-eof" $ do
