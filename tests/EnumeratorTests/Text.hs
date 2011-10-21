@@ -47,6 +47,7 @@ test_Text = suite "text"
 	, test_Lines
 	, test_Map
 	, test_MapM
+	, test_MapM_
 	, test_MapAccum
 	, test_MapAccumM
 	, test_Repeat

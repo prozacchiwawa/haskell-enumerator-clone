@@ -45,6 +45,7 @@ test_Binary = suite "binary"
 	, test_IterHandle
 	, test_Map
 	, test_MapM
+	, test_MapM_
 	, test_MapAccum
 	, test_MapAccumM
 	, test_Repeat
