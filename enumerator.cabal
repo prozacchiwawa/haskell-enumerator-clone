@@ -125,7 +125,12 @@ extra-source-files:
 
 source-repository head
   type: bazaar
-  location: http://john-millikin.com/software/enumerator/
+  location: https://john-millikin.com/software/enumerator/
+
+source-repository this
+  type: bazaar
+  location: https://john-millikin.com/branches/enumerator/0.4/
+  tag: enumerator_0.4.15
 
 library
   ghc-options: -Wall -O2
