@@ -19,8 +19,13 @@ import           Control.Exception
 import           Control.Monad.Trans.Reader
 import           Control.Monad.IO.Class
 import           Data.Functor.Identity
-import           System.IO.Silently (capture)
 import           Test.Chell
+
+#ifdef MIN_VERSION_silently
+
+import           System.IO.Silently (capture)
+
+#endif
 
 import           Data.Enumerator (($$))
 import qualified Data.Enumerator as E
@@ -113,9 +118,13 @@ test_TryIO = assertions "tryIO" $ do
 		$expect (excEqual (ErrorCall "failed") res)
 
 test_PrintChunks :: Suite
+#ifdef MIN_VERSION_silently
 test_PrintChunks = assertions "printChunks" $ do
 	(stdout, _) <- liftIO (capture (E.run_ (E.enumList 2 ['A', 'B', 'C'] $$ E.printChunks False)))
 	$expect (equal stdout "\"AB\"\n\"C\"\nEOF\n")
+#else
+test_PrintChunks = skipIf True (assertions "printChunks" (return ()))
+#endif
 
 excEqual :: (Exception exc, Eq exc) => exc -> Either SomeException b -> Bool
 excEqual _ (Right _) = False
