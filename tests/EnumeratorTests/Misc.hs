@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TemplateHaskell #-}
 
@@ -11,11 +12,14 @@ module EnumeratorTests.Misc
 	, test_LiftTrans
 	, test_Peek
 	, test_TryIO
+	, test_PrintChunks
 	) where
 
 import           Control.Exception
 import           Control.Monad.Trans.Reader
+import           Control.Monad.IO.Class
 import           Data.Functor.Identity
+import           System.IO.Silently (capture)
 import           Test.Chell
 
 import           Data.Enumerator (($$))
@@ -107,6 +111,11 @@ test_TryIO = assertions "tryIO" $ do
 	do
 		res <- E.run (E.tryIO (throwIO (ErrorCall "failed")))
 		$expect (excEqual (ErrorCall "failed") res)
+
+test_PrintChunks :: Suite
+test_PrintChunks = assertions "printChunks" $ do
+	(stdout, _) <- liftIO (capture (E.run_ (E.enumList 2 ['A', 'B', 'C'] $$ E.printChunks False)))
+	$expect (equal stdout "\"AB\"\n\"C\"\nEOF\n")
 
 excEqual :: (Exception exc, Eq exc) => exc -> Either SomeException b -> Bool
 excEqual _ (Right _) = False

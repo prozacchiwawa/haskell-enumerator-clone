@@ -32,6 +32,7 @@ executable enumerator_tests
     , chell-quickcheck >= 0.1 && < 0.2
     , containers
     , QuickCheck
+    , silently
     , split
     , text
     , transformers

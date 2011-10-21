@@ -35,6 +35,7 @@ tests =
 	, test_LiftTrans
 	, test_List
 	, test_Peek
+	, test_PrintChunks
 	, test_Sequence
 	, test_Stream
 	, test_Text
