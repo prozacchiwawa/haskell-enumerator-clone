@@ -9,6 +9,7 @@ module EnumeratorTests.Binary.Consume
 	, test_Head
 	, test_Head_
 	, test_Take
+	, test_TakeWhile
 	) where
 
 import           Control.Exception
@@ -78,5 +79,26 @@ test_Take = assertions "take" $ do
 		("", ["A", "B"])
 		(E.runLists_ [["A"], ["B"]] $ do
 			x <- EB.take 0
+			extra <- EL.consume
+			return (x, extra))
+
+test_TakeWhile :: Suite
+test_TakeWhile = assertions "takeWhile" $ do
+	$expect $ equal
+		("ABC", ["D", "E"])
+		(E.runLists_ [[], ["A", "B"], ["C", "D"], ["E"]] $ do
+			x <- EB.takeWhile (< 0x44)
+			extra <- EL.consume
+			return (x, extra))
+	$expect $ equal
+		("AB", [])
+		(E.runLists_ [["A"], ["B"]] $ do
+			x <- EB.takeWhile (< 0x44)
+			extra <- EL.consume
+			return (x, extra))
+	$expect $ equal
+		("", ["A", "B"])
+		(E.runLists_ [["A"], ["B"]] $ do
+			x <- EB.takeWhile (< 0x41)
 			extra <- EL.consume
 			return (x, extra))

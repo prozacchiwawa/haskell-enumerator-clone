@@ -9,22 +9,21 @@ module EnumeratorTests.Text.Zip
 	) where
 
 import qualified Control.Exception as Exc
-import           Data.Functor.Identity (Identity, runIdentity)
+import           Data.Functor.Identity (Identity)
 import           Data.Text (Text)
 import           Test.Chell
 
-import           Data.Enumerator (($$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.List as EL
 import qualified Data.Enumerator.Text as ET
 
-import           EnumeratorTests.Util ()
+import           EnumeratorTests.Util (equalExc)
 
 test_ZipN :: (Eq b, Show b) => Text -> E.Iteratee Text Identity b -> b -> Suite
 test_ZipN name iter expected = assertions name $ do
 	$expect $ equal
 		expected
-		(runIdentity (E.run_ (E.enumList 1 ["A", "B"] $$ iter)))
+		(E.runLists_ [[], ["A"], ["B"]] iter)
 
 $([d||])
 
@@ -54,58 +53,60 @@ test_ContinueContinue :: Suite
 test_ContinueContinue = assertions "continue-continue" $ do
 	$expect $ equal
 		("AB", "AB", ["C"])
-		(runIdentity (E.run_ (E.enumList 1 ["A", "B", "C"] $$ do
+		(E.runLists_ [["A"], ["B"], ["C"]] $ do
 			(x, y) <- ET.zip (ET.take 2) (ET.take 2)
 			extra <- EL.consume
-			return (x, y, extra))))
+			return (x, y, extra))
 
 test_YieldContinue :: Suite
 test_YieldContinue = assertions "yield-continue" $ do
 	$expect $ equal
 		("A", "AB", ["C"])
-		(runIdentity (E.run_ (E.enumList 1 ["A", "B", "C"] $$ do
+		(E.runLists_ [["A"], ["B"], ["C"]] $ do
 			(x, y) <- ET.zip (ET.take 1) (ET.take 2)
 			extra <- EL.consume
-			return (x, y, extra))))
+			return (x, y, extra))
 
 test_ContinueYield :: Suite
 test_ContinueYield = assertions "continue-yield" $ do
 	$expect $ equal
 		("AB", "A", ["C"])
-		(runIdentity (E.run_ (E.enumList 1 ["A", "B", "C"] $$ do
+		(E.runLists_ [["A"], ["B"], ["C"]] $ do
 			(x, y) <- ET.zip (ET.take 2) (ET.take 1)
 			extra <- EL.consume
-			return (x, y, extra))))
+			return (x, y, extra))
 
 test_YieldYield :: Suite
 test_YieldYield = assertions "yield-yield" $ do
 	$expect $ equal
 		("A", "A", ["B", "C"])
-		(runIdentity (E.run_ (E.enumList 1 ["A", "B", "C"] $$ do
+		(E.runLists_ [["A"], ["B"], ["C"]] $ do
 			(x, y) <- ET.zip (ET.take 1) (ET.take 1)
 			extra <- EL.consume
-			return (x, y, extra))))
+			return (x, y, extra))
 
 test_ErrorFirst :: Suite
 test_ErrorFirst = assertions "error-first" $ do
-	$expect $ throwsEq
+	$expect $ equalExc
 		(Exc.ErrorCall "error")
-		(E.run_ (E.enumList 1 ["A", "B", "C"] $$ ET.zip (E.throwError (Exc.ErrorCall "error")) (ET.take 1)))
+		(E.runLists [["A"], ["B"], ["C"]] $ do
+			ET.zip (E.throwError (Exc.ErrorCall "error")) (ET.take 1))
 
 test_ErrorSecond :: Suite
 test_ErrorSecond = assertions "error-second" $ do
-	$expect $ throwsEq
+	$expect $ equalExc
 		(Exc.ErrorCall "error")
-		(E.run_ (E.enumList 1 ["A", "B", "C"] $$ ET.zip (ET.take 1) (E.throwError (Exc.ErrorCall "error"))))
+		(E.runLists [["A"], ["B"], ["C"]] $ do
+			ET.zip (ET.take 1) (E.throwError (Exc.ErrorCall "error")))
 
 test_HandleEOF :: Suite
 test_HandleEOF = assertions "handle-eof" $ do
 	$expect $ equal
 		("A", "AB", [])
-		(runIdentity (E.run_ (E.enumList 1 ["A", "B"] $$ do
+		(E.runLists_ [["A"], ["B"]] $ do
 			(x, y) <- ET.zip (ET.take 1) (ET.take 3)
 			extra <- EL.consume
-			return (x, y, extra))))
+			return (x, y, extra))
 
 test_Zip3 :: Suite
 test_Zip3 = test_ZipN "zip3"

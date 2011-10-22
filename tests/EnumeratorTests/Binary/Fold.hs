@@ -19,7 +19,6 @@ import           Test.Chell.QuickCheck
 import           Test.QuickCheck.Poly
 import           Test.QuickCheck.Modifiers
 
-import           Data.Enumerator (($$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.Binary as EB
 
@@ -30,7 +29,7 @@ test_Fold = property "fold" prop_Fold
 
 prop_Fold :: Blind (B -> Word8 -> B) -> B -> ByteString -> Bool
 prop_Fold (Blind f) z text = result == expected where
-	result = runIdentity (E.run_ (E.enumList 1 [text] $$ EB.fold f z))
+	result = E.runLists_ [[text]] (EB.fold f z)
 	expected = Data.ByteString.foldl' f z text
 
 test_FoldM :: Suite
@@ -38,6 +37,6 @@ test_FoldM = property "foldM" prop_FoldM
 
 prop_FoldM :: Blind (B -> Word8 -> B) -> B -> ByteString -> Bool
 prop_FoldM (Blind f) z text = result == expected where
-	result = runIdentity (E.run_ (E.enumList 1 [text] $$ EB.foldM f' z))
+	result = E.runLists_ [[text]] (EB.foldM f' z)
 	expected = runIdentity (foldM f' z (Data.ByteString.unpack text))
 	f' b a = return (f b a)

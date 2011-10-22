@@ -7,6 +7,7 @@
 -- See license.txt for details
 module EnumeratorTests.Misc
 	( test_ConcatEnums
+	, test_EnumEOF
 	, test_Last
 	, test_Length
 	, test_LiftTrans
@@ -27,43 +28,54 @@ import           System.IO.Silently (capture)
 
 #endif
 
-import           Data.Enumerator (($$))
+import           Data.Enumerator (($$), (<==<))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.List as EL
 
-import           EnumeratorTests.Util ()
+import           EnumeratorTests.Util (equalExc)
 
 test_ConcatEnums :: Suite
 test_ConcatEnums = assertions "concatEnums" $ do
 	let enum = E.concatEnums
-		[ E.enumList 1 ['A']
-		, E.enumList 1 ['B']
-		, E.enumList 1 ['C']
+		[ E.enumLists [['A']]
+		, E.enumLists [['B']]
+		, E.enumLists [['C']]
 		]
 	$expect $ equal
 		['A', 'B', 'C']
 		(runIdentity (E.run_ (enum $$ EL.consume)))
+	$expect $ equal
+		['A', 'B']
+		(runIdentity (E.run_ (E.enumLists [['B']] <==< E.enumLists [['A']] $$ EL.consume)))
+
+test_EnumEOF :: Suite
+test_EnumEOF = assertions "enumEOF" $ do
+	let iter = E.continue (\_ -> iter)
+	
+	$expect $ throwsEq
+		(ErrorCall "enumEOF: divergent iteratee")
+		(E.runIteratee (E.enumEOF $$ iter))
 
 test_Last :: Suite
 test_Last = assertions "last" $ do
 	$expect $ equal
 		(Nothing :: Maybe Char, [])
-		(runIdentity (E.run_ (E.enumList 1 [] $$ do
+		(E.runLists_ [[]] $ do
 			x <- E.last
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
 	$expect $ equal
 		(Just 'E', [])
-		(runIdentity (E.run_ (E.enumList 2 ['A'..'E'] $$ do
+		(E.runLists_ [['A', 'B'], ['C', 'D'], ['E']] $ do
 			x <- E.last
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
 
 test_Length :: Suite
 test_Length = assertions "length" $ do
 	$expect $ equal
 		5
-		(runIdentity (E.run_ (E.enumList 2 ['A'..'E'] $$ E.length)))
+		(E.runLists_ [['A', 'B'], ['C', 'D'], ['E']] E.length)
 
 test_LiftTrans :: Suite
 test_LiftTrans = assertions "liftTrans" $ do
@@ -80,7 +92,7 @@ test_LiftTrans = assertions "liftTrans" $ do
 		(Just 'A', ['B', 'C', 'D', 'E'])
 		(runIdentity (runReaderT (E.run_ (E.enumList 1 ['A'..'E'] $$ iter2 False)) 0))
 	
-	$expect $ excEqual
+	$expect $ equalExc
 		(ErrorCall "failed")
 		(runIdentity (runReaderT (E.run (E.enumList 1 ['A'..'E'] $$ iter2 True)) 0))
 
@@ -88,22 +100,22 @@ test_Peek :: Suite
 test_Peek = assertions "peek" $ do
 	$expect $ equal
 		(Nothing :: Maybe Char, [])
-		(runIdentity (E.run_ (E.enumList 1 [] $$ do
+		(E.runLists_ [] $ do
 			x <- E.peek
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
 	$expect $ equal
 		(Just 'A', ['A', 'B', 'C', 'D', 'E'])
-		(runIdentity (E.run_ (E.enumList 2 ['A'..'E'] $$ do
+		(E.runLists_ [[], ['A', 'B'], ['C', 'D'], ['E']] $ do
 			x <- E.peek
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
 	$expect $ equal
 		(Just 'A', ['A'])
-		(runIdentity (E.run_ (E.enumList 1 ['A'] $$ do
+		(E.runLists_ [['A']] $ do
 			x <- E.peek
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
 
 test_TryIO :: Suite
 test_TryIO = assertions "tryIO" $ do
@@ -115,7 +127,7 @@ test_TryIO = assertions "tryIO" $ do
 	
 	do
 		res <- E.run (E.tryIO (throwIO (ErrorCall "failed")))
-		$expect (excEqual (ErrorCall "failed") res)
+		$expect (equalExc (ErrorCall "failed") res)
 
 test_PrintChunks :: Suite
 #ifdef MIN_VERSION_silently
@@ -129,7 +141,3 @@ test_PrintChunks = assertions "printChunks" $ do
 #else
 test_PrintChunks = skipIf True (assertions "printChunks" (return ()))
 #endif
-
-excEqual :: (Exception exc, Eq exc) => exc -> Either SomeException b -> Bool
-excEqual _ (Right _) = False
-excEqual exc1 (Left exc2) = fromException exc2 == Just exc1

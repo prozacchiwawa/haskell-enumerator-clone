@@ -23,10 +23,10 @@ compatIter :: (Eq a, Show a)
            -> E.Iteratee Char Identity a
            -> Suite
 compatIter name i1 i2 = assertions name $ do
-	let run i = runIdentity (E.run_ (E.enumList 1 "ABCDE" $$ do
+	let run i = E.runLists_ [[], ['A', 'B'], ['C', 'D'], ['E']] $ do
 		x <- i
 		y <- EL.consume
-		return (x, y)))
+		return (x, y)
 	$expect (equal (run i1) (run i2))
 
 compatEnum :: (Eq a, Show a)
@@ -44,7 +44,7 @@ compatEnee :: (Eq ai, Show ai)
            -> E.Enumeratee Char ai Identity [ai]
            -> Suite
 compatEnee name e1 e2 = assertions name $ do
-	let run e = runIdentity (E.run_ (E.enumList 1 ['A'..'Z'] $$ e =$ EL.consume))
+	let run e = E.runLists_ [[], ['A', 'B'], ['C', 'D'], ['E']] (e =$ EL.consume)
 	$expect (equal (run e1) (run e2))
 
 $([d||])
@@ -76,6 +76,7 @@ test_Compatibility = suite "compatibility"
 	, test_LiftFoldL
 	, test_LiftFoldL'
 	, test_LiftFoldM
+	, test_LiftI
 	]
 
 test_Head :: Suite
@@ -196,3 +197,8 @@ test_FilterM :: Suite
 test_FilterM = compatEnee "filterM"
 	(E.filterM (return . (< 'C')))
 	(EL.filterM (return . (< 'C')))
+
+test_LiftI :: Suite
+test_LiftI = compatIter "liftI"
+	(E.liftI (\s -> E.Yield s (E.Chunks [])))
+	(E.continue (\s -> E.yield s (E.Chunks [])))

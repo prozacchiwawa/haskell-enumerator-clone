@@ -10,96 +10,131 @@ module EnumeratorTests.Binary.Map
 	, test_MapM_
 	, test_ConcatMap
 	, test_ConcatMapM
+	, test_ConcatMapAccum
+	, test_ConcatMapAccumM
 	, test_MapAccum
 	, test_MapAccumM
 	) where
 
 import           Control.Monad.Trans.Writer (execWriter, tell)
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
-import           Data.Functor.Identity (runIdentity)
 import           Test.Chell
-import           Test.Chell.QuickCheck
 
 import           Data.Enumerator (($$), (=$))
 import qualified Data.Enumerator as E
-import qualified Data.Enumerator.List as EL
 import qualified Data.Enumerator.Binary as EB
-
-import           EnumeratorTests.Binary.Util
+import qualified Data.Enumerator.List as EL
 
 test_Map :: Suite
 test_Map = assertions "map" $ do
 	$expect $ equal
 		["a", "b"]
-		(runIdentity (E.run_ (E.enumList 1 ["AB"] $$ EB.map (+ 0x20) =$ EL.consume)))
+		(E.runLists_ [["AB"]] $ do
+			EB.map (+ 0x20) =$ EL.consume)
 	$expect $ equal
 		(["a", "b"], ["CDEF", "GH"])
-		(runIdentity (E.run_ (E.enumList 2 ["ABCD", "EF", "GH"] $$ do
+		(E.runLists_ [["ABCD", "EF"], ["GH"]] $ do
 			xs <- EB.map (+ 0x20) =$ EL.take 2
 			extra <- EL.consume
-			return (xs, extra))))
+			return (xs, extra))
 
 test_MapM :: Suite
 test_MapM = assertions "mapM" $ do
 	$expect $ equal
 		["a", "b"]
-		(runIdentity (E.run_ (E.enumList 1 ["AB"] $$ EB.mapM (\x -> return (x + 0x20)) =$ EL.consume)))
+		(E.runLists_ [["AB"]] $ do
+			EB.mapM (\x -> return (x + 0x20)) =$ EL.consume)
 	$expect $ equal
 		(["a", "b"], ["CDEF", "GH"])
-		(runIdentity (E.run_ (E.enumList 2 ["ABCD", "EF", "GH"] $$ do
+		(E.runLists_ [["ABCD", "EF"], ["GH"]] $ do
 			xs <- EB.mapM (\x -> return (x + 0x20)) =$ EL.take 2
 			extra <- EL.consume
-			return (xs, extra))))
+			return (xs, extra))
 
 test_MapM_ :: Suite
 test_MapM_ = assertions "mapM_" $ do
 	$expect $ equal
 		[0x41, 0x42]
-		(execWriter (E.run_ (E.enumList 1 ["AB"] $$ EB.mapM_ (\x -> tell [x]))))
+		(execWriter (E.run_ (E.enumLists [["AB"]] $$ EB.mapM_ (\x -> tell [x]))))
 
 test_ConcatMap :: Suite
 test_ConcatMap = assertions "concatMap" $ do
 	$expect $ equal
 		["Aa", "Bb"]
-		(runIdentity (E.run_ (E.enumList 1 ["AB"] $$ EB.concatMap (\x -> B.pack [x, x + 0x20]) =$ EL.consume)))
+		(E.runLists_ [["AB"]] $ do
+			EB.concatMap (\x -> B.pack [x, x + 0x20]) =$ EL.consume)
 	$expect $ equal
 		(["Aa", "Bb"], ["CDEF", "GH"])
-		(runIdentity (E.run_ (E.enumList 2 ["ABCD", "EF", "GH"] $$ do
+		(E.runLists_ [["ABCD", "EF"], ["GH"]] $ do
 			xs <- EB.concatMap (\x -> B.pack [x, x + 0x20]) =$ EL.take 2
 			extra <- EL.consume
-			return (xs, extra))))
+			return (xs, extra))
 
 test_ConcatMapM :: Suite
 test_ConcatMapM = assertions "concatMapM" $ do
 	$expect $ equal
 		["Aa", "Bb"]
-		(runIdentity (E.run_ (E.enumList 1 ["AB"] $$ EB.concatMapM (\x -> return (B.pack [x, x + 0x20])) =$ EL.consume)))
+		(E.runLists_ [["AB"]] $ do
+			EB.concatMapM (\x -> return (B.pack [x, x + 0x20])) =$ EL.consume)
 	$expect $ equal
 		(["Aa", "Bb"], ["CDEF", "GH"])
-		(runIdentity (E.run_ (E.enumList 2 ["ABCD", "EF", "GH"] $$ do
+		(E.runLists_ [["ABCD", "EF"], ["GH"]] $ do
 			xs <- EB.concatMapM (\x -> return (B.pack [x, x + 0x20])) =$ EL.take 2
 			extra <- EL.consume
-			return (xs, extra))))
+			return (xs, extra))
 
 test_MapAccum :: Suite
-test_MapAccum = property "mapAccum" $ prop_Bytes
-	(do
-		let enee = EB.mapAccum (\s ao -> (s+1, ao + s)) 10
-		a <- E.joinI (enee $$ EL.head)
-		b <- EB.consume
-		return (a, b))
-	(\bytes -> Right $ case BL.uncons bytes of
-		Nothing -> (Nothing, BL.empty)
-		Just (b, bytes') -> (Just (B.singleton (b + 10)), bytes'))
+test_MapAccum = assertions "mapAccum" $ do
+	let step s ao = (s + 1, ao + s)
+	$expect $ equal
+		["B", "D", "F"]
+		(E.runLists_ [["A", "B"], ["C"]] $ do
+			EB.mapAccum step 1 =$ EL.consume)
+	$expect $ equal
+		("B", ["", "B", "C"])
+		(E.runLists_ [["A", "B"], ["C"]] $ do
+			xs <- EB.mapAccum step 1 =$ EB.take 1
+			extra <- EL.consume
+			return (xs, extra))
 
 test_MapAccumM :: Suite
-test_MapAccumM = property "mapAccumM" $ prop_Bytes
-	(do
-		let enee = EB.mapAccumM (\s ao -> return (s+1, ao + s)) 10
-		a <- E.joinI (enee $$ EL.head)
-		b <- EB.consume
-		return (a, b))
-	(\bytes -> Right $ case BL.uncons bytes of
-		Nothing -> (Nothing, BL.empty)
-		Just (b, bytes') -> (Just (B.singleton (b + 10)), bytes'))
+test_MapAccumM = assertions "mapAccumM" $ do
+	let step s ao = return (s + 1, ao + s)
+	$expect $ equal
+		["B", "D", "F"]
+		(E.runLists_ [["A", "B"], ["C"]] $ do
+			EB.mapAccumM step 1 =$ EL.consume)
+	$expect $ equal
+		("B", ["", "B", "C"])
+		(E.runLists_ [["A", "B"], ["C"]] $ do
+			xs <- EB.mapAccumM step 1 =$ EB.take 1
+			extra <- EL.consume
+			return (xs, extra))
+
+test_ConcatMapAccum :: Suite
+test_ConcatMapAccum = assertions "concatMapAccum" $ do
+	let step s ao = (s + 1, B.replicate s ao)
+	$expect $ equal
+		["A", "BB", "CCC"]
+		(E.runLists_ [["A", "B"], ["C"]] $ do
+			EB.concatMapAccum step 1 =$ EL.consume)
+	$expect $ equal
+		("AB", ["", "C"])
+		(E.runLists_ [["A", "B"], ["C"]] $ do
+			xs <- EB.concatMapAccum step 1 =$ EB.take 2
+			extra <- EL.consume
+			return (xs, extra))
+
+test_ConcatMapAccumM :: Suite
+test_ConcatMapAccumM = assertions "concatMapAccumM" $ do
+	let step s ao = return (s + 1, B.replicate s ao)
+	$expect $ equal
+		["A", "BB", "CCC"]
+		(E.runLists_ [["A", "B"], ["C"]] $ do
+			EB.concatMapAccumM step 1 =$ EL.consume)
+	$expect $ equal
+		("AB", ["", "C"])
+		(E.runLists_ [["A", "B"], ["C"]] $ do
+			xs <- EB.concatMapAccumM step 1 =$ EB.take 2
+			extra <- EL.consume
+			return (xs, extra))

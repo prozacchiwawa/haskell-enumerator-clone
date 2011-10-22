@@ -27,8 +27,10 @@ tests =
 	, test_CatchError
 	, test_Compatibility
 	, test_ConcatEnums
+	, test_EnumEOF
 	, test_Instances
 	, test_JoinE
+	, test_JoinI
 	, test_JoinOperatorAssociativity
 	, test_Last
 	, test_Length

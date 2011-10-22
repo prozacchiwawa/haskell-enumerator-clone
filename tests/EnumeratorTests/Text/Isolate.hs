@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TemplateHaskell #-}
 
 -- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
 --
@@ -12,14 +13,23 @@ import qualified Data.Text.Lazy as TL
 import           Test.Chell
 import           Test.Chell.QuickCheck
 
-import           Data.Enumerator (($$))
+import           Data.Enumerator (($$), (=$))
 import qualified Data.Enumerator as E
+import qualified Data.Enumerator.List as EL
 import qualified Data.Enumerator.Text as ET
 
 import           EnumeratorTests.Text.Util (prop_Text)
 
 test_Isolate :: Suite
-test_Isolate = property "isolate" $ prop_Text
+test_Isolate = suite "isolate"
+	[ prop_Isolate
+	, test_DropExtra
+	, test_HandleEOF
+	, test_BadParameter
+	]
+
+prop_Isolate :: Suite
+prop_Isolate = property "model" $ prop_Text
 	(do
 		x <- E.joinI (ET.isolate 2 $$ ET.head)
 		extra <- ET.consume
@@ -28,3 +38,36 @@ test_Isolate = property "isolate" $ prop_Text
 		[] -> (Nothing, TL.empty)
 		(x:[]) -> (Just x, TL.empty)
 		(x:_:xs') -> (Just x, TL.pack xs'))
+
+test_DropExtra :: Suite
+test_DropExtra = assertions "drop-extra" $ do
+	$expect $ equal
+		(Just 'A', ["C"])
+		(E.runLists_ [[], ["A"], ["B"], ["C"]] $ do
+			x <- ET.isolate 2 =$ ET.head
+			extra <- EL.consume
+			return (x, extra))
+	$expect $ equal
+		(Just 'A', ["C"])
+		(E.runLists_ [["A", "B", "C"]] $ do
+			x <- ET.isolate 2 =$ ET.head
+			extra <- EL.consume
+			return (x, extra))
+
+test_HandleEOF :: Suite
+test_HandleEOF = assertions "handle-eof" $ do
+	$expect $ equal
+		(Nothing :: Maybe Char, [])
+		(E.runLists_ [] $ do
+			x <- ET.isolate 2 =$ ET.head
+			extra <- EL.consume
+			return (x, extra))
+
+test_BadParameter :: Suite
+test_BadParameter = assertions "bad-parameter" $ do
+	$expect $ equal
+		(Nothing, ["A", "B", "C"])
+		(E.runLists_ [["A"], ["B"], ["C"]] $ do
+			x <- ET.isolate 0 =$ ET.head
+			extra <- EL.consume
+			return (x, extra))

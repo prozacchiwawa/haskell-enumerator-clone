@@ -15,7 +15,6 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Char8 as B8
 import qualified Data.ByteString.Lazy as BL
 import           Data.Char (ord)
-import           Data.Functor.Identity (Identity, runIdentity)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Encoding as TE
@@ -25,7 +24,7 @@ import           Test.Chell
 import           Test.Chell.QuickCheck
 import           Test.QuickCheck hiding (property)
 
-import           Data.Enumerator (($$))
+import           Data.Enumerator ((=$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.Binary as EB
 import qualified Data.Enumerator.Text as ET
@@ -55,48 +54,48 @@ test_ASCII = suite "ascii"
 	  		(show ET.ascii)
 	
 	, assertions "encode-invalid" $ do
-	  	$expect $ throwsEq
+	  	$expect $ equalExc
 	  		(ErrorCall "Codec \"ASCII\" can't encode character U+00FF")
-	  		(runList ["\xFF"] (E.joinI (ET.encode ET.ascii $$ EB.consume)))
+	  		(E.runLists [["\xFF"]] (ET.encode ET.ascii =$ EB.consume))
 	
 	, assertions "decode-invalid" $ do
-	  	$expect $ throwsEq
+	  	$expect $ equalExc
 	  		(ErrorCall "Codec \"ASCII\" can't decode byte 0xFF")
-	  		(runList ["\xFF"] (E.joinI (ET.decode ET.ascii $$ ET.consume)))
+	  		(E.runLists [["\xFF"]] (ET.decode ET.ascii =$ ET.consume))
+	
+	, skipIf True $ assertions "lazy.broken" $ do
+	  	$expect $ equal
+	  		(Just 0x61, ["b"])
+	  		(E.runLists_ [["", "ab"]] (do
+	  			x <- ET.encode ET.ascii =$ EB.head
+	  			y <- EL.consume
+	  			return (x, y)))
 	
 	, assertions "lazy" $ do
-	  	{-
 	  	$expect $ equal
 	  		(Just 0x61, ["b"])
-	  		(runListI ["", "ab"] (do
-	  			x <- E.joinI (ET.encode ET.ascii $$ EB.head)
+	  		(E.runLists_ [[""], ["a"], ["b"]] $ do
+	  			x <- ET.encode ET.ascii =$ EB.head
 	  			y <- EL.consume
-	  			return (x, y)))
-	  	-}
-	  	$expect $ equal
-	  		(Just 0x61, ["b"])
-	  		(runListI ["", "a", "b"] (do
-	  			x <- E.joinI (ET.encode ET.ascii $$ EB.head)
-	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 0x61, ["\xFF"])
-	  		(runListI ["", "a\xFF"] (do
-	  			x <- E.joinI (ET.encode ET.ascii $$ EB.head)
+	  		(E.runLists_ [[""], ["a\xFF"]] $ do
+	  			x <- ET.encode ET.ascii =$ EB.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 'a', ["b"])
-	  		(runListI ["", "a", "b"] (do
-	  			x <- E.joinI (ET.decode ET.ascii $$ ET.head)
+	  		(E.runLists_ [[""], ["a"], ["b"]] $ do
+	  			x <- ET.decode ET.ascii =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 'a', ["\xFF"])
-	  		(runListI ["", "a\xFF"] (do
-	  			x <- E.joinI (ET.decode ET.ascii $$ ET.head)
+	  		(E.runLists_ [[""], ["a\xFF"]] $ do
+	  			x <- ET.decode ET.ascii =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	]
 
 encodeASCII :: T.Text -> B.ByteString
@@ -120,29 +119,29 @@ test_ISO8859_1 = suite "iso8859-1"
 	  		(show ET.iso8859_1)
 	
 	, assertions "encode-invalid" $ do
-	  	$expect $ throwsEq
+	  	$expect $ equalExc
 	  		(ErrorCall "Codec \"ISO-8859-1\" can't encode character U+01FF")
-	  		(runList ["\x1FF"] (E.joinI (ET.encode ET.iso8859_1 $$ EB.consume)))
+	  		(E.runLists [["\x1FF"]] (ET.encode ET.iso8859_1 =$ EB.consume))
 	
 	, assertions "lazy" $ do
 	  	$expect $ equal
 	  		(Just 0x61, ["b"])
-	  		(runListI ["", "a", "b"] (do
-	  			x <- E.joinI (ET.encode ET.iso8859_1 $$ EB.head)
+	  		(E.runLists_ [[""], ["a"], ["b"]] $ do
+	  			x <- ET.encode ET.iso8859_1 =$ EB.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 0x61, ["\x1FF"])
-	  		(runListI ["", "a\x1FF"] (do
-	  			x <- E.joinI (ET.encode ET.iso8859_1 $$ EB.head)
+	  		(E.runLists_ [[""], ["a\x1FF"]] $ do
+	  			x <- ET.encode ET.iso8859_1 =$ EB.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 'a', ["b"])
-	  		(runListI ["", "a", "b"] (do
-	  			x <- E.joinI (ET.decode ET.iso8859_1 $$ ET.head)
+	  		(E.runLists_ [[""], ["a"], ["b"]] $ do
+	  			x <- ET.decode ET.iso8859_1 =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	]
 
 encodeISO8859_1 :: T.Text -> B.ByteString
@@ -164,20 +163,20 @@ test_UTF8 = suite "utf8"
 	  		(show ET.utf8)
 	
 	, assertions "decode-invalid" $ do
-	  	$expect $ throwsEq
+	  	$expect $ equalExc
 	  		(TE.DecodeError "Data.Text.Encoding.decodeUtf8: Invalid UTF-8 stream" (Just 0xFF))
-	  		(runList ["\xFF"] (E.joinI (ET.decode ET.utf8 $$ ET.consume)))
-	  	$expect $ throwsEq
+	  		(E.runLists [["\xFF"]] (ET.decode ET.utf8 =$ ET.consume))
+	  	$expect $ equalExc
 	  		(ErrorCall "Unexpected EOF while decoding")
-	  		(runList ["\xF0"] (E.joinI (ET.decode ET.utf8 $$ ET.consume)))
+	  		(E.runLists [["\xF0"]] (ET.decode ET.utf8 =$ ET.consume))
 	
 	, assertions "lazy" $ do
 	  	$expect $ equal
 	  		(Just 'a', ["\xEF\xBD"])
-	  		(runListI ["a\xEF\xBD"] (do
-	  			x <- E.joinI (ET.decode ET.utf8 $$ ET.head)
+	  		(E.runLists_ [["a\xEF\xBD"]] $ do
+	  			x <- ET.decode ET.utf8 =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	]
 
 test_UTF16_BE :: Suite
@@ -191,26 +190,26 @@ test_UTF16_BE = suite "utf16-be"
 	  		(show ET.utf16_be)
 	
 	, assertions "decode-invalid" $ do
-	  	$expect $ throwsEq
+	  	$expect $ equalExc
 	  		(TE.DecodeError "Data.Text.Encoding.Fusion.streamUtf16BE: Invalid UTF-16BE stream" Nothing)
-	  		(runList ["\xDD\x1E"] (E.joinI (ET.decode ET.utf16_be $$ ET.consume)))
-	  	$expect $ throwsEq
+	  		(E.runLists [["\xDD\x1E"]] (ET.decode ET.utf16_be =$ ET.consume))
+	  	$expect $ equalExc
 	  		(ErrorCall "Unexpected EOF while decoding")
-	  		(runList ["\xD8\x00"] (E.joinI (ET.decode ET.utf16_be $$ ET.consume)))
+	  		(E.runLists [["\xD8\x00"]] (ET.decode ET.utf16_be =$ ET.consume))
 	
 	, assertions "lazy" $ do
 	  	$expect $ equal
 	  		(Just 'a', ["\x00"])
-	  		(runListI ["\x00\x61\x00"] (do
-	  			x <- E.joinI (ET.decode ET.utf16_be $$ ET.head)
+	  		(E.runLists_ [["\x00\x61\x00"]] $ do
+	  			x <- ET.decode ET.utf16_be =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 'a', ["\xDD\x1E"])
-	  		(runListI ["\x00\x61\xDD\x1E"] (do
-	  			x <- E.joinI (ET.decode ET.utf16_be $$ ET.head)
+	  		(E.runLists_ [["\x00\x61\xDD\x1E"]] $ do
+	  			x <- ET.decode ET.utf16_be =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	]
 
 test_UTF16_LE :: Suite
@@ -224,26 +223,26 @@ test_UTF16_LE = suite "utf16-le"
 	  		(show ET.utf16_le)
 	
 	, assertions "decode-invalid" $ do
-	  	$expect $ throwsEq
+	  	$expect $ equalExc
 	  		(TE.DecodeError "Data.Text.Encoding.Fusion.streamUtf16LE: Invalid UTF-16LE stream" Nothing)
-	  		(runList ["\x1E\xDD"] (E.joinI (ET.decode ET.utf16_le $$ ET.consume)))
-	  	$expect $ throwsEq
+	  		(E.runLists [["\x1E\xDD"]] (ET.decode ET.utf16_le =$ ET.consume))
+	  	$expect $ equalExc
 	  		(ErrorCall "Unexpected EOF while decoding")
-	  		(runList ["\x00\xD8"] (E.joinI (ET.decode ET.utf16_le $$ ET.consume)))
+	  		(E.runLists [["\x00\xD8"]] (ET.decode ET.utf16_le =$ ET.consume))
 	
 	, assertions "lazy" $ do
 	  	$expect $ equal
 	  		(Just 'a', ["\x00"])
-	  		(runListI ["\x61\x00\x00"] (do
-	  			x <- E.joinI (ET.decode ET.utf16_le $$ ET.head)
+	  		(E.runLists_ [["\x61\x00\x00"]] $ do
+	  			x <- ET.decode ET.utf16_le =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 'a', ["\x1E\xDD"])
-	  		(runListI ["\x61\x00\x1E\xDD"] (do
-	  			x <- E.joinI (ET.decode ET.utf16_le $$ ET.head)
+	  		(E.runLists_ [["\x61\x00\x1E\xDD"]] $ do
+	  			x <- ET.decode ET.utf16_le =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	]
 
 test_UTF32_BE :: Suite
@@ -257,26 +256,26 @@ test_UTF32_BE = suite "utf32-be"
 	  		(show ET.utf32_be)
 	
 	, assertions "decode-invalid" $ do
-	  	$expect $ throwsEq
+	  	$expect $ equalExc
 	  		(TE.DecodeError "Data.Text.Encoding.Fusion.streamUtf32BE: Invalid UTF-32BE stream" Nothing)
-	  		(runList ["\xFF\xFF\xFF\xFF"] (E.joinI (ET.decode ET.utf32_be $$ ET.consume)))
-	  	$expect $ throwsEq
+	  		(E.runLists [["\xFF\xFF\xFF\xFF"]] (ET.decode ET.utf32_be =$ ET.consume))
+	  	$expect $ equalExc
 	  		(ErrorCall "Unexpected EOF while decoding")
-	  		(runList ["\x00\x00"] (E.joinI (ET.decode ET.utf32_be $$ ET.consume)))
+	  		(E.runLists [["\x00\x00"]] (ET.decode ET.utf32_be =$ ET.consume))
 	
 	, assertions "lazy" $ do
 	  	$expect $ equal
 	  		(Just 'a', ["\x00"])
-	  		(runListI ["\x00\x00\x00\x61\x00"] (do
-	  			x <- E.joinI (ET.decode ET.utf32_be $$ ET.head)
+	  		(E.runLists_ [["\x00\x00\x00\x61\x00"]] $ do
+	  			x <- ET.decode ET.utf32_be =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 'a', ["\xFF\xFF\xFF\xFF"])
-	  		(runListI ["\x00\x00\x00\x61\xFF\xFF\xFF\xFF"] (do
-	  			x <- E.joinI (ET.decode ET.utf32_be $$ ET.head)
+	  		(E.runLists_ [["\x00\x00\x00\x61\xFF\xFF\xFF\xFF"]] $ do
+	  			x <- ET.decode ET.utf32_be =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	]
 
 test_UTF32_LE :: Suite
@@ -290,40 +289,34 @@ test_UTF32_LE = suite "utf32-le"
 	  		(show ET.utf32_le)
 	
 	, assertions "decode-invalid" $ do
-	  	$expect $ throwsEq
+	  	$expect $ equalExc
 	  		(TE.DecodeError "Data.Text.Encoding.Fusion.streamUtf32LE: Invalid UTF-32LE stream" Nothing)
-	  		(runList ["\xFF\xFF\xFF\xFF"] (E.joinI (ET.decode ET.utf32_le $$ ET.consume)))
-	  	$expect $ throwsEq
+	  		(E.runLists [["\xFF\xFF\xFF\xFF"]] (ET.decode ET.utf32_le =$ ET.consume))
+	  	$expect $ equalExc
 	  		(ErrorCall "Unexpected EOF while decoding")
-	  		(runList ["\x00\x00"] (E.joinI (ET.decode ET.utf32_le $$ ET.consume)))
+	  		(E.runLists [["\x00\x00"]] (ET.decode ET.utf32_le =$ ET.consume))
 	
 	, assertions "lazy" $ do
 	  	$expect $ equal
 	  		(Just 'a', ["\x00"])
-	  		(runListI ["\x61\x00\x00\x00\x00"] (do
-	  			x <- E.joinI (ET.decode ET.utf32_le $$ ET.head)
+	  		(E.runLists_ [["\x61\x00\x00\x00\x00"]] $ do
+	  			x <- ET.decode ET.utf32_le =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	  	$expect $ equal
 	  		(Just 'a', ["\xFF\xFF\xFF\xFF"])
-	  		(runListI ["\x61\x00\x00\x00\xFF\xFF\xFF\xFF"] (do
-	  			x <- E.joinI (ET.decode ET.utf32_le $$ ET.head)
+	  		(E.runLists_ [["\x61\x00\x00\x00\xFF\xFF\xFF\xFF"]] $ do
+	  			x <- ET.decode ET.utf32_le =$ ET.head
 	  			y <- EL.consume
-	  			return (x, y)))
+	  			return (x, y))
 	]
 
 prop_Encode :: ET.Codec -> (T.Text -> B.ByteString) -> T.Text -> Bool
 prop_Encode codec model text = encoded == model text where
-	lazy = runListI [text] (E.joinI (ET.encode codec $$ EB.consume))
+	lazy = E.runLists_ [[text]] (ET.encode codec =$ EB.consume)
 	encoded = B.concat (BL.toChunks lazy)
 
 prop_Decode :: ET.Codec -> (B.ByteString -> T.Text) -> B.ByteString -> Bool
 prop_Decode codec model bytes = decoded == model bytes where
-	lazy = runListI [bytes] (E.joinI (ET.decode codec $$ ET.consume))
+	lazy = E.runLists_ [[bytes]] (ET.decode codec =$ ET.consume)
 	decoded = TL.toStrict lazy
-
-runList :: Monad m => [a] -> E.Iteratee a m b -> m b
-runList xs iter = E.run_ (E.enumList 1 xs $$ iter)
-
-runListI :: [a] -> E.Iteratee a Identity b -> b
-runListI xs iter = runIdentity (runList xs iter)

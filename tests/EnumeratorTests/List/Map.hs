@@ -16,7 +16,7 @@ module EnumeratorTests.List.Map
 	, test_MapAccumM
 	) where
 
-import           Control.Monad.Trans.Writer
+import           Control.Monad.Trans.Writer (execWriter, tell)
 import           Data.Char (chr, ord, toLower)
 import           Test.Chell
 

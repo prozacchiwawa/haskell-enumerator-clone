@@ -28,6 +28,8 @@ test_Binary = suite "binary"
 	[ test_Consume
 	, test_ConcatMap
 	, test_ConcatMapM
+	, test_ConcatMapAccum
+	, test_ConcatMapAccumM
 	, test_Drop
 	, test_DropWhile
 	, test_EnumHandle
@@ -55,6 +57,7 @@ test_Binary = suite "binary"
 	, test_Require
 	, test_SplitWhen
 	, test_Take
+	, test_TakeWhile
 	, test_Unfold
 	, test_UnfoldM
 	, test_Zip

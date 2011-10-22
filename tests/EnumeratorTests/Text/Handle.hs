@@ -33,7 +33,7 @@ test_IterHandle :: Suite
 test_IterHandle = assertions "iterHandle" $ do
 	knob <- newKnob ""
 	withFileHandle knob "" IO.WriteMode $ \h -> do
-		E.run_ (E.enumList 1 ["A", "B", "C"] $$ ET.iterHandle h)
+		E.run_ (E.enumLists [[], ["A", "B"], ["C"]] $$ ET.iterHandle h)
 	bytes <- Data.Knob.getContents knob
 	$expect (equal bytes "ABC")
 
