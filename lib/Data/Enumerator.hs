@@ -224,7 +224,7 @@ concatEnums = Prelude.foldl (>==>) returnI
 --
 -- See the documentation for ('=$').
 --
--- @joinI enum iter = enum =$ iter@
+-- @joinI (enum $$ iter) = enum =$ iter@
 joinI :: Monad m => Iteratee a m (Step a' m b)
       -> Iteratee a m b
 joinI outer = outer >>= check where
