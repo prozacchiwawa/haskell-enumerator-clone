@@ -193,7 +193,7 @@ concatMapM f = checkDone (continue . step) where
 	loop k (x:xs) = do
 		fx <- lift (f x)
 		k (Chunks [fx]) >>==
-			checkDoneEx (Chunks [B.pack xs]) (\k' -> loop k' xs)
+			checkDoneEx (Chunks [B.pack xs]) (`loop` xs)
 
 -- | Similar to 'Data.Enumerator.Binary.concatMap', but with a stateful step
 -- function.
@@ -325,7 +325,7 @@ take n = continue (loop id n) where
 		len = toInteger (BL.length lazy)
 		
 		iter = if len < n'
-			then continue (loop (acc . (BL.append lazy)) (n' - len))
+			then continue (loop (acc . BL.append lazy) (n' - len))
 			else let
 				(xs', extra) = BL.splitAt (fromInteger n') lazy
 				in yield (acc xs') (toChunks extra)
@@ -342,7 +342,7 @@ takeWhile p = continue (loop id) where
 		lazy = BL.fromChunks xs
 		(xs', extra) = BL.span p lazy
 		iter = if BL.null extra
-			then continue (loop (acc . (BL.append lazy)))
+			then continue (loop (acc . BL.append lazy))
 			else yield (acc xs') (toChunks extra)
 	loop acc EOF = yield (acc BL.empty) EOF
 
@@ -354,7 +354,7 @@ consume = continue (loop id) where
 	loop acc (Chunks []) = continue (loop acc)
 	loop acc (Chunks xs) = iter where
 		lazy = BL.fromChunks xs
-		iter = continue (loop (acc . (BL.append lazy)))
+		iter = continue (loop (acc . BL.append lazy))
 	loop acc EOF = yield (acc BL.empty) EOF
 
 -- | Pass input from a stream through two iteratees at once. Excess input is
@@ -664,7 +664,7 @@ require n = continue (loop id n) where
 		lazy = BL.fromChunks xs
 		len = toInteger (BL.length lazy)
 		iter = if len < n'
-			then continue (loop (acc . (BL.append lazy)) (n' - len))
+			then continue (loop (acc . BL.append lazy) (n' - len))
 			else yield () (toChunks (acc lazy))
 	loop _ _ EOF = throwError (Exc.ErrorCall "require: Unexpected EOF")
 
@@ -685,8 +685,8 @@ isolate n (Continue k) = continue loop where
 			then k (Chunks xs) >>== isolate (n - len)
 			else let
 				(s1, s2) = BL.splitAt (fromInteger n) lazy
-				in k (toChunks s1) >>== (\step -> yield step (toChunks s2))
-	loop EOF = k EOF >>== (\step -> yield step EOF)
+				in k (toChunks s1) >>== (`yield` toChunks s2)
+	loop EOF = k EOF >>== (`yield` EOF)
 isolate n step = drop n >> return step
 
 -- | Split on bytes satisfying a given predicate.
@@ -773,7 +773,7 @@ enumHandleRange bufferSize offset count h s = seek >> enum where
 			if B.null bytes
 				then continue k
 				else feed bytes
-		feed bs = k (Chunks [bs]) >>== loop (n - (toInteger (B.length bs)))
+		feed bs = k (Chunks [bs]) >>== loop (n - toInteger (B.length bs))
 		in if rem <= 0
 			then continue k
 			else keepGoing

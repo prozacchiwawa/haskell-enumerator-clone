@@ -159,7 +159,7 @@ concatMapM f = checkDone (continue . step) where
 	loop k (x:xs) = do
 		fx <- lift (f x)
 		k (Chunks fx) >>==
-			checkDoneEx (Chunks xs) (\k' -> loop k' xs)
+			checkDoneEx (Chunks xs) (`loop` xs)
 
 -- | @'Data.Enumerator.List.concatMap' f@ applies /f/ to each input element
 -- and feeds the resulting outputs to the inner iteratee.
@@ -675,8 +675,8 @@ isolate n (Continue k) = continue loop where
 		| len xs <= n = k (Chunks xs) >>== isolate (n - len xs)
 		| otherwise = let
 			(s1, s2) = L.genericSplitAt n xs
-			in k (Chunks s1) >>== (\step -> yield step (Chunks s2))
-	loop EOF = k EOF >>== (\step -> yield step EOF)
+			in k (Chunks s1) >>== (`yield` Chunks s2)
+	loop EOF = k EOF >>== (`yield` EOF)
 isolate n step = drop n >> return step
 
 -- | Split on elements satisfying a given predicate.

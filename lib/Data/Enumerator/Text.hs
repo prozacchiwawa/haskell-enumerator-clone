@@ -215,7 +215,7 @@ concatMapM f = checkDone (continue . step) where
 	loop k (x:xs) = do
 		fx <- lift (f x)
 		k (Chunks [fx]) >>==
-			checkDoneEx (Chunks [T.pack xs]) (\k' -> loop k' xs)
+			checkDoneEx (Chunks [T.pack xs]) (`loop` xs)
 
 -- | Similar to 'Data.Enumerator.Text.concatMap', but with a stateful step
 -- function.
@@ -346,7 +346,7 @@ take n = continue (loop id n) where
 		len = toInteger (TL.length lazy)
 		
 		iter = if len < n'
-			then continue (loop (acc . (TL.append lazy)) (n' - len))
+			then continue (loop (acc . TL.append lazy) (n' - len))
 			else let
 				(xs', extra) = TL.splitAt (fromInteger n') lazy
 				in yield (acc xs') (toChunks extra)
@@ -363,7 +363,7 @@ takeWhile p = continue (loop id) where
 		lazy = TL.fromChunks xs
 		(xs', extra) = tlSpanBy p lazy
 		iter = if TL.null extra
-			then continue (loop (acc . (TL.append lazy)))
+			then continue (loop (acc . TL.append lazy))
 			else yield (acc xs') (toChunks extra)
 	loop acc EOF = yield (acc TL.empty) EOF
 
@@ -375,7 +375,7 @@ consume = continue (loop id) where
 	loop acc (Chunks []) = continue (loop acc)
 	loop acc (Chunks xs) = iter where
 		lazy = TL.fromChunks xs
-		iter = continue (loop (acc . (TL.append lazy)))
+		iter = continue (loop (acc . TL.append lazy))
 	loop acc EOF = yield (acc TL.empty) EOF
 
 -- | Pass input from a stream through two iteratees at once. Excess input is
@@ -685,7 +685,7 @@ require n = continue (loop id n) where
 		lazy = TL.fromChunks xs
 		len = toInteger (TL.length lazy)
 		iter = if len < n'
-			then continue (loop (acc . (TL.append lazy)) (n' - len))
+			then continue (loop (acc . TL.append lazy) (n' - len))
 			else yield () (toChunks (acc lazy))
 	loop _ _ EOF = throwError (Exc.ErrorCall "require: Unexpected EOF")
 
@@ -706,8 +706,8 @@ isolate n (Continue k) = continue loop where
 			then k (Chunks xs) >>== isolate (n - len)
 			else let
 				(s1, s2) = TL.splitAt (fromInteger n) lazy
-				in k (toChunks s1) >>== (\step -> yield step (toChunks s2))
-	loop EOF = k EOF >>== (\step -> yield step EOF)
+				in k (toChunks s1) >>== (`yield` toChunks s2)
+	loop EOF = k EOF >>== (`yield` EOF)
 isolate n step = drop n >> return step
 
 -- | Split on characters satisfying a given predicate.

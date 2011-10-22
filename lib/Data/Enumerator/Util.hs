@@ -15,10 +15,10 @@ pad0 size str = padded where
 		else Prelude.replicate (size - len) '0' ++ str
 
 reprChar :: Char -> String
-reprChar c = "U+" ++ (pad0 4 (showIntAtBase 16 (toUpper . intToDigit) (ord c) ""))
+reprChar c = "U+" ++ pad0 4 (showIntAtBase 16 (toUpper . intToDigit) (ord c) "")
 
 reprWord :: Word8 -> String
-reprWord w = "0x" ++ (pad0 2 (showIntAtBase 16 (toUpper . intToDigit) w ""))
+reprWord w = "0x" ++ pad0 2 (showIntAtBase 16 (toUpper . intToDigit) w "")
 
 tSpanBy  :: (Char -> Bool) -> T.Text -> (T.Text, T.Text)
 tlSpanBy :: (Char -> Bool) -> TL.Text -> (TL.Text, TL.Text)
