@@ -19,6 +19,10 @@ module Data.Enumerator
 	, Enumerator
 	, Enumeratee
 	
+	-- ** Running iteratees
+	, run
+	, run_
+	
 	-- ** Operators
 	-- | Compatibility note: Most of these will be obsoleted by
 	-- @enumerator_0.5@. Please make sure your @.cabal@ files have a
@@ -30,10 +34,6 @@ module Data.Enumerator
 	, (<==<)
 	, (=$)
 	, ($=)
-	
-	-- ** Running iteratees
-	, run
-	, run_
 	
 	-- ** Error handling
 	, throwError
@@ -84,6 +84,15 @@ import           Data.Enumerator.Internal
 
 -- | Run an iteratee until it finishes, and return either the final value
 -- (if it succeeded) or the error (if it failed).
+--
+-- > import Data.Enumerator
+-- > import Data.Enumerator.List as EL
+-- >
+-- > main = do
+-- >     result <- run (EL.iterate succ 'A' $$ EL.take 5)
+-- >     case result of
+-- >         Left exc -> putStrLn ("Got an exception: " ++ show exc)
+-- >         Right chars -> putStrLn ("Got characters: " ++ show chars)
 run :: Monad m => Iteratee a m b
     -> m (Either Exc.SomeException b)
 run i = do
@@ -95,6 +104,13 @@ run i = do
 
 -- | Like 'run', except errors are converted to exceptions and thrown.
 -- Primarily useful for small scripts or other simple cases.
+--
+-- > import Data.Enumerator
+-- > import Data.Enumerator.List as EL
+-- >
+-- > main = do
+-- >     chars <- run_ (EL.iterate succ 'A' $$ EL.take 5)
+-- >     putStrLn ("Got characters: " ++ show chars)
 --
 -- Since: 0.4.1
 run_ :: Monad m => Iteratee a m b -> m b
@@ -207,6 +223,8 @@ concatEnums = Prelude.foldl (>==>) returnI
 -- yield /inner/&#x2019;s output type.
 --
 -- See the documentation for ('=$').
+--
+-- @joinI enum iter = enum =$ iter@
 joinI :: Monad m => Iteratee a m (Step a' m b)
       -> Iteratee a m b
 joinI outer = outer >>= check where
@@ -218,9 +236,7 @@ joinI outer = outer >>= check where
 
 infixr 0 =$
 
--- | @enum =$ iter = 'joinI' (enum $$ iter)@
---
--- &#x201c;Wraps&#x201d; an iteratee /inner/ in an enumeratee /wrapper/.
+-- | &#x201c;Wraps&#x201d; an iteratee /inner/ in an enumeratee /wrapper/.
 -- The resulting iteratee will consume /wrapper/&#x2019;s input type and
 -- yield /inner/&#x2019;s output type.
 --
@@ -232,7 +248,7 @@ infixr 0 =$
 --
 -- > consumeUTF8 :: Monad m => Iteratee ByteString m Text
 --
--- It could be written with either 'joinI' or (=$):
+-- It could be written with either 'joinI' or @(=$)@:
 --
 -- > import Data.Enumerator.Text as ET
 -- >
@@ -248,6 +264,8 @@ enum =$ iter = joinI (enum $$ iter)
 --
 -- See the documentation for ('$=').
 --
+-- @joinE enum enee = enum $= enee@
+--
 -- Since: 0.4.5
 joinE :: Monad m
       => Enumerator ao m (Step ai m b)
@@ -262,9 +280,7 @@ joinE enum enee s = Iteratee $ do
 
 infixl 1 $=
 
--- | @enum $= enee = 'joinE' enum enee@
---
--- &#x201c;Wraps&#x201d; an enumerator /inner/ in an enumeratee /wrapper/.
+-- | &#x201c;Wraps&#x201d; an enumerator /inner/ in an enumeratee /wrapper/.
 -- The resulting enumerator will generate /wrapper/&#x2019;s output type.
 --
 -- As an example, consider an enumerator that yields line character counts
