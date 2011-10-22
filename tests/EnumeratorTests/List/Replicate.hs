@@ -22,6 +22,9 @@ test_Replicate = assertions "replicate" $ do
 	$expect $ equal
 		['A', 'A', 'A']
 		(runIdentity (E.run_ (EL.replicate 3 'A' $$ EL.consume)))
+	$expect $ equal
+		['A', 'A']
+		(runIdentity (E.run_ (EL.replicate 3 'A' $$ EL.take 2)))
 
 test_ReplicateM :: Suite
 test_ReplicateM = assertions "replicateM" $ do

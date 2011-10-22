@@ -28,6 +28,8 @@ test_List = suite "list"
 	[ test_Consume
 	, test_ConcatMap
 	, test_ConcatMapM
+	, test_ConcatMapAccum
+	, test_ConcatMapAccumM
 	, test_Drop
 	, test_DropWhile
 	, test_Fold

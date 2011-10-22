@@ -120,8 +120,12 @@ test_TryIO = assertions "tryIO" $ do
 test_PrintChunks :: Suite
 #ifdef MIN_VERSION_silently
 test_PrintChunks = assertions "printChunks" $ do
-	(stdout, _) <- liftIO (capture (E.run_ (E.enumList 2 ['A', 'B', 'C'] $$ E.printChunks False)))
-	$expect (equal stdout "\"AB\"\n\"C\"\nEOF\n")
+	do
+		(stdout, _) <- liftIO (capture (E.run_ (E.enumLists [[], ['A', 'B'], ['C']] $$ E.printChunks False)))
+		$expect (equal stdout "\"AB\"\n\"C\"\nEOF\n")
+	do
+		(stdout, _) <- liftIO (capture (E.run_ (E.enumLists [[], ['A', 'B'], ['C']] $$ E.printChunks True)))
+		$expect (equal stdout "\"\"\n\"AB\"\n\"C\"\nEOF\n")
 #else
 test_PrintChunks = skipIf True (assertions "printChunks" (return ()))
 #endif

@@ -10,25 +10,46 @@ module EnumeratorTests.List.Map
 	, test_MapM_
 	, test_ConcatMap
 	, test_ConcatMapM
+	, test_ConcatMapAccum
+	, test_ConcatMapAccumM
 	, test_MapAccum
 	, test_MapAccumM
 	) where
 
 import           Control.Monad.Trans.Writer
+import           Data.Char (chr, ord, toLower)
 import           Test.Chell
-import           Test.Chell.QuickCheck
 
-import           Data.Enumerator (($$))
+import           Data.Enumerator (($$), (=$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.List as EL
 
-import           EnumeratorTests.List.Util
-
 test_Map :: Suite
-test_Map = test_Enumeratee "map" (EL.map id)
+test_Map = assertions "map" $ do
+	$expect $ equal
+		['a', 'b', 'c']
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			EL.map toLower =$ EL.consume)
+	$expect $ equal
+		(['a'], ['B', 'C'])
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			xs <- EL.map toLower =$ EL.take 1
+			extra <- EL.consume
+			return (xs, extra))
 
 test_MapM :: Suite
-test_MapM = test_Enumeratee "mapM" (EL.mapM return)
+test_MapM = assertions "mapM" $ do
+	let step = return . toLower
+	$expect $ equal
+		['a', 'b', 'c']
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			EL.mapM step =$ EL.consume)
+	$expect $ equal
+		(['a'], ['B', 'C'])
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			xs <- EL.mapM step =$ EL.take 1
+			extra <- EL.consume
+			return (xs, extra))
 
 test_MapM_ :: Suite
 test_MapM_ = assertions "mapM_" $ do
@@ -37,29 +58,85 @@ test_MapM_ = assertions "mapM_" $ do
 		(execWriter (E.run_ (E.enumList 1 ['A', 'B', 'C'] $$ EL.mapM_ (\x -> tell [x]))))
 
 test_ConcatMap :: Suite
-test_ConcatMap = test_Enumeratee "concatMap" (EL.concatMap (:[]))
+test_ConcatMap = assertions "concatMap" $ do
+	let step ao = [ao, toLower ao]
+	$expect $ equal
+		['A', 'a', 'B', 'b', 'C', 'c']
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			EL.concatMap step =$ EL.consume)
+	$expect $ equal
+		(['A', 'a'], ['B', 'C'])
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			xs <- EL.concatMap step =$ EL.take 2
+			extra <- EL.consume
+			return (xs, extra))
 
 test_ConcatMapM :: Suite
-test_ConcatMapM = test_Enumeratee "concatMapM" (EL.concatMapM (\x -> return [x]))
+test_ConcatMapM = assertions "concatMapM" $ do
+	let step ao = return [ao, toLower ao]
+	$expect $ equal
+		['A', 'a', 'B', 'b', 'C', 'c']
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			EL.concatMapM step =$ EL.consume)
+	$expect $ equal
+		(['A', 'a'], ['B', 'C'])
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			xs <- EL.concatMapM step =$ EL.take 2
+			extra <- EL.consume
+			return (xs, extra))
 
 test_MapAccum :: Suite
-test_MapAccum = property "mapAccum" $ prop_List
-	(do
-		let enee = EL.mapAccum (\s ao -> (s+1, (s, ao))) 10
-		a <- E.joinI (enee $$ EL.head)
-		b <- EL.consume
-		return (a, b))
-	(\xs -> Right $ case xs of
-		[] -> (Nothing, [])
-		(x:xs') -> (Just (10, x), xs'))
+test_MapAccum = assertions "mapAccum" $ do
+	let step s ao = (s + 1, chr (ord ao + s))
+	$expect $ equal
+		['B', 'D', 'F']
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			EL.mapAccum step 1 =$ EL.consume)
+	$expect $ equal
+		(['B'], ['B', 'C'])
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			xs <- EL.mapAccum step 1 =$ EL.take 1
+			extra <- EL.consume
+			return (xs, extra))
 
 test_MapAccumM :: Suite
-test_MapAccumM = property "mapAccumM" $ prop_List
-	(do
-		let enee = EL.mapAccumM (\s ao -> return (s+1, (s, ao))) 10
-		a <- E.joinI (enee $$ EL.head)
-		b <- EL.consume
-		return (a, b))
-	(\xs -> Right $ case xs of
-		[] -> (Nothing, [])
-		(x:xs') -> (Just (10, x), xs'))
+test_MapAccumM = assertions "mapAccumM" $ do
+	let step s ao = return (s + 1, chr (ord ao + s))
+	$expect $ equal
+		['B', 'D', 'F']
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			EL.mapAccumM step 1 =$ EL.consume)
+	$expect $ equal
+		(['B'], ['B', 'C'])
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			xs <- EL.mapAccumM step 1 =$ EL.take 1
+			extra <- EL.consume
+			return (xs, extra))
+
+test_ConcatMapAccum :: Suite
+test_ConcatMapAccum = assertions "concatMapAccum" $ do
+	let step s ao = (s + 1, replicate s ao)
+	$expect $ equal
+		['A', 'B', 'B', 'C', 'C', 'C']
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			EL.concatMapAccum step 1 =$ EL.consume)
+	$expect $ equal
+		(['A', 'B'], ['C'])
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			xs <- EL.concatMapAccum step 1 =$ EL.take 2
+			extra <- EL.consume
+			return (xs, extra))
+
+test_ConcatMapAccumM :: Suite
+test_ConcatMapAccumM = assertions "concatMapAccumM" $ do
+	let step s ao = return (s + 1, replicate s ao)
+	$expect $ equal
+		['A', 'B', 'B', 'C', 'C', 'C']
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			EL.concatMapAccumM step 1 =$ EL.consume)
+	$expect $ equal
+		(['A', 'B'], ['C'])
+		(E.runLists_ [['A', 'B'], ['C']] $ do
+			xs <- EL.concatMapAccumM step 1 =$ EL.take 2
+			extra <- EL.consume
+			return (xs, extra))

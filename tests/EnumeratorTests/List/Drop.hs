@@ -11,10 +11,9 @@ module EnumeratorTests.List.Drop
 	, test_FilterM
 	) where
 
-import           Data.Functor.Identity (runIdentity)
 import           Test.Chell
 
-import           Data.Enumerator (($$))
+import           Data.Enumerator ((=$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.List as EL
 
@@ -22,29 +21,43 @@ test_Drop :: Suite
 test_Drop = assertions "drop" $ do
 	$expect $ equal
 		['A', 'B', 'C', 'D', 'E']
-		(runIdentity (E.run_ (E.enumList 1 ['A'..'E'] $$ EL.drop 0 >> EL.consume)))
+		(E.runLists_ [['A'], ['B'], ['C'], ['D'], ['E']] $ do
+			EL.drop 0
+			EL.consume)
 	$expect $ equal
 		['C', 'D', 'E']
-		(runIdentity (E.run_ (E.enumList 1 ['A'..'E'] $$ EL.drop 2 >> EL.consume)))
+		(E.runLists_ [['A'], ['B'], ['C'], ['D'], ['E']] $ do
+			EL.drop 2
+			EL.consume)
+	$expect $ equal
+		[]
+		(E.runLists_ [['A']] $ do
+			EL.drop 2
+			EL.consume)
 
 test_DropWhile :: Suite
 test_DropWhile = assertions "dropWhile" $ do
 	$expect $ equal
 		['C', 'D', 'E']
-		(runIdentity (E.run_ (E.enumList 1 ['A'..'E'] $$ EL.dropWhile (< 'C') >> EL.consume)))
+		(E.runLists_ [['A'], ['B'], ['C'], ['D'], ['E']] $ do
+			EL.dropWhile (< 'C')
+			EL.consume)
 	$expect $ equal
 		[]
-		(runIdentity (E.run_ (E.enumList 1 ['A'..'E'] $$ EL.dropWhile (\_ -> True) >> EL.consume)))
+		(E.runLists_ [['A'], ['B'], ['C'], ['D'], ['E']] $ do
+			EL.dropWhile (\_ -> True)
+			EL.consume)
 
 test_Filter :: Suite
 test_Filter = assertions "filter" $ do
 	$expect $ equal
 		['A', 'B', 'D', 'E']
-		(runIdentity (E.run_ (E.enumList 1 ['A'..'E'] $$ E.joinI (EL.filter (/= 'C') $$ EL.consume))))
+		(E.runLists_ [['A'], ['B'], ['C'], ['D'], ['E']] $ do
+			EL.filter (/= 'C') =$ EL.consume)
 
 test_FilterM :: Suite
 test_FilterM = assertions "filterM" $ do
 	$expect $ equal
 		['A', 'B', 'D', 'E']
-		(runIdentity (E.run_ (E.enumList 1 ['A'..'E'] $$ E.joinI (EL.filterM (\x -> return (x /= 'C')) $$ EL.consume))))
-
+		(E.runLists_ [['A'], ['B'], ['C'], ['D'], ['E']] $ do
+			EL.filterM (\x -> return (x /= 'C')) =$ EL.consume)

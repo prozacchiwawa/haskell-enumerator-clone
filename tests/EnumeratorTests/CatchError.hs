@@ -18,7 +18,7 @@ import           Data.Enumerator (($$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.List as EL
 
-import           EnumeratorTests.Util (within)
+import           EnumeratorTests.Util (equalExc, within)
 
 test_CatchError :: Suite
 test_CatchError = suite "catchError"
@@ -33,29 +33,21 @@ test_CatchError = suite "catchError"
 
 test_WithoutContinue :: Suite
 test_WithoutContinue = assertions "without-continue" $ do
-	let iter = E.catchError
-	    	(E.throwError (Exc.ErrorCall "error"))
-	    	(\_ -> EL.require 1)
-	
-	res <- E.run (E.enumList 1 [] $$ iter)
-	$assert (left res)
-	
-	let Left err = res
-	$assert $ equal (Exc.fromException err) (Just (Exc.ErrorCall "require: Unexpected EOF"))
+	$expect $ equalExc
+		(Exc.ErrorCall "require: Unexpected EOF")
+		(E.runLists [] $ E.catchError
+			(E.throwError (Exc.ErrorCall "error"))
+			(\_ -> EL.require 1))
 
 test_NotDivergent :: Suite
 test_NotDivergent = assertions "not-divergent" $ do
-	let iter = E.catchError
-	    	(do
-	    		_ <- EL.head
-	    		E.throwError (Exc.ErrorCall "error"))
-	    	(\_ -> EL.require 1)
-	
-	res <- E.run (E.enumList 1 [] $$ iter)
-	$assert (left res)
-	
-	let Left err = res
-	$assert $ equal (Exc.fromException err) (Just (Exc.ErrorCall "require: Unexpected EOF"))
+	$expect $ equalExc
+		(Exc.ErrorCall "require: Unexpected EOF")
+		(E.runLists [] $ E.catchError
+			(do
+				_ <- EL.head
+				E.throwError (Exc.ErrorCall "error"))
+			(\_ -> EL.require 1))
 
 test_Interleaved :: Suite
 test_Interleaved = within 1000 $ assertions "interleaved" $ do
@@ -71,40 +63,45 @@ test_Interleaved = within 1000 $ assertions "interleaved" $ do
 
 test_YieldImmediately :: Suite
 test_YieldImmediately = assertions "yield-immediately" $ do
-	res <- E.run_ (E.enumList 1 ['A'] $$ E.catchError (return 'A') (\_ -> return 'B'))
-	$expect $ equal 'A' res
+	$expect $ equal
+		'A'
+		(E.runLists_ [['A']] $ do
+			E.catchError (return 'A') (\_ -> return 'B'))
 
 test_HandleError :: Suite
 test_HandleError = assertions "handle-error" $ do
-	do
-		res <- E.run_ (E.enumList 1 [] $$ E.catchError
+	$expect $ equal
+		"error"
+		(E.runLists_ [] $ E.catchError
 			(EL.head >> E.throwError (Exc.ErrorCall "error"))
 			(\err -> return (show err)))
-		$expect $ equal "error" res
-	do
-		res <- E.run_ (E.enumList 1 ['A'] $$ E.catchError
+	$expect $ equal
+		"error"
+		(E.runLists_ [['A']] $ E.catchError
 			(E.throwError (Exc.ErrorCall "error"))
 			(\err -> return (show err)))
-		$expect $ equal "error" res
-	do
-		res <- E.run_ (E.enumList 1 ['A', 'B', 'C'] $$ E.catchError
+	$expect $ equal
+		"error"
+		(E.runLists_ [['A'], ['B'], ['C']] $ E.catchError
 			(EL.drop 1 >> E.throwError (Exc.ErrorCall "error"))
 			(\err -> return (show err)))
-		$expect $ equal "error" res
 
 test_HandleEOF :: Suite
 test_HandleEOF = assertions "handle-eof" $ do
-	res <- E.run_ (E.enumList 1 [] $$ E.catchError EL.head (\_ -> return (Just 'B')))
-	$expect $ equal Nothing res
+	$expect $ equal
+		(Nothing, Nothing)
+		(E.runLists_ [] $ do
+			x <- E.catchError EL.head (\_ -> return (Just 'B'))
+			y <- EL.head
+			return (x, y))
 
 test_GotStream :: Suite
 test_GotStream = assertions "got-stream" $ do
-	let iter = E.catchError
-	    	(do
-	    		_ <- EL.head
-	    		_ <- EL.head
-	    		E.throwError (Exc.ErrorCall "error"))
-	    	(\_ -> EL.head)
-	
-	res <- E.run_ (E.enumList 1 ['A', 'B', 'C'] $$ iter)
-	$assert $ equal (Just 'B') res
+	$expect $ equal
+		(Just 'B')
+		(E.runLists_ [['A'], ['B'], ['C']] $ E.catchError
+			(do
+				_ <- EL.head
+				_ <- EL.head
+				E.throwError (Exc.ErrorCall "error"))
+			(\_ -> EL.head))

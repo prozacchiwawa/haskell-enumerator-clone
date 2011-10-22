@@ -8,11 +8,10 @@ module EnumeratorTests.List.Isolate
 	( test_Isolate
 	) where
 
-import           Data.Functor.Identity (runIdentity)
 import           Test.Chell
 import           Test.Chell.QuickCheck
 
-import           Data.Enumerator (($$))
+import           Data.Enumerator ((=$))
 import qualified Data.Enumerator as E
 import qualified Data.Enumerator.List as EL
 
@@ -29,7 +28,7 @@ test_Isolate = suite "isolate"
 prop_Isolate :: Suite
 prop_Isolate = property "model" $ prop_List
 	(do
-		x <- E.joinI (EL.isolate 2 $$ EL.head)
+		x <- EL.isolate 2 =$ EL.head
 		extra <- EL.consume
 		return (x, extra))
 	(\xs -> Right $ case xs of
@@ -41,31 +40,31 @@ test_DropExtra :: Suite
 test_DropExtra = assertions "drop-extra" $ do
 	$expect $ equal
 		(Just 'A', ['C'])
-		(runIdentity (E.run_ (E.enumList 1 ['A', 'B', 'C'] $$ do
-			x <- E.joinI (EL.isolate 2 $$ EL.head)
+		(E.runLists_ [[], ['A'], ['B'], ['C']] $ do
+			x <- EL.isolate 2 =$ EL.head
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
 	$expect $ equal
 		(Just 'A', ['C'])
-		(runIdentity (E.run_ (E.enumList 3 ['A', 'B', 'C'] $$ do
-			x <- E.joinI (EL.isolate 2 $$ EL.head)
+		(E.runLists_ [['A', 'B', 'C']] $ do
+			x <- EL.isolate 2 =$ EL.head
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
 
 test_HandleEOF :: Suite
 test_HandleEOF = assertions "handle-eof" $ do
 	$expect $ equal
 		(Nothing :: Maybe Char, [])
-		(runIdentity (E.run_ (E.enumList 1 [] $$ do
-			x <- E.joinI (EL.isolate 2 $$ EL.head)
+		(E.runLists_ [] $ do
+			x <- EL.isolate 2 =$ EL.head
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
 
 test_BadParameter :: Suite
 test_BadParameter = assertions "bad-parameter" $ do
 	$expect $ equal
 		(Nothing, ['A', 'B', 'C'])
-		(runIdentity (E.run_ (E.enumList 1 ['A', 'B', 'C'] $$ do
-			x <- E.joinI (EL.isolate 0 $$ EL.head)
+		(E.runLists_ [['A'], ['B'], ['C']] $ do
+			x <- EL.isolate 0 =$ EL.head
 			extra <- EL.consume
-			return (x, extra))))
+			return (x, extra))
