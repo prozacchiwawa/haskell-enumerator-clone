@@ -22,7 +22,7 @@ module Data.Enumerator.Internal
 	, continue
 	, yield
 	
-	-- ** Operators
+	-- * Operators
 	, (>>==)
 	, (==<<)
 	, ($$)
@@ -245,7 +245,7 @@ i >>== f = Iteratee (runIteratee i >>= runIteratee . f)
 
 -- | @('>==>') enum1 enum2 step = enum1 step '>>==' enum2@
 --
--- This is the moral equivalent of @('>=>')@ for iteratees.
+-- The moral equivalent of @('CM.>=>')@ for iteratees.
 --
 -- Since: 0.1.1
 (>==>) :: Monad m

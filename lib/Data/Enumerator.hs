@@ -1,3 +1,5 @@
+{-# OPTIONS_HADDOCK prune #-}
+
 -- |
 -- Module: Data.Enumerator
 -- Copyright: 2010-2011 John Millikin
@@ -19,13 +21,13 @@ module Data.Enumerator
 	, Enumerator
 	, Enumeratee
 	
-	-- ** Running iteratees
+	-- * Running iteratees
 	, run
 	, run_
 	
-	-- ** Operators
+	-- * Operators
 	-- | Compatibility note: Most of these will be obsoleted by
-	-- @enumerator_0.5@. Please make sure your @.cabal@ files have a
+	-- version 0.5. Please make sure your @.cabal@ files have a
 	-- @<0.5@ limit on the @enumerator@ dependency.
 	, (>>==)
 	, (==<<)
@@ -35,7 +37,7 @@ module Data.Enumerator
 	, (=$)
 	, ($=)
 	
-	-- ** Error handling
+	-- * Error handling
 	, throwError
 	, catchError
 	
@@ -48,27 +50,27 @@ module Data.Enumerator
 	, tryIO
 	, liftTrans
 	
-	-- ** Testing and debugging
+	-- * Testing and debugging
 	, printChunks
 	, enumList
 	, enumLists
 	, runLists
 	, runLists_
 	
-	-- ** Obsolete and pointless
-	, peek
-	, Data.Enumerator.last
-	, Data.Enumerator.length
-	
 	-- * Internal interfaces
-	-- | This module export will be removed in @enumerator_0.5@. If you
+	-- | This module export will be removed in version 0.5. If you
 	-- depend on internal implementation details, please import
 	-- @"Data.Enumerator.Internal"@ directly.
 	, module Data.Enumerator.Internal
 	
-	-- * Legacy compatibility
-	-- | These legacy compatibility functions will be removed in
-	-- @enumerator_0.5@.
+	-- Obsolete and pointless
+	, peek
+	, Data.Enumerator.last
+	, Data.Enumerator.length
+	
+	-- Legacy compatibility
+	-- These legacy compatibility functions will be removed in
+	-- version 0.5.
 	, module Data.Enumerator.Compatibility
 	) where
 
@@ -116,7 +118,7 @@ run i = do
 run_ :: Monad m => Iteratee a m b -> m b
 run_ i = run i >>= either Exc.throw return
 
--- | The moral equivalent of 'Exc.throwIO', for iteratees.
+-- | The moral equivalent of 'Exc.throwIO' for iteratees.
 throwError :: (Monad m, Exc.Exception e) => e -> Iteratee a m b
 throwError exc = returnI (Error (Exc.toException exc))
 
@@ -181,7 +183,7 @@ printChunks printEmpty = continue loop where
 -- chunk. This is primarily useful for testing, debugging, and REPL
 -- exploration.
 --
--- Compatibility note: In @enumerator_0.5@, 'enumList' will be changed to the
+-- Compatibility note: In version 0.5, 'enumList' will be changed to the
 -- type:
 --
 -- > enumList :: Monad m => [a] -> Enumerator a m b
@@ -288,7 +290,7 @@ infixl 1 $=
 --
 -- > enumFileCounts :: FilePath -> Enumerator Int IO b
 --
--- It could be written with either 'joinE' or '($=)':
+-- It could be written with either 'joinE' or @($=)@:
 --
 -- > import Data.Text as T
 -- > import Data.Enumerator.List as EL
@@ -296,6 +298,9 @@ infixl 1 $=
 -- >
 -- > enumFileCounts path = joinE (enumFile path) (EL.map T.length)
 -- > enumFileCounts path = enumFile path $= EL.map T.length
+--
+-- Compatibility note: in version 0.4.15, the associativity of @($=)@ was
+-- changed from @infixr 0@ to @infixl 1@.
 --
 -- Since: 0.4.9
 ($=) :: Monad m
@@ -346,7 +351,7 @@ liftTrans iter = Iteratee $ do
 		Error err -> Error err
 		Continue k -> Continue (liftTrans . k)
 
--- | Peek at the next element in the stream, or 'Nothing' if the stream
+-- Peek at the next element in the stream, or 'Nothing' if the stream
 -- has ended.
 peek :: Monad m => Iteratee a m (Maybe a)
 peek = continue loop where
@@ -354,7 +359,7 @@ peek = continue loop where
 	loop chunk@(Chunks (x:_)) = yield (Just x) chunk
 	loop EOF = yield Nothing EOF
 
--- | Get the last element in the stream, or 'Nothing' if the stream
+-- Get the last element in the stream, or 'Nothing' if the stream
 -- has ended.
 --
 -- Consumes the entire stream.
@@ -365,7 +370,7 @@ last = continue (loop Nothing) where
 		_ -> Just (Prelude.last xs)
 	loop ret EOF = yield ret EOF
 
--- | Get how many elements remained in the stream.
+-- Get how many elements remained in the stream.
 --
 -- Consumes the entire stream.
 length :: Monad m => Iteratee a m Integer
