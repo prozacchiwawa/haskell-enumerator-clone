@@ -1,5 +1,3 @@
-{-# OPTIONS_HADDOCK prune #-}
-
 -- |
 -- Module: Data.Enumerator
 -- Copyright: 2010-2011 John Millikin
@@ -351,7 +349,7 @@ liftTrans iter = Iteratee $ do
 		Error err -> Error err
 		Continue k -> Continue (liftTrans . k)
 
--- Peek at the next element in the stream, or 'Nothing' if the stream
+-- | Peek at the next element in the stream, or 'Nothing' if the stream
 -- has ended.
 peek :: Monad m => Iteratee a m (Maybe a)
 peek = continue loop where
@@ -359,7 +357,7 @@ peek = continue loop where
 	loop chunk@(Chunks (x:_)) = yield (Just x) chunk
 	loop EOF = yield Nothing EOF
 
--- Get the last element in the stream, or 'Nothing' if the stream
+-- | Get the last element in the stream, or 'Nothing' if the stream
 -- has ended.
 --
 -- Consumes the entire stream.
@@ -370,7 +368,7 @@ last = continue (loop Nothing) where
 		_ -> Just (Prelude.last xs)
 	loop ret EOF = yield ret EOF
 
--- Get how many elements remained in the stream.
+-- | Get how many elements remained in the stream.
 --
 -- Consumes the entire stream.
 length :: Monad m => Iteratee a m Integer
