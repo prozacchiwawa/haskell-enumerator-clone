@@ -8,30 +8,30 @@
 --
 -----------------------------------------------------------------------------
 module Main (main) where
-import Data.Enumerator as E
-import qualified Data.Enumerator.Binary as EB
-import qualified Data.Enumerator.Text as ET
-import qualified Data.ByteString as B
 
--- support imports
-import Control.Monad (unless, forM_)
-import System.IO
-import System.Console.GetOpt
-import System.Environment
-import System.Exit
+import           Control.Monad (unless, forM_)
+import           Data.ByteString (ByteString)
+import           System.Console.GetOpt
+import           System.IO
+import           System.Environment
+import           System.Exit
+
+import           Data.Enumerator as E
+import qualified Data.Enumerator.Binary as Binary
+import qualified Data.Enumerator.Text as Text
 
 -- support wc modes -c (bytes), -m (characters), and -l (lines)
 
 -- iterBytes simply counts how many bytes are in each chunk, accumulates this
 -- count, and returns it when EOF is received.
 
-iterBytes :: Monad m => Iteratee B.ByteString m Integer
-iterBytes = EB.fold (\acc _ -> acc + 1) 0
+iterBytes :: Monad m => Iteratee ByteString m Integer
+iterBytes = Binary.fold (\acc _ -> acc + 1) 0
 
 -- iterLines is similar, except it only counts newlines ('\n')
 
-iterLines :: Monad m => Iteratee B.ByteString m Integer
-iterLines = EB.fold step 0 where
+iterLines :: Monad m => Iteratee ByteString m Integer
+iterLines = Binary.fold step 0 where
 	step acc 0xA = acc + 1
 	step acc _ = acc
 
@@ -39,13 +39,11 @@ iterLines = EB.fold step 0 where
 -- assuming UTF-8) before performing any counting. Leftover bytes, not part
 -- of a valid UTF-8 character, are yielded as surplus
 --
--- Note the use of joinI. 'ET.decode' is an enumeratee, which means it returns
--- an iteratee yielding an inner step. 'joinI' "collapses" an enumeratee's
--- return value, much as 'join' does to monadic values.
+-- Note the use of (=$). This lets an enumeratee send data directly to an
+-- iteratee, without worrying about leftover input.
 
-iterChars :: Monad m => Iteratee B.ByteString m Integer
-iterChars = joinI (ET.decode ET.utf8 $$ count) where
-	count = ET.fold (\acc _ -> acc + 1) 0
+iterChars :: Monad m => Iteratee ByteString m Integer
+iterChars = Text.decode Text.utf8 =$ Text.fold (\acc _ -> acc + 1) 0
 
 main :: IO ()
 main = do
@@ -60,9 +58,9 @@ main = do
 		OptionChars -> iterChars
 	
 	forM_ files $ \filename -> do
-		putStr $ filename ++ ": "
+		putStr (filename ++ ": ")
 		
-		eitherStat <- run (EB.enumFile filename $$ iter)
+		eitherStat <- run (Binary.enumFile filename $$ iter)
 		putStrLn $ case eitherStat of
 			Left err -> "ERROR: " ++ show err
 			Right stat -> show stat
