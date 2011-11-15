@@ -150,6 +150,7 @@ library
     Data.Enumerator.IO
     Data.Enumerator.List
     Data.Enumerator.Text
+    Data.Enumerator.Trans
 
   other-modules:
     Data.Enumerator.Compatibility
