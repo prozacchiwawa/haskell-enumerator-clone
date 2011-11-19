@@ -10,31 +10,31 @@
 --
 -- Since: 0.4.16
 module Data.Enumerator.Trans
-	( runIdentityI
-	, runMaybeI
-	, runErrorI
-	, runReaderI
-	, runStateI
-	, evalStateI
-	, runStateI'
-	, evalStateI'
-	, runWriterI
-	, execWriterI
-	, runWriterI'
-	, execWriterI'
-	, runRWSI
-	, evalRWSI
-	, execRWSI
-	, runRWSI'
-	, evalRWSI'
-	, execRWSI'
+	( runIdentity
+	, runMaybe
+	, runError
+	, runReader
+	, runState
+	, evalState
+	, runState'
+	, evalState'
+	, runWriter
+	, execWriter
+	, runWriter'
+	, execWriter'
+	, runRWS
+	, evalRWS
+	, execRWS
+	, runRWS'
+	, evalRWS'
+	, execRWS'
 	) where
 
 import           Data.Monoid (Monoid(..))
 import           Control.Monad.Trans.Identity
 import           Control.Monad.Trans.Maybe
 import           Control.Monad.Trans.Error
-import           Control.Monad.Trans.Reader
+import           Control.Monad.Trans.Reader hiding (runReader)
 import qualified Control.Monad.Trans.State.Lazy as L
 import qualified Control.Monad.Trans.State.Strict as S
 import qualified Control.Monad.Trans.Writer.Lazy as L
@@ -47,92 +47,92 @@ import           Data.Enumerator (Stream(..), Step(..), Iteratee(..))
 -- | Lifted version of 'runIdentityT'
 --
 -- Since: 0.4.16
-runIdentityI :: Monad m => Iteratee i (IdentityT m) a -> Iteratee i m a
-runIdentityI it = Iteratee $ do
+runIdentity :: Monad m => Iteratee i (IdentityT m) a -> Iteratee i m a
+runIdentity it = Iteratee $ do
 	step <- runIdentityT $ runIteratee it
 	return $ case step of
-		Continue k -> Continue $ runIdentityI . k
+		Continue k -> Continue $ runIdentity . k
 		Yield x cs -> Yield x cs
 		Error e    -> Error e
 
 -- | Lifted version of 'runMaybeT'
 --
 -- Since: 0.4.16
-runMaybeI :: Monad m => Iteratee i (MaybeT m) a -> Iteratee i m (Maybe a)
-runMaybeI it = Iteratee $ do
+runMaybe :: Monad m => Iteratee i (MaybeT m) a -> Iteratee i m (Maybe a)
+runMaybe it = Iteratee $ do
 	mStep <- runMaybeT $ runIteratee it
 	return $ case mStep of
 		Nothing   -> Yield Nothing $ Chunks []
 		Just step -> case step of
-			Continue k -> Continue $ runMaybeI . k
+			Continue k -> Continue $ runMaybe . k
 			Yield x cs -> Yield (Just x) cs
 			Error e    -> Error e
 
 -- | Lifted version of 'runErrorT'
 --
 -- Since: 0.4.16
-runErrorI :: (Error e, Monad m)
+runError :: (Error e, Monad m)
           => Iteratee i (ErrorT e m) a -> Iteratee i m (Either e a)
-runErrorI it = Iteratee $ do
+runError it = Iteratee $ do
 	mStep <- runErrorT $ runIteratee it
 	return $ case mStep of
 		Left e     -> Yield (Left e) $ Chunks []
 		Right step -> case step of
-			Continue k -> Continue $ runErrorI . k
+			Continue k -> Continue $ runError . k
 			Yield x cs -> Yield (Right x) cs
 			Error e    -> Error e
 
 -- | Lifted version of 'runReaderT'
 --
 -- Since: 0.4.16
-runReaderI :: Monad m => r -> Iteratee i (ReaderT r m) a -> Iteratee i m a
-runReaderI r it = Iteratee $ do
+runReader :: Monad m => r -> Iteratee i (ReaderT r m) a -> Iteratee i m a
+runReader r it = Iteratee $ do
 	step <- runReaderT (runIteratee it) r
 	return $ case step of
-		Continue k -> Continue $ runReaderI r . k
+		Continue k -> Continue $ runReader r . k
 		Yield x cs -> Yield x cs
 		Error e    -> Error e
 
 -- | Lifted version of (lazy) 'L.runStateT'
 --
 -- Since: 0.4.16
-runStateI :: Monad m => s -> Iteratee i (L.StateT s m) a -> Iteratee i m (a, s)
-runStateI s it = Iteratee $ do
+runState :: Monad m => s -> Iteratee i (L.StateT s m) a -> Iteratee i m (a, s)
+runState s it = Iteratee $ do
 	~(step, s') <- L.runStateT (runIteratee it) s
 	return $ case step of
-		Continue k -> Continue $ runStateI s' . k
+		Continue k -> Continue $ runState s' . k
 		Yield x cs -> Yield (x, s') cs
 		Error e    -> Error e
 
 -- | Lifted version of (lazy) 'L.evalStateT'
 --
 -- Since: 0.4.16
-evalStateI :: Monad m => s -> Iteratee i (L.StateT s m) a -> Iteratee i m a
-evalStateI s = fmap fst . runStateI s
+evalState :: Monad m => s -> Iteratee i (L.StateT s m) a -> Iteratee i m a
+evalState s = fmap fst . runState s
 
 -- | Lifted version of (strict) 'S.runStateT'
 --
 -- Since: 0.4.16
-runStateI' :: Monad m => s -> Iteratee i (S.StateT s m) a -> Iteratee i m (a, s)
-runStateI' s it = Iteratee $ do
+runState' :: Monad m => s -> Iteratee i (S.StateT s m) a -> Iteratee i m (a, s)
+runState' s it = Iteratee $ do
 	(step, s') <- S.runStateT (runIteratee it) s
 	return $ case step of
-		Continue k -> Continue $ runStateI' s' . k
+		Continue k -> Continue $ runState' s' . k
 		Yield x cs -> Yield (x, s') cs
 		Error e    -> Error e
 
 -- | Lifted version of (strict) 'S.evalStateT'
 --
 -- Since: 0.4.16
-evalStateI' :: Monad m => s -> Iteratee i (S.StateT s m) a -> Iteratee i m a
-evalStateI' s = fmap fst . runStateI' s
+evalState' :: Monad m => s -> Iteratee i (S.StateT s m) a -> Iteratee i m a
+evalState' s = fmap fst . runState' s
 
 -- | Lifted version of (lazy) 'L.runWriterT'
 --
 -- Since: 0.4.16
-runWriterI :: (Monoid w, Monad m)
+runWriter :: (Monoid w, Monad m)
            => Iteratee i (L.WriterT w m) a -> Iteratee i m (a, w)
-runWriterI it0 = go mempty it0 where
+runWriter it0 = go mempty it0 where
 	go w it = Iteratee $ do
 		~(step, w') <- L.runWriterT $ runIteratee it
 		return $ case step of
@@ -143,16 +143,16 @@ runWriterI it0 = go mempty it0 where
 -- | Lifted version of (lazy) 'L.execWriterT'
 --
 -- Since: 0.4.16
-execWriterI :: (Monoid w, Monad m)
+execWriter :: (Monoid w, Monad m)
             => Iteratee i (L.WriterT w m) a -> Iteratee i m w
-execWriterI = fmap snd . runWriterI
+execWriter = fmap snd . runWriter
 
 -- | Lifted version of (strict) 'S.runWriterT'
 --
 -- Since: 0.4.16
-runWriterI' :: (Monoid w, Monad m)
+runWriter' :: (Monoid w, Monad m)
             => Iteratee i (S.WriterT w m) a -> Iteratee i m (a, w)
-runWriterI' it0 = go mempty it0 where
+runWriter' it0 = go mempty it0 where
 	go w it = Iteratee $ do
 		(step, w') <- S.runWriterT $ runIteratee it
 		return $ case step of
@@ -163,16 +163,16 @@ runWriterI' it0 = go mempty it0 where
 -- | Lifted version of (strict) 'L.execWriterT'
 --
 -- Since: 0.4.16
-execWriterI' :: (Monoid w, Monad m)
+execWriter' :: (Monoid w, Monad m)
              => Iteratee i (S.WriterT w m) a -> Iteratee i m w
-execWriterI' = fmap snd . runWriterI'
+execWriter' = fmap snd . runWriter'
 
 -- | Lifted version of (lazy) 'L.runRWST'
 --
 -- Since: 0.4.16
-runRWSI :: (Monoid w, Monad m)
+runRWS :: (Monoid w, Monad m)
         => r -> s -> Iteratee i (L.RWST r w s m) a -> Iteratee i m (a, s, w)
-runRWSI r s0 it0 = go s0 mempty it0 where
+runRWS r s0 it0 = go s0 mempty it0 where
 	go s w it = Iteratee $ do
 		~(step, s', w') <- L.runRWST (runIteratee it) r s
 		return $ case step of
@@ -183,23 +183,23 @@ runRWSI r s0 it0 = go s0 mempty it0 where
 -- | Lifted version of (lazy) 'L.evalRWST'
 --
 -- Since: 0.4.16
-evalRWSI :: (Monoid w, Monad m)
+evalRWS :: (Monoid w, Monad m)
          => r -> s -> Iteratee i (L.RWST r w s m) a -> Iteratee i m (a, w)
-evalRWSI r s = fmap (\(x, _, w) -> (x, w)) . runRWSI r s
+evalRWS r s = fmap (\(x, _, w) -> (x, w)) . runRWS r s
 
 -- | Lifted version of (lazy) 'L.execRWST'
 --
 -- Since: 0.4.16
-execRWSI :: (Monoid w, Monad m)
+execRWS :: (Monoid w, Monad m)
          => r -> s -> Iteratee i (L.RWST r w s m) a -> Iteratee i m (s, w)
-execRWSI r s = fmap (\(_, s', w) -> (s', w)) . runRWSI r s
+execRWS r s = fmap (\(_, s', w) -> (s', w)) . runRWS r s
 
 -- | Lifted version of (strict) 'S.runRWST'
 --
 -- Since: 0.4.16
-runRWSI' :: (Monoid w, Monad m)
+runRWS' :: (Monoid w, Monad m)
          => r -> s -> Iteratee i (S.RWST r w s m) a -> Iteratee i m (a, s, w)
-runRWSI' r s0 it0 = go s0 mempty it0 where
+runRWS' r s0 it0 = go s0 mempty it0 where
 	go s w it = Iteratee $ do
 		(step, s', w') <- S.runRWST (runIteratee it) r s
 		return $ case step of
@@ -210,13 +210,13 @@ runRWSI' r s0 it0 = go s0 mempty it0 where
 -- | Lifted version of (strict) 'S.evalRWST'
 --
 -- Since: 0.4.16
-evalRWSI' :: (Monoid w, Monad m)
+evalRWS' :: (Monoid w, Monad m)
           => r -> s -> Iteratee i (S.RWST r w s m) a -> Iteratee i m (a, w)
-evalRWSI' r s = fmap (\(x, _, w) -> (x, w)) . runRWSI' r s
+evalRWS' r s = fmap (\(x, _, w) -> (x, w)) . runRWS' r s
 
 -- | Lifted version of (strict) 'S.execRWST'
 --
 -- Since: 0.4.16
-execRWSI' :: (Monoid w, Monad m)
+execRWS' :: (Monoid w, Monad m)
           => r -> s -> Iteratee i (S.RWST r w s m) a -> Iteratee i m (s, w)
-execRWSI' r s = fmap (\(_, s', w) -> (s', w)) . runRWSI' r s
+execRWS' r s = fmap (\(_, s', w) -> (s', w)) . runRWS' r s
