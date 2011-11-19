@@ -20,6 +20,7 @@ import           EnumeratorTests.Misc
 import           EnumeratorTests.Sequence (test_Sequence)
 import           EnumeratorTests.Stream (test_Stream)
 import           EnumeratorTests.Text (test_Text)
+import           EnumeratorTests.Trans (test_Trans)
 
 tests :: [Suite]
 tests =
@@ -41,6 +42,7 @@ tests =
 	, test_Sequence
 	, test_Stream
 	, test_Text
+	, test_Trans
 	, test_TryIO
 	]
 

@@ -121,6 +121,7 @@ extra-source-files:
   tests/EnumeratorTests/Text/Unfold.hs
   tests/EnumeratorTests/Text/Util.hs
   tests/EnumeratorTests/Text/Zip.hs
+  tests/EnumeratorTests/Trans.hs
   tests/EnumeratorTests/Util.hs
 
 source-repository head
