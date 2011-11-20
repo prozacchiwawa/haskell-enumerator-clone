@@ -73,7 +73,7 @@ import           Data.Enumerator (Stream(..), Step(..), Iteratee(..))
 -- | Lifted version of 'runIdentityT'
 --
 -- Since: 0.4.16
-runIdentity :: Monad m => Iteratee i (IdentityT m) a -> Iteratee i m a
+runIdentity :: Monad m => Iteratee a (IdentityT m) b -> Iteratee a m b
 runIdentity it = Iteratee $ do
 	step <- runIdentityT $ runIteratee it
 	return $ case step of
@@ -84,7 +84,7 @@ runIdentity it = Iteratee $ do
 -- | Lifted version of 'runMaybeT'
 --
 -- Since: 0.4.16
-runMaybe :: Monad m => Iteratee i (MaybeT m) a -> Iteratee i m (Maybe a)
+runMaybe :: Monad m => Iteratee a (MaybeT m) b -> Iteratee a m (Maybe b)
 runMaybe it = Iteratee $ do
 	mStep <- runMaybeT $ runIteratee it
 	return $ case mStep of
@@ -98,7 +98,7 @@ runMaybe it = Iteratee $ do
 --
 -- Since: 0.4.16
 runError :: (Error e, Monad m)
-          => Iteratee i (ErrorT e m) a -> Iteratee i m (Either e a)
+          => Iteratee a (ErrorT e m) b -> Iteratee a m (Either e b)
 runError it = Iteratee $ do
 	mStep <- runErrorT $ runIteratee it
 	return $ case mStep of
@@ -111,7 +111,7 @@ runError it = Iteratee $ do
 -- | Lifted version of 'runReaderT'
 --
 -- Since: 0.4.16
-runReader :: Monad m => r -> Iteratee i (ReaderT r m) a -> Iteratee i m a
+runReader :: Monad m => r -> Iteratee a (ReaderT r m) b -> Iteratee a m b
 runReader r it = Iteratee $ do
 	step <- runReaderT (runIteratee it) r
 	return $ case step of
@@ -122,7 +122,7 @@ runReader r it = Iteratee $ do
 -- | Lifted version of (lazy) 'L.runStateT'
 --
 -- Since: 0.4.16
-runState :: Monad m => s -> Iteratee i (L.StateT s m) a -> Iteratee i m (a, s)
+runState :: Monad m => s -> Iteratee a (L.StateT s m) b -> Iteratee a m (b, s)
 runState s it = Iteratee $ do
 	~(step, s') <- L.runStateT (runIteratee it) s
 	return $ case step of
@@ -133,13 +133,13 @@ runState s it = Iteratee $ do
 -- | Lifted version of (lazy) 'L.evalStateT'
 --
 -- Since: 0.4.16
-evalState :: Monad m => s -> Iteratee i (L.StateT s m) a -> Iteratee i m a
+evalState :: Monad m => s -> Iteratee a (L.StateT s m) b -> Iteratee a m b
 evalState s = fmap fst . runState s
 
 -- | Lifted version of (strict) 'S.runStateT'
 --
 -- Since: 0.4.16
-runState' :: Monad m => s -> Iteratee i (S.StateT s m) a -> Iteratee i m (a, s)
+runState' :: Monad m => s -> Iteratee a (S.StateT s m) b -> Iteratee a m (b, s)
 runState' s it = Iteratee $ do
 	(step, s') <- S.runStateT (runIteratee it) s
 	return $ case step of
@@ -150,14 +150,14 @@ runState' s it = Iteratee $ do
 -- | Lifted version of (strict) 'S.evalStateT'
 --
 -- Since: 0.4.16
-evalState' :: Monad m => s -> Iteratee i (S.StateT s m) a -> Iteratee i m a
+evalState' :: Monad m => s -> Iteratee a (S.StateT s m) b -> Iteratee a m b
 evalState' s = fmap fst . runState' s
 
 -- | Lifted version of (lazy) 'L.runWriterT'
 --
 -- Since: 0.4.16
 runWriter :: (Monoid w, Monad m)
-           => Iteratee i (L.WriterT w m) a -> Iteratee i m (a, w)
+           => Iteratee a (L.WriterT w m) b -> Iteratee a m (b, w)
 runWriter it0 = go mempty it0 where
 	go w it = Iteratee $ do
 		~(step, w') <- L.runWriterT $ runIteratee it
@@ -170,14 +170,14 @@ runWriter it0 = go mempty it0 where
 --
 -- Since: 0.4.16
 execWriter :: (Monoid w, Monad m)
-            => Iteratee i (L.WriterT w m) a -> Iteratee i m w
+            => Iteratee a (L.WriterT w m) b -> Iteratee a m w
 execWriter = fmap snd . runWriter
 
 -- | Lifted version of (strict) 'S.runWriterT'
 --
 -- Since: 0.4.16
 runWriter' :: (Monoid w, Monad m)
-            => Iteratee i (S.WriterT w m) a -> Iteratee i m (a, w)
+            => Iteratee a (S.WriterT w m) b -> Iteratee a m (b, w)
 runWriter' it0 = go mempty it0 where
 	go w it = Iteratee $ do
 		(step, w') <- S.runWriterT $ runIteratee it
@@ -190,14 +190,14 @@ runWriter' it0 = go mempty it0 where
 --
 -- Since: 0.4.16
 execWriter' :: (Monoid w, Monad m)
-             => Iteratee i (S.WriterT w m) a -> Iteratee i m w
+             => Iteratee a (S.WriterT w m) b -> Iteratee a m w
 execWriter' = fmap snd . runWriter'
 
 -- | Lifted version of (lazy) 'L.runRWST'
 --
 -- Since: 0.4.16
 runRWS :: (Monoid w, Monad m)
-        => r -> s -> Iteratee i (L.RWST r w s m) a -> Iteratee i m (a, s, w)
+        => r -> s -> Iteratee a (L.RWST r w s m) b -> Iteratee a m (b, s, w)
 runRWS r s0 it0 = go s0 mempty it0 where
 	go s w it = Iteratee $ do
 		~(step, s', w') <- L.runRWST (runIteratee it) r s
@@ -210,21 +210,21 @@ runRWS r s0 it0 = go s0 mempty it0 where
 --
 -- Since: 0.4.16
 evalRWS :: (Monoid w, Monad m)
-         => r -> s -> Iteratee i (L.RWST r w s m) a -> Iteratee i m (a, w)
+         => r -> s -> Iteratee a (L.RWST r w s m) b -> Iteratee a m (b, w)
 evalRWS r s = fmap (\(x, _, w) -> (x, w)) . runRWS r s
 
 -- | Lifted version of (lazy) 'L.execRWST'
 --
 -- Since: 0.4.16
 execRWS :: (Monoid w, Monad m)
-         => r -> s -> Iteratee i (L.RWST r w s m) a -> Iteratee i m (s, w)
+         => r -> s -> Iteratee a (L.RWST r w s m) b -> Iteratee a m (s, w)
 execRWS r s = fmap (\(_, s', w) -> (s', w)) . runRWS r s
 
 -- | Lifted version of (strict) 'S.runRWST'
 --
 -- Since: 0.4.16
 runRWS' :: (Monoid w, Monad m)
-         => r -> s -> Iteratee i (S.RWST r w s m) a -> Iteratee i m (a, s, w)
+         => r -> s -> Iteratee a (S.RWST r w s m) b -> Iteratee a m (b, s, w)
 runRWS' r s0 it0 = go s0 mempty it0 where
 	go s w it = Iteratee $ do
 		(step, s', w') <- S.runRWST (runIteratee it) r s
@@ -237,12 +237,12 @@ runRWS' r s0 it0 = go s0 mempty it0 where
 --
 -- Since: 0.4.16
 evalRWS' :: (Monoid w, Monad m)
-          => r -> s -> Iteratee i (S.RWST r w s m) a -> Iteratee i m (a, w)
+          => r -> s -> Iteratee a (S.RWST r w s m) b -> Iteratee a m (b, w)
 evalRWS' r s = fmap (\(x, _, w) -> (x, w)) . runRWS' r s
 
 -- | Lifted version of (strict) 'S.execRWST'
 --
 -- Since: 0.4.16
 execRWS' :: (Monoid w, Monad m)
-          => r -> s -> Iteratee i (S.RWST r w s m) a -> Iteratee i m (s, w)
+          => r -> s -> Iteratee a (S.RWST r w s m) b -> Iteratee a m (s, w)
 execRWS' r s = fmap (\(_, s', w) -> (s', w)) . runRWS' r s
