@@ -79,6 +79,7 @@ module Data.Enumerator.List
 	-- ** Unsorted
 	, require
 	, isolate
+	, isolateWhile
 	, splitWhen
 	
 	) where
@@ -678,6 +679,20 @@ isolate n (Continue k) = continue loop where
 			in k (Chunks s1) >>== (`yield` Chunks s2)
 	loop EOF = k EOF >>== (`yield` EOF)
 isolate n step = drop n >> return step
+
+-- | @'isolateWhile' p@ reads elements from the stream until /p/ is false, and
+-- passes them to its iteratee. If the iteratee finishes early, elements
+-- continue to be consumed from the outer stream until /p/ is false.
+--
+-- Since: 0.4.16
+isolateWhile :: Monad m => (a -> Bool) -> Enumeratee a a m b
+isolateWhile p (Continue k) = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks xs) = case Prelude.span p xs of
+		(_, []) -> k (Chunks xs) >>== isolateWhile p
+		(s1, s2) -> k (Chunks s1) >>== (`yield` Chunks s2)
+	loop EOF = k EOF >>== (`yield` EOF)
+isolateWhile p step = Data.Enumerator.List.dropWhile p >> return step
 
 -- | Split on elements satisfying a given predicate.
 --

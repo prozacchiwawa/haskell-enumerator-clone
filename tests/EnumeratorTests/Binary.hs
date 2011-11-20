@@ -42,6 +42,7 @@ test_Binary = suite "binary"
 	, test_Head
 	, test_Head_
 	, test_Isolate
+	, test_IsolateWhile
 	, test_Iterate
 	, test_IterateM
 	, test_IterHandle

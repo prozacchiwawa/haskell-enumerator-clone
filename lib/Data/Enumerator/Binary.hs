@@ -90,6 +90,7 @@ module Data.Enumerator.Binary
 	-- ** Unsorted
 	, require
 	, isolate
+	, isolateWhile
 	, splitWhen
 	
 	) where
@@ -688,6 +689,23 @@ isolate n (Continue k) = continue loop where
 				in k (toChunks s1) >>== (`yield` toChunks s2)
 	loop EOF = k EOF >>== (`yield` EOF)
 isolate n step = drop n >> return step
+
+-- | @'isolateWhile' p@ reads bytes from the stream until /p/ is false, and
+-- passes them to its iteratee. If the iteratee finishes early, bytes
+-- continue to be consumed from the outer stream until /p/ is false.
+--
+-- Since: 0.4.16
+isolateWhile :: Monad m => (Word8 -> Bool) -> Enumeratee B.ByteString B.ByteString m b
+isolateWhile p (Continue k) = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks xs) = iter where
+		lazy = BL.fromChunks xs
+		(s1, s2) = BL.span p lazy
+		iter = if BL.null s2
+			then k (Chunks xs) >>== isolateWhile p
+			else k (toChunks s1) >>== (`yield` toChunks s2)
+	loop EOF = k EOF >>== (`yield` EOF)
+isolateWhile p step = Data.Enumerator.Binary.dropWhile p >> return step
 
 -- | Split on bytes satisfying a given predicate.
 --

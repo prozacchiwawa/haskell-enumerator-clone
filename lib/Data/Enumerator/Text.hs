@@ -88,6 +88,7 @@ module Data.Enumerator.Text
 	-- ** Unsorted
 	, require
 	, isolate
+	, isolateWhile
 	, splitWhen
 	, lines
 	
@@ -709,6 +710,23 @@ isolate n (Continue k) = continue loop where
 				in k (toChunks s1) >>== (`yield` toChunks s2)
 	loop EOF = k EOF >>== (`yield` EOF)
 isolate n step = drop n >> return step
+
+-- | @'isolateWhile' p@ reads characters from the stream until /p/ is false, and
+-- passes them to its iteratee. If the iteratee finishes early, characters
+-- continue to be consumed from the outer stream until /p/ is false.
+--
+-- Since: 0.4.16
+isolateWhile :: Monad m => (Char -> Bool) -> Enumeratee T.Text T.Text m b
+isolateWhile p (Continue k) = continue loop where
+	loop (Chunks []) = continue loop
+	loop (Chunks xs) = iter where
+		lazy = TL.fromChunks xs
+		(s1, s2) = TL.span p lazy
+		iter = if TL.null s2
+			then k (Chunks xs) >>== isolateWhile p
+			else k (toChunks s1) >>== (`yield` toChunks s2)
+	loop EOF = k EOF >>== (`yield` EOF)
+isolateWhile p step = Data.Enumerator.Text.dropWhile p >> return step
 
 -- | Split on characters satisfying a given predicate.
 --
