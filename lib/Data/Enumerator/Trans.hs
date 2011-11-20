@@ -6,25 +6,51 @@
 -- Maintainer: jmillikin@gmail.com
 -- Portability: portable
 --
--- This module provides lifted versions of monad transformer runners.
+-- This module provides functions for running monad transformers within
+-- iteratees. Most types defined in the \"transformers\" library are
+-- supported.
+--
+-- Functions suffixed with an apostrophe (@'@) apply to the strict variant
+-- of their transformer type.
 --
 -- Since: 0.4.16
 module Data.Enumerator.Trans
-	( runIdentity
+	(
+	
+	-- * IdentityT
+	  runIdentity
+	
+	-- * MaybeT
 	, runMaybe
+	
+	-- * ErrorT
 	, runError
+	
+	-- * ReaderT
 	, runReader
+	
+	-- * StateT
+	-- ** Lazy
 	, runState
 	, evalState
+	-- ** Strict
 	, runState'
 	, evalState'
+	
+	-- * WriterT
+	-- ** Lazy
 	, runWriter
 	, execWriter
+	-- ** Strict
 	, runWriter'
 	, execWriter'
+	
+	-- * RWST
+	-- ** Lazy
 	, runRWS
 	, evalRWS
 	, execRWS
+	-- ** Strict
 	, runRWS'
 	, evalRWS'
 	, execRWS'
