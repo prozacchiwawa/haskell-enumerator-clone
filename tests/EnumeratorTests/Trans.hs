@@ -30,21 +30,21 @@ import           EnumeratorTests.Util (equalExc)
 
 test_Trans :: Suite
 test_Trans = suite "transformers"
-	[ test_RunIdentity
-	, test_RunMaybe
-	, test_RunError
-	, test_RunReader
-	, test_RunState
-	, test_EvalState
-	, test_RunWriter
-	, test_ExecWriter
+	[ test_RunIdentityI
+	, test_RunMaybeI
+	, test_RunErrorI
+	, test_RunReaderI
+	, test_RunStateI
+	, test_EvalStateI
+	, test_RunWriterI
+	, test_ExecWriterI
 	, test_RunRWSI
 	, test_EvalRWSI
 	, test_ExecRWSI
 	]
 
-test_RunIdentity :: Suite
-test_RunIdentity = assertions "runIdentity" $ do
+test_RunIdentityI :: Suite
+test_RunIdentityI = assertions "runIdentityI" $ do
 	$expect $ equal
 		(['a'], ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -55,8 +55,8 @@ test_RunIdentity = assertions "runIdentity" $ do
 		(ErrorCall "err")
 		(E.runLists [] $ ET.runIdentityI (E.throwError (ErrorCall "err")))
 
-test_RunMaybe :: Suite
-test_RunMaybe = assertions "runMaybe" $ do
+test_RunMaybeI :: Suite
+test_RunMaybeI = assertions "runMaybeI" $ do
 	$expect $ equal
 		(Just ['a'], ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -73,8 +73,8 @@ test_RunMaybe = assertions "runMaybe" $ do
 		(ErrorCall "err")
 		(E.runLists [] $ ET.runMaybeI (E.throwError (ErrorCall "err")))
 
-test_RunError :: Suite
-test_RunError = assertions "runError" $ do
+test_RunErrorI :: Suite
+test_RunErrorI = assertions "runErrorI" $ do
 	$expect $ equal
 		(Right ['a'] :: Either String [Char], ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -93,8 +93,8 @@ test_RunError = assertions "runError" $ do
 			_ <- E.throwError (ErrorCall "err")
 			lift (ErrorT.throwError ("err2" :: String)))
 
-test_RunReader :: Suite
-test_RunReader = assertions "runReader" $ do
+test_RunReaderI :: Suite
+test_RunReaderI = assertions "runReaderI" $ do
 	$expect $ equal
 		((['a'], 'A'), ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -108,14 +108,14 @@ test_RunReader = assertions "runReader" $ do
 		(ErrorCall "err")
 		(E.runLists [] $ ET.runReaderI 'A' (E.throwError (ErrorCall "err")))
 
-test_RunState :: Suite
-test_RunState = suite "runState"
-	[ test_RunState_Lazy
-	, test_RunState_Strict
+test_RunStateI :: Suite
+test_RunStateI = suite "runStateI"
+	[ test_RunStateI_Lazy
+	, test_RunStateI_Strict
 	]
 
-test_RunState_Lazy :: Suite
-test_RunState_Lazy = assertions "lazy" $ do
+test_RunStateI_Lazy :: Suite
+test_RunStateI_Lazy = assertions "lazy" $ do
 	$expect $ equal
 		(((['a'], 'A'), 'B'), ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -130,8 +130,8 @@ test_RunState_Lazy = assertions "lazy" $ do
 		(ErrorCall "err")
 		(E.runLists [] $ ET.runStateI 'A' (E.throwError (ErrorCall "err")))
 
-test_RunState_Strict :: Suite
-test_RunState_Strict = assertions "strict" $ do
+test_RunStateI_Strict :: Suite
+test_RunStateI_Strict = assertions "strict" $ do
 	$expect $ equal
 		(((['a'], 'A'), 'B'), ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -146,14 +146,14 @@ test_RunState_Strict = assertions "strict" $ do
 		(ErrorCall "err")
 		(E.runLists [] $ ET.runStateI' 'A' (E.throwError (ErrorCall "err")))
 
-test_EvalState :: Suite
-test_EvalState = suite "evalState"
-	[ test_EvalState_Lazy
-	, test_EvalState_Strict
+test_EvalStateI :: Suite
+test_EvalStateI = suite "evalStateI"
+	[ test_EvalStateI_Lazy
+	, test_EvalStateI_Strict
 	]
 
-test_EvalState_Lazy :: Suite
-test_EvalState_Lazy = assertions "lazy" $ do
+test_EvalStateI_Lazy :: Suite
+test_EvalStateI_Lazy = assertions "lazy" $ do
 	$expect $ equal
 		((['a'], 'A'), ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -165,8 +165,8 @@ test_EvalState_Lazy = assertions "lazy" $ do
 			extra <- EL.consume
 			return (xy, extra))
 
-test_EvalState_Strict :: Suite
-test_EvalState_Strict = assertions "strict" $ do
+test_EvalStateI_Strict :: Suite
+test_EvalStateI_Strict = assertions "strict" $ do
 	$expect $ equal
 		((['a'], 'A'), ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -178,14 +178,14 @@ test_EvalState_Strict = assertions "strict" $ do
 			extra <- EL.consume
 			return (xy, extra))
 
-test_RunWriter :: Suite
-test_RunWriter = suite "runWriter"
-	[ test_RunWriter_Lazy
-	, test_RunWriter_Strict
+test_RunWriterI :: Suite
+test_RunWriterI = suite "runWriterI"
+	[ test_RunWriterI_Lazy
+	, test_RunWriterI_Strict
 	]
 
-test_RunWriter_Lazy :: Suite
-test_RunWriter_Lazy = assertions "lazy" $ do
+test_RunWriterI_Lazy :: Suite
+test_RunWriterI_Lazy = assertions "lazy" $ do
 	$expect $ equal
 		((['a'], ['A', 'B']), ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -202,8 +202,8 @@ test_RunWriter_Lazy = assertions "lazy" $ do
 			_ <- E.throwError (ErrorCall "err")
 			lift (WriterT_L.tell ['A']))
 
-test_RunWriter_Strict :: Suite
-test_RunWriter_Strict = assertions "strict" $ do
+test_RunWriterI_Strict :: Suite
+test_RunWriterI_Strict = assertions "strict" $ do
 	$expect $ equal
 		((['a'], ['A', 'B']), ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -220,14 +220,14 @@ test_RunWriter_Strict = assertions "strict" $ do
 			_ <- E.throwError (ErrorCall "err")
 			lift (WriterT_S.tell ['A']))
 
-test_ExecWriter :: Suite
-test_ExecWriter = suite "execWriter"
-	[ test_ExecWriter_Lazy
-	, test_ExecWriter_Strict
+test_ExecWriterI :: Suite
+test_ExecWriterI = suite "execWriterI"
+	[ test_ExecWriterI_Lazy
+	, test_ExecWriterI_Strict
 	]
 
-test_ExecWriter_Lazy :: Suite
-test_ExecWriter_Lazy = assertions "lazy" $ do
+test_ExecWriterI_Lazy :: Suite
+test_ExecWriterI_Lazy = assertions "lazy" $ do
 	$expect $ equal
 		(['A', 'B'], ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
@@ -239,8 +239,8 @@ test_ExecWriter_Lazy = assertions "lazy" $ do
 			extra <- EL.consume
 			return (x, extra))
 
-test_ExecWriter_Strict :: Suite
-test_ExecWriter_Strict = assertions "strict" $ do
+test_ExecWriterI_Strict :: Suite
+test_ExecWriterI_Strict = assertions "strict" $ do
 	$expect $ equal
 		(['A', 'B'], ['b'])
 		(E.runLists_ [['a'], ['b']] $ do
