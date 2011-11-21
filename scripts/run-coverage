@@ -72,6 +72,7 @@ EXCLUDES="\
 --exclude=EnumeratorTests.Text.Unfold \
 --exclude=EnumeratorTests.Text.Util \
 --exclude=EnumeratorTests.Text.Zip \
+--exclude=EnumeratorTests.Trans \
 --exclude=EnumeratorTests.Util"
 
 hpc markup --srcdir=src/ --srcdir=tests/ enumerator_tests.tix --destdir=hpc-markup $EXCLUDES > /dev/null
