@@ -34,6 +34,7 @@ module Data.Enumerator
 	, (<==<)
 	, (=$)
 	, ($=)
+	, (=$=)
 	
 	-- * Error handling
 	, throwError
@@ -306,6 +307,30 @@ infixl 1 $=
      -> Enumeratee ao ai m b
      -> Enumerator ai m b
 ($=) = joinE
+
+-- | Composes two enumeratees.
+--
+-- Note that if the inner enumeratee yields left-over input, this will be
+-- discarded.
+--
+-- Example: converting bytes into lower-case text:
+--
+-- > import Data.ByteString
+-- > import Data.Text
+-- > import Data.Enumerator.List as EnumList
+-- > import Data.Enumerator.Text
+-- >
+-- > decodeAndLower :: Monad m => Enumeratee ByteString Text m b
+-- > decodeAndLower = decode utf8 =$= EnumList.map toLower
+--
+-- Since: 0.4.17
+(=$=) :: Monad m
+      => Enumeratee a1 a2 m (Step a3 m b)
+      -> Enumeratee a2 a3 m b
+      -> Enumeratee a1 a3 m b
+e1 =$= e2 = \s -> joinI (e1 $$ e2 s)
+
+infixl 1 =$=
 
 -- | Feeds outer input elements into the provided iteratee until it yields
 -- an inner input, passes that to the inner iteratee, and then loops.
