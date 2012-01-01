@@ -1,5 +1,5 @@
 name: enumerator
-version: 0.4.16
+version: 0.4.17
 synopsis: Reliable, high-performance processing with left-fold enumerators
 license: MIT
 license-file: license.txt
@@ -131,7 +131,7 @@ source-repository head
 source-repository this
   type: bazaar
   location: https://john-millikin.com/branches/enumerator/0.4/
-  tag: enumerator_0.4.15
+  tag: enumerator_0.4.17
 
 library
   ghc-options: -Wall -O2
