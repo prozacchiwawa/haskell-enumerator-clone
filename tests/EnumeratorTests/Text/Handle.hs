@@ -24,10 +24,16 @@ import qualified Data.Enumerator.Text as ET
 
 test_EnumHandle :: Suite
 test_EnumHandle = assertions "enumHandle" $ do
-	knob <- newKnob "0123\n\n4567"
-	chunks <- withFileHandle knob "" IO.ReadMode $ \h -> do
-		E.run_ (ET.enumHandle h $$ EL.consume)
-	$expect (equal chunks ["0123", "", "4567"])
+	do
+		knob <- newKnob "0123\n\n4567"
+		chunks <- withFileHandle knob "" IO.ReadMode $ \h -> do
+			E.run_ (ET.enumHandle h $$ EL.consume)
+		$expect (equal chunks ["0123\n", "\n", "4567"])
+	do
+		knob <- newKnob "0123\r\n\n4567\r\n"
+		chunks <- withFileHandle knob "" IO.ReadMode $ \h -> do
+			E.run_ (ET.enumHandle h $$ EL.consume)
+		$expect (equal chunks ["0123\r\n", "\n", "4567\r\n"])
 
 test_IterHandle :: Suite
 test_IterHandle = assertions "iterHandle" $ do

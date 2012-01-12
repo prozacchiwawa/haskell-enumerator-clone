@@ -751,32 +751,48 @@ splitWhen p = loop where
 lines :: Monad m => Enumeratee T.Text T.Text m b
 lines = splitWhen (== '\n')
 
--- | Read lines of text from the handle, and stream them to an 'Iteratee'.
+-- | Read lines of text from a handle, and stream them to an 'Iteratee'.
 -- If an exception occurs during file IO, enumeration will stop and 'Error'
 -- will be returned. Exceptions from the iteratee are not caught.
 --
 -- The handle should be opened with an appropriate text encoding, and
 -- in 'IO.ReadMode' or 'IO.ReadWriteMode'.
 --
+-- Changed in 0.4.18: Lines streamed from 'enumHandle' and 'enumFile' now
+-- include their trailing newline.
+--
 -- Since: 0.2
 enumHandle :: MonadIO m => IO.Handle
            -> Enumerator T.Text m b
 enumHandle h = checkContinue0 $ \loop k -> do
-	let getText = Exc.catch
-		(Just `fmap` TIO.hGetLine h)
-		(\err -> if isEOFError err
-			then return Nothing
-			else Exc.throwIO err)
-	
-	maybeText <- tryIO getText
+	maybeText <- tryIO (textGetLine h)
 	case maybeText of
 		Nothing -> continue k
 		Just text -> k (Chunks [text]) >>== loop
-	
 
+textGetLine :: IO.Handle -> IO (Maybe T.Text)
+textGetLine h = loop [] where
+	loop acc = Exc.catch
+		(do
+			c <- IO.hGetChar h
+			if c == '\n'
+				then return (Just (T.pack (reverse (c:acc))))
+				else loop (c:acc))
+		(\err -> if isEOFError err
+			then case acc of
+				[] -> return Nothing
+				_ -> return (Just (T.pack (reverse acc)))
+			else Exc.throwIO err)
 
--- | Opens a file path in text mode, and passes the handle to 'enumHandle'.
--- The file will be closed when the 'Iteratee' finishes.
+-- | Read lines of text from a file, and stream them to an 'Iteratee'.
+-- If an exception occurs during file IO, enumeration will stop and 'Error'
+-- will be returned. Exceptions from the iteratee are not caught.
+--
+-- The file will be opened in text mode, and will be closed when the
+-- 'Iteratee' finishes.
+--
+-- Changed in 0.4.18: Lines streamed from 'enumHandle' and 'enumFile' now
+-- include their trailing newline.
 --
 -- Since: 0.2
 enumFile :: FilePath -> Enumerator T.Text IO b
