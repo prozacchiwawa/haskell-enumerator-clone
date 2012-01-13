@@ -759,8 +759,7 @@ lines = splitWhen (== '\n')
 -- in 'IO.ReadMode' or 'IO.ReadWriteMode'.
 --
 -- Changed in 0.4.18: Lines streamed from 'enumHandle' and 'enumFile' now
--- include their trailing newline. Newlines are always streamed exactly as
--- they appear in the file, with no conversion.
+-- include their trailing newline.
 --
 -- Since: 0.2
 enumHandle :: MonadIO m => IO.Handle
@@ -793,8 +792,7 @@ textGetLine h = loop [] where
 -- 'Iteratee' finishes.
 --
 -- Changed in 0.4.18: Lines streamed from 'enumHandle' and 'enumFile' now
--- include their trailing newline. Newlines are always streamed exactly as
--- they appear in the file, with no conversion.
+-- include their trailing newline.
 --
 -- Since: 0.2
 enumFile :: FilePath -> Enumerator T.Text IO b
