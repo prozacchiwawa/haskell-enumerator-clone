@@ -34,6 +34,7 @@ test_Text = suite "text"
 	, test_ConcatMapAccumM
 	, test_Drop
 	, test_DropWhile
+	, test_EnumFile
 	, test_EnumHandle
 	, test_Filter
 	, test_FilterM

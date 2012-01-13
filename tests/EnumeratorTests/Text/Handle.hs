@@ -8,19 +8,27 @@
 module EnumeratorTests.Text.Handle
 	( test_EnumHandle
 	, test_IterHandle
+	, test_EnumFile
 	) where
 
 import           Test.Chell
 
 #ifdef MIN_VERSION_knob
-
 import           Data.Knob
+#endif
+
+import           Control.Monad.IO.Class (liftIO)
+import           Data.Text (Text)
 import qualified System.IO as IO
 
 import qualified Data.Enumerator as E
 import           Data.Enumerator (($$))
 import qualified Data.Enumerator.List as EL
 import qualified Data.Enumerator.Text as ET
+
+#ifdef MIN_VERSION_knob
+
+import           Paths_enumerator_tests (getDataFileName)
 
 test_EnumHandle :: Suite
 test_EnumHandle = assertions "enumHandle" $ do
@@ -54,3 +62,42 @@ test_IterHandle :: Suite
 test_IterHandle = todo "iterHandle"
 
 #endif
+
+lines_LF :: [Text]
+lines_LF =
+	[ "hello world\n"
+	, "\n"
+	, "\20320\22909\19990\30028\n"
+	, "\n"
+	, "\1605\1585\1581\1576\1575 \1575\1604\1593\1575\1604\1605\n"
+	, "\n"
+	, "\12371\12435\12395\12385\12399\19990\30028\n"
+	, "\n"
+	, "\2997\2979\2965\3021\2965\2990\3021\n"
+	]
+
+lines_CRLF :: [Text]
+lines_CRLF =
+	[ "hello world\r\n"
+	, "\r\n"
+	, "\20320\22909\19990\30028\r\n"
+	, "\r\n"
+	, "\1605\1585\1581\1576\1575 \1575\1604\1593\1575\1604\1605\r\n"
+	, "\r\n"
+	, "\12371\12435\12395\12385\12399\19990\30028\r\n"
+	, "\r\n"
+	, "\2997\2979\2965\3021\2965\2990\3021\r\n"
+	]
+
+test_EnumFile :: Suite
+test_EnumFile = assertions "enumFile" $ do
+	do
+		path <- liftIO (getDataFileName "data/utf8-lf.txt")
+		chunks <- liftIO (E.run_ (ET.enumFile path $$ EL.consume))
+		$expect (equal chunks lines_LF)
+	do
+		path <- liftIO (getDataFileName "data/utf8-crlf.txt")
+		chunks <- liftIO (E.run_ (ET.enumFile path $$ EL.consume))
+		$expect (equal chunks (case IO.nativeNewline of
+			IO.LF -> lines_CRLF
+			IO.CRLF -> lines_LF))

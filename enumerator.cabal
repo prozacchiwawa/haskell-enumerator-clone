@@ -67,6 +67,8 @@ extra-source-files:
   scripts/run-tests
   --
   tests/enumerator-tests.cabal
+  tests/data/utf8-crlf.txt
+  tests/data/utf8-lf.txt
   tests/EnumeratorTests.hs
   tests/EnumeratorTests/Binary.hs
   tests/EnumeratorTests/Binary/Consume.hs
