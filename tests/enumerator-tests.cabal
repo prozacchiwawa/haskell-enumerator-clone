@@ -6,6 +6,8 @@ cabal-version: >= 1.6
 data-files:
   data/ascii-crlf.txt
   data/ascii-lf.txt
+  data/utf8-crlf.txt
+  data/utf8-lf.txt
 
 flag coverage
   default: False
