@@ -4,8 +4,8 @@ build-type: Simple
 cabal-version: >= 1.6
 
 data-files:
-  data/utf8-crlf.txt
-  data/utf8-lf.txt
+  data/ascii-crlf.txt
+  data/ascii-lf.txt
 
 flag coverage
   default: False

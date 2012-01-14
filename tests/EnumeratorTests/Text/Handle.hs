@@ -64,30 +64,10 @@ test_IterHandle = todo "iterHandle"
 #endif
 
 lines_LF :: [Text]
-lines_LF =
-	[ "hello world\n"
-	, "\n"
-	, "\20320\22909\19990\30028\n"
-	, "\n"
-	, "\1605\1585\1581\1576\1575 \1575\1604\1593\1575\1604\1605\n"
-	, "\n"
-	, "\12371\12435\12395\12385\12399\19990\30028\n"
-	, "\n"
-	, "\2997\2979\2965\3021\2965\2990\3021\n"
-	]
+lines_LF = ["hello\n", "\n", "world\n"]
 
 lines_CRLF :: [Text]
-lines_CRLF =
-	[ "hello world\r\n"
-	, "\r\n"
-	, "\20320\22909\19990\30028\r\n"
-	, "\r\n"
-	, "\1605\1585\1581\1576\1575 \1575\1604\1593\1575\1604\1605\r\n"
-	, "\r\n"
-	, "\12371\12435\12395\12385\12399\19990\30028\r\n"
-	, "\r\n"
-	, "\2997\2979\2965\3021\2965\2990\3021\r\n"
-	]
+lines_CRLF = ["hello\r\n", "\r\n", "world\r\n"]
 
 -- define locally, because it's not present in GHC 6.10
 data Newline = LF | CRLF
@@ -109,11 +89,11 @@ nativeNewline = LF
 test_EnumFile :: Suite
 test_EnumFile = assertions "enumFile" $ do
 	do
-		path <- liftIO (getDataFileName "data/utf8-lf.txt")
+		path <- liftIO (getDataFileName "data/ascii-lf.txt")
 		chunks <- liftIO (E.run_ (ET.enumFile path $$ EL.consume))
 		$expect (equal chunks lines_LF)
 	do
-		path <- liftIO (getDataFileName "data/utf8-crlf.txt")
+		path <- liftIO (getDataFileName "data/ascii-crlf.txt")
 		chunks <- liftIO (E.run_ (ET.enumFile path $$ EL.consume))
 		$expect (equal chunks (case nativeNewline of
 			LF -> lines_CRLF
