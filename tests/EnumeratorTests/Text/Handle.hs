@@ -26,9 +26,9 @@ import           Data.Enumerator (($$))
 import qualified Data.Enumerator.List as EL
 import qualified Data.Enumerator.Text as ET
 
-#ifdef MIN_VERSION_knob
-
 import           Paths_enumerator_tests (getDataFileName)
+
+#ifdef MIN_VERSION_knob
 
 test_EnumHandle :: Suite
 test_EnumHandle = assertions "enumHandle" $ do
@@ -89,6 +89,23 @@ lines_CRLF =
 	, "\2997\2979\2965\3021\2965\2990\3021\r\n"
 	]
 
+-- define locally, because it's not present in GHC 6.10
+data Newline = LF | CRLF
+	deriving (Show, Eq)
+
+nativeNewline :: Newline
+#if MIN_VERSION_base(4,2,0)
+nativeNewline = case IO.nativeNewline of
+	IO.LF -> LF
+	IO.CRLF -> CRLF
+#else
+#ifdef CABAL_OS_WINDOWS
+nativeNewline = CRLF
+#else
+nativeNewline = LF
+#endif
+#endif
+
 test_EnumFile :: Suite
 test_EnumFile = assertions "enumFile" $ do
 	do
@@ -98,6 +115,6 @@ test_EnumFile = assertions "enumFile" $ do
 	do
 		path <- liftIO (getDataFileName "data/utf8-crlf.txt")
 		chunks <- liftIO (E.run_ (ET.enumFile path $$ EL.consume))
-		$expect (equal chunks (case IO.nativeNewline of
-			IO.LF -> lines_CRLF
-			IO.CRLF -> lines_LF))
+		$expect (equal chunks (case nativeNewline of
+			LF -> lines_CRLF
+			CRLF -> lines_LF))

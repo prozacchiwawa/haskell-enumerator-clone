@@ -34,6 +34,9 @@ executable enumerator_tests
     build-depends:
         base >= 4.0 && < 5.0
 
+  if os(windows)
+    cpp-options: -DCABAL_OS_WINDOWS
+
   build-depends:
       bytestring
     , chell >= 0.2 && < 0.3
