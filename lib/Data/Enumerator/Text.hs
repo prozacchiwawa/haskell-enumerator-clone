@@ -760,6 +760,12 @@ lines = splitWhen (== '\n')
 -- The handle should be opened with an appropriate text encoding, and
 -- in 'IO.ReadMode' or 'IO.ReadWriteMode'.
 --
+-- This function may be significantly slower than using
+-- @Data.Enumerator.Binary.enumHandle@, due to the additional overhead of
+-- decoding input data to Unicode. Users who can depend on their input files
+-- being in a certain encoding (such as UTF8) are encouraged to use binary
+-- input and 'decode'.
+--
 -- Changed in 0.4.18: Lines streamed from 'enumHandle' and 'enumFile' now
 -- include their trailing newline.
 --
@@ -797,6 +803,12 @@ textGetLine h = loop [] where
 --
 -- The file will be opened in text mode, and will be closed when the
 -- 'Iteratee' finishes.
+--
+-- This function may be significantly slower than using
+-- @Data.Enumerator.Binary.enumFile@, due to the additional overhead of
+-- decoding input data to Unicode. Users who can depend on their input files
+-- being in a certain encoding (such as UTF8) are encouraged to use binary
+-- input and 'decode'.
 --
 -- Changed in 0.4.18: Lines streamed from 'enumHandle' and 'enumFile' now
 -- include their trailing newline.
