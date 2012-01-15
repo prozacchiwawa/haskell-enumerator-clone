@@ -777,7 +777,7 @@ textGetLine h = loop [] where
 #if MIN_VERSION_base(4,2,0)
 	pack = T.pack
 #else
-	pack = T.decodeUtf8 . B8.pack
+	pack = TE.decodeUtf8 . B8.pack
 #endif
 	loop acc = Exc.catch
 		(do
