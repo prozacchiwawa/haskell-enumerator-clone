@@ -1,3 +1,5 @@
+{-# LANGUAGE CPP #-}
+
 -- |
 -- Module: Data.Enumerator.Text
 -- Copyright: 2010-2011 John Millikin
@@ -772,16 +774,21 @@ enumHandle h = checkContinue0 $ \loop k -> do
 
 textGetLine :: IO.Handle -> IO (Maybe T.Text)
 textGetLine h = loop [] where
+#if MIN_VERSION_base(4,2,0)
+	pack = T.pack
+#else
+	pack = T.decodeUtf8 . B8.pack
+#endif
 	loop acc = Exc.catch
 		(do
 			c <- IO.hGetChar h
 			if c == '\n'
-				then return (Just (T.pack (reverse (c:acc))))
+				then return (Just (pack (reverse (c:acc))))
 				else loop (c:acc))
 		(\err -> if isEOFError err
 			then case acc of
 				[] -> return Nothing
-				_ -> return (Just (T.pack (reverse acc)))
+				_ -> return (Just (pack (reverse acc)))
 			else Exc.throwIO err)
 
 -- | Read lines of text from a file, and stream them to an 'Iteratee'.
