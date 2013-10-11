@@ -128,12 +128,12 @@ extra-source-files:
   tests/EnumeratorTests/Util.hs
 
 source-repository head
-  type: bazaar
-  location: https://john-millikin.com/software/enumerator/
+  type: git
+  location: https://john-millikin.com/code/haskell-enumerator/
 
 source-repository this
-  type: bazaar
-  location: https://john-millikin.com/branches/enumerator/0.4/
+  type: git
+  location: https://john-millikin.com/code/haskell-enumerator/
   tag: enumerator_0.4.19
 
 library
