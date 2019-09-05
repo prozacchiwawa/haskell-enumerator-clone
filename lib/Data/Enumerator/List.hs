@@ -622,7 +622,7 @@ head = continue loop where
 head_ :: Monad m => Iteratee a m a
 head_ = head >>= \x -> case x of
 	Just x' -> return x'
-	Nothing -> throwError (ErrorCall "head_: stream has ended")
+	Nothing -> throwError (ErrorCallWithLocation "head_" "stream has ended")
 
 -- | @'drop' n@ ignores /n/ input elements from the stream.
 --
@@ -659,7 +659,7 @@ require n = continue (loop id n) where
 	loop acc n' (Chunks xs)
 		| len xs < n' = continue (loop (acc . (xs ++)) (n' - len xs))
 		| otherwise   = yield () (Chunks (acc xs))
-	loop _ _ EOF = throwError (ErrorCall "require: Unexpected EOF")
+	loop _ _ EOF = throwError (ErrorCallWithLocation "require" "Unexpected EOF")
 
 -- | @'isolate' n@ reads at most /n/ elements from the stream, and passes them
 -- to its iteratee. If the iteratee finishes early, elements continue to be

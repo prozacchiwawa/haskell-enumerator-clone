@@ -48,6 +48,7 @@ import           Control.Monad.IO.Class (MonadIO, liftIO)
 import           Control.Monad.Trans.Class (MonadTrans, lift)
 import           Data.Function (fix)
 import           Data.Monoid (Monoid, mempty, mappend, mconcat)
+import           Data.Semigroup
 
 #if GHC78_DATA_TYPEABLE
 import           Data.Typeable (Typeable)
@@ -75,6 +76,9 @@ instance Monoid (Stream a) where
 	mempty = Chunks mempty
 	mappend (Chunks xs) (Chunks ys) = Chunks (xs ++ ys)
 	mappend _ _ = EOF
+
+instance Semigroup (Stream a) where
+	 (<>) = mappend
 
 data Step a m b
 	-- | The 'Iteratee' is capable of accepting more input. Note that more input
